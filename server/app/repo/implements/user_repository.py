@@ -1,0 +1,141 @@
+import logging
+from sqlalchemy import and_
+
+from ..user_interface import UserInterface
+from ...model.user import User as UserModel # UserModel giờ đã kế thừa từ BaseModel
+from ... import db
+
+class UserRepository(UserInterface):
+    def __init__(self):
+        # Constructor có thể dùng để inject dependencies nếu cần, ví dụ một logger riêng
+        pass
+
+
+    def get_user_by_id(self, id_str: str) -> UserModel | None: # Thêm type hint cho id
+        return db.session.execute(
+            db.select(UserModel).where(
+                and_(
+                    UserModel.id == id_str,
+                    UserModel.is_deleted == False
+                )
+            )
+        ).scalar_one_or_none() # scalar_one_or_none() an toàn hơn scalar()
+
+    def get_user_by_email(self, email: str) -> UserModel | None:
+        return db.session.execute(
+            db.select(UserModel).where(
+                and_(
+                    UserModel.email == email,
+                    UserModel.is_deleted == False
+                )
+            )
+        ).scalar_one_or_none()
+            
+    def get_user_by_username(self, username: str) -> UserModel | None:
+        return db.session.execute(
+            db.select(UserModel).where(
+                and_(
+                    UserModel.username == username,
+                    UserModel.is_deleted == False
+                )
+            )
+        ).scalar_one_or_none()
+            
+    # --- CÁC PHƯƠNG THỨC GHI (CREATE, UPDATE, DELETE) - ĐƯỢC SỬA ĐỔI ---
+    def save_user_to_db(self, email, password, username, name, language, timezone, device_id, avatar_url=None, is_verified=False) -> UserModel:
+        """
+        Tạo một user mới và lưu vào DB sử dụng phương thức save() của model.
+        """
+        try:
+            # UserModel.__init__ đã xử lý việc hash password
+            new_user = UserModel(
+                email=email,
+                password=password, # UserModel.__init__ sẽ gọi set_password
+                username=username,
+                name=name,
+                language=language,
+                timezone=timezone,
+                deviceId=device_id,
+                avatar_url=avatar_url,
+                is_verified=is_verified
+            )
+            # Gọi phương thức save() từ BaseModel (được UserModel kế thừa)
+            # Phương thức save() này đã bao gồm db.session.add() và db.session.commit()
+            # cùng với xử lý rollback.
+            return new_user.save() 
+        
+        except Exception as e: 
+            # db.session.rollback() đã được xử lý trong new_user.save() nếu có lỗi
+            logging.error(f"Error saving user to the database via repository: {str(e)}")
+            # Bạn có thể muốn raise một exception tùy chỉnh của repository ở đây
+            raise 
+
+    def update_verification_status(self, email: str) -> bool:
+        """
+        Cập nhật trạng thái xác thực của user sử dụng phương thức update() hoặc save() của model.
+        """
+        try:
+            user = self.get_user_by_email(email)
+            if not user:
+                return False
+            
+            # Sử dụng phương thức update() từ BaseModel
+            user.update(is_verified=True) 
+            # Hoặc:
+            # user.is_verified = True
+            # user.save() 
+            return True
+        
+        except Exception as e:
+            # db.session.rollback() đã được xử lý trong user.update() hoặc user.save()
+            logging.error(f"Error updating verification status via repository: {str(e)}")
+            raise
+
+    def update_password(self, user: UserModel, new_password: str) -> UserModel | None:
+        """
+        Cập nhật mật khẩu của user sử dụng phương thức set_password và save() của model.
+        """
+        try:
+            if not isinstance(user, UserModel): # Kiểm tra kiểu dữ liệu
+                logging.error("Invalid user object passed to update_password")
+                return None # Hoặc raise TypeError
+
+            user.set_password(new_password) # UserModel có phương thức này để hash
+            return user.save() # Lưu thay đổi (bao gồm cả updated_at nếu có)
+        
+        except Exception as e:
+            # db.session.rollback() đã được xử lý trong user.save()
+            logging.error(f"Error updating user password via repository: {str(e)}")
+            raise
+            
+    def update_user(self, user: UserModel, data: dict) -> UserModel | None:
+        """
+        Cập nhật thông tin user với dữ liệu từ dict, sử dụng phương thức update() của model.
+        """
+        try:
+            if not isinstance(user, UserModel):
+                logging.error("Invalid user object passed to update_user")
+                return None
+
+            return user.update(**data) # Truyền dict vào phương thức update của model
+        
+        except Exception as e:
+            # db.session.rollback() đã được xử lý trong user.update()
+            logging.error(f"Error updating user via repository: {str(e)}")
+            raise
+            
+    def delete_user(self, user: UserModel) -> UserModel | None: # Thực hiện soft delete
+        """
+        Đánh dấu user là đã xóa (soft delete) sử dụng phương thức soft_delete() của model.
+        """
+        try:
+            if not isinstance(user, UserModel):
+                logging.error("Invalid user object passed to delete_user")
+                return None
+                
+            return user.soft_delete() # Gọi phương thức soft_delete từ BaseModel
+        
+        except Exception as e:
+            # db.session.rollback() đã được xử lý trong user.soft_delete()
+            logging.error(f"Error soft deleting user via repository: {str(e)}")
+            raise

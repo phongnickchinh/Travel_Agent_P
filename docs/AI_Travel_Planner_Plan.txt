@@ -1,0 +1,127 @@
+# 🧭 KẾ HOẠCH TRIỂN KHAI DỰ ÁN: AI TRAVEL PLANNER
+**Tác giả:** Phạm Văn Phong  
+**Thời gian thực hiện:** 9 tuần (từ 14/10/2025 – 15/12/2025)
+
+---
+
+## 🎯 MỤC TIÊU CHUNG
+Phát triển hệ thống web "AI Travel Planner" cho phép người dùng nhập yêu cầu du lịch (điểm đến, thời gian, ngân sách, sở thích) và tự động sinh lịch trình du lịch chi tiết bằng AI, có dữ liệu thực tế từ Google Places và TripAdvisor.
+
+---
+
+## 🗓️ TIẾN ĐỘ CHI TIẾT
+
+### **Tuần 1 (14–20/10)** – Phân tích & Thiết kế
+- Xây dựng tài liệu SRS (Software Requirement Specification).
+- Vẽ Use Case Diagram, ERD và Data Flow Diagram.
+- Thiết kế UI/UX trên Figma (trang nhập yêu cầu, dashboard timeline).
+- Lựa chọn công nghệ chính: React + Flask + MongoDB.
+- Thiết lập repo GitHub và cấu trúc thư mục ban đầu.
+
+### **Tuần 2 (21–27/10)** – Thiết lập môi trường & Backend cơ bản
+- Cấu hình môi trường phát triển (Flask + MongoDB Atlas + Docker).
+- Tạo cấu trúc backend: routes, controllers, services, models.
+- Cài đặt các API cơ bản:
+  - `/api/places` (gọi Google Places API)
+  - `/api/plan` (sinh kế hoạch tạm bằng mẫu dữ liệu)
+- Tạo database schema cho user, plan, location.
+
+### **Tuần 3 (28/10–3/11)** – Frontend cơ bản
+- Khởi tạo ReactJS bằng Vite + TailwindCSS.
+- Xây dựng trang nhập yêu cầu (Form Planner).
+- Tạo trang hiển thị kết quả (PlanResult).
+- Gọi thử API `/api/places` từ frontend để hiển thị danh sách địa điểm mẫu.
+
+### **Tuần 4 (4–10/11)** – AI Planner (LLM Integration)
+- Tích hợp OpenAI API hoặc HuggingFace (Llama3) vào backend.
+- Viết module sinh lịch trình AI:
+  ```python
+  prompt = f"Tạo lịch trình {days} ngày cho chuyến đi {destination} với ngân sách {budget}."
+  ```
+- Trả kết quả về JSON gồm các ngày, hoạt động, mô tả.
+- Hiển thị dữ liệu AI sinh ra trên timeline giao diện React.
+
+### **Tuần 5 (11–17/11)** – Dữ liệu thực tế từ API
+- Tích hợp Google Places API:
+  - Lấy danh sách điểm du lịch, nhà hàng, khách sạn thật.
+  - Lưu vào MongoDB.
+- Tích hợp TripAdvisor API (qua RapidAPI):
+  - Gợi ý nhà hàng và khách sạn theo sở thích.
+- Kết hợp dữ liệu thật vào AI Planner (AI sinh kế hoạch dựa trên địa điểm thực tế).
+
+### **Tuần 6 (18–24/11)** – Tối ưu hành trình & cá nhân hóa
+- Triển khai thuật toán TSP heuristic để sắp xếp tuyến đường tối ưu.
+- Gợi ý lịch trình rút gọn hoặc tiết kiệm dựa trên ngân sách.
+- Cho phép người dùng đăng nhập và lưu kế hoạch cá nhân.
+- Lưu lịch sử tìm kiếm và kế hoạch trong DB.
+
+### **Tuần 7 (25/11–1/12)** – Xuất file & tích hợp bản đồ
+- Xuất file PDF và Excel:
+  - Flask dùng reportlab / pandas.
+  - Frontend dùng jsPDF.
+- Tích hợp Google Maps hiển thị các điểm đến trong hành trình.
+- Thêm chức năng “Xem chi tiết địa điểm” và “Mở trong Google Maps”.
+
+### **Tuần 8 (2–8/12)** – Hoàn thiện & kiểm thử
+- Viết test cho backend (pytest) và frontend (Jest).
+- Chạy thử toàn bộ flow người dùng.
+- Tối ưu hiệu năng API (cache Google Places).
+- Viết tài liệu hướng dẫn sử dụng (User Manual).
+
+### **Tuần 9 (9–15/12)** – Triển khai & Báo cáo
+- Docker hóa toàn bộ hệ thống.
+- Deploy:
+  - Frontend → Vercel
+  - Backend → Render hoặc AWS EC2
+  - Database → MongoDB Atlas
+- Hoàn thiện báo cáo và video demo sản phẩm.
+
+---
+
+## 🧩 CẤU TRÚC DỰ ÁN (ĐỀ XUẤT)
+```
+/travel-planner
+├── client/ (React)
+│   ├── src/components/
+│   ├── src/pages/
+│   ├── src/services/api.js
+│   └── vite.config.js
+├── server/ (Flask)
+│   ├── routes/
+│   ├── services/
+│   ├── models/
+│   ├── utils/
+│   └── app.py
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 📦 CÔNG NGHỆ CHÍNH
+| Thành phần | Công nghệ |
+|-------------|------------|
+| Frontend | ReactJS (Vite + TailwindCSS) |
+| Backend | Python Flask |
+| Database | MongoDB (Atlas) |
+| AI / NLP | OpenAI GPT / HuggingFace Transformers |
+| API Thực tế | Google Places API, TripAdvisor API |
+| Triển khai | Docker + Vercel + Render |
+| Bản đồ | Google Maps API |
+| Thư viện phụ | Chart.js, jsPDF, LangChain, requests, axios |
+
+---
+
+## 🚀 KẾT QUẢ KỲ VỌNG
+- Website có thể sinh kế hoạch du lịch chi tiết cho người dùng thật.
+- Lịch trình có địa điểm thật, review, ảnh và bản đồ tương tác.
+- Có thể xuất file PDF/Excel và lưu kế hoạch cá nhân.
+- Giao diện thân thiện, dễ mở rộng thành app di động.
+
+---
+
+## 📘 TÀI LIỆU THAM KHẢO
+- Google Maps Platform: https://developers.google.com/maps/documentation/places/web-service
+- TripAdvisor API (RapidAPI): https://rapidapi.com/apidojo/api/tripadvisor1
+- LangChain Docs: https://python.langchain.com
+- Flask Docs: https://flask.palletsprojects.com/

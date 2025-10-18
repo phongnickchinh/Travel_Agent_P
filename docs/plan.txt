@@ -1,0 +1,38 @@
+Đề tài: AI Travel Planner – Hệ thống lập kế hoạch du lịch thông minh trên web
+🎯 Mục tiêu
+Xây dựng một website du lịch cho phép người dùng nhập thông tin mong muốn (điểm đến, thời gian, ngân sách, sở thích).
+Ứng dụng AI (LLM, ML) để gợi ý lịch trình du lịch chi tiết (plan theo ngày/giờ).
+Hệ thống có khả năng cá nhân hóa kế hoạch dựa trên hồ sơ người dùng (nếu đăng nhập).
+🔹 Các chức năng chính
+Đầu vào người dùng
+Chọn điểm đến, số ngày, ngân sách, loại hình du lịch (nghỉ dưỡng, khám phá, ẩm thực, mạo hiểm...).
+Tùy chọn: đi một mình/nhóm/gia đình.
+AI Planner
+Sử dụng LLM (GPT, Llama, hoặc Hugging Face model) để sinh lịch trình.
+Tích hợp dữ liệu thực tế (API Google Places, TripAdvisor, Skyscanner) để lấy thông tin khách sạn, địa điểm, vé.
+Có thể dùng thuật toán tối ưu (Traveling Salesman Problem + heuristics) để sắp xếp lịch trình hợp lý.
+Gợi ý & Cá nhân hóa
+Gợi ý nhà hàng/khách sạn phù hợp.
+Dự đoán chi phí chuyến đi.
+Đưa ra lựa chọn thay thế (ví dụ: lịch trình rút gọn, lịch trình tiết kiệm).
+Giao diện Web (ReactJS + NodeJS/Python Flask)
+Trang nhập yêu cầu.
+Dashboard hiển thị timeline chuyến đi (bằng Chart.js hoặc timeline view).
+Chức năng xuất file PDF/Excel hoặc lưu lịch trình cá nhân.
+Tích hợp nâng cao (nếu muốn)
+Dùng n8n để tự động gửi email lịch trình.
+Docker hóa toàn bộ hệ thống.
+Tích hợp bản đồ tương tác (Google Maps API).
+🔹 Công nghệ gợi ý
+Frontend: ReactJS + Vite.
+Backend: Python Flask hoặc Node.js.
+AI/ML: Hugging Face Transformers, LangChain (cho LLM), scikit-learn (cho gợi ý).
+Database: MongoDB hoặc PostgreSQL.
+Search: Elasticsearch (lưu & tìm kiếm địa điểm).
+Deployment: Docker, có thể deploy trên Vercel/Heroku/AWS.
+🔹 Khả năng mở rộng thành Đồ án tốt nghiệp
+Tích hợp dữ liệu lớn: thu thập và phân tích dữ liệu du lịch từ nhiều nguồn (review, giá cả, thời tiết).
+Ứng dụng di động: Android Kotlin hoặc React Native.
+AI tối ưu hành trình real-time (tính đến thời tiết, giao thông).
+Cá nhân hóa mạnh bằng phân tích hành vi người dùng (machine learning).
+ 

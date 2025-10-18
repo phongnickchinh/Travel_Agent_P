@@ -1,0 +1,15 @@
+# virtualenv
+.venv/
+venv/
+ENV/
+myenv/
+
+# dotenv
+.env
+app/hehehe
+# Python bytecode cache
+__pycache__/
+
+# Secrets directory contains sensitive information (e.g., serviceAccount.json)
+# Make sure this directory is not committed to source control
+secrets/

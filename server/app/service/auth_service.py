@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-import jwt
 import logging
 import random
 
@@ -9,6 +8,13 @@ from ..core.di_container import DIContainer
 from ..repo.token_interface import TokenInterface
 from ..repo.user_interface import UserInterface
 from ..repo.role_interface import RoleInterface, UserRoleInterface
+from ..utils.jwt_helpers import (
+    encode_jwt_token,
+    decode_jwt_token,
+    generate_access_token as jwt_generate_access_token,
+    generate_refresh_token_jwt,
+    verify_token_and_get_user_id
+)
 from config import secret_key, access_token_expire_sec, refresh_token_expire_sec
 
 class AuthService:
@@ -36,17 +42,7 @@ class AuthService:
     def generate_access_token(self, user_id, expires_in=access_token_expire_sec):
         """Generate a new access token for the user."""
         try:
-            payload = {
-                "user_id": user_id,
-                "exp":  datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in)
-            }
-            new_access_token = jwt.encode(payload, secret_key, algorithm="HS256")
-            return new_access_token
-        
-        except jwt.PyJWTError as e:
-            logging.error(f"JWT Error: {str(e)}")
-            raise
-
+            return jwt_generate_access_token(user_id, expires_in)
         except Exception as e:
             logging.error(f"Error generating access token: {str(e)}")
             raise
@@ -55,40 +51,21 @@ class AuthService:
     def generate_refresh_token(self, user_id, expires_in=refresh_token_expire_sec): 
         """Generate a new refresh token for the user."""
         try:
-            payload = {
-                "user_id": user_id,
-                "exp":  datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in)
-            }
-            new_refresh_token = jwt.encode(payload, secret_key, algorithm="HS256")
+            new_refresh_token = generate_refresh_token_jwt(user_id, expires_in)
             self.token_repo.save_new_refresh_token(user_id, new_refresh_token)
             return new_refresh_token
-        
-        except jwt.PyJWTError as e:
-            logging.error(f"JWT Error: {str(e)}")
-            raise
-
         except Exception as e:
-            logging.error(f"Error generating access token: {str(e)}")
+            logging.error(f"Error generating refresh token: {str(e)}")
             raise
         
         
     def verify_temp_access_token(self, token):
-        """Verify if the provided temporary access  temp is valid and not expired."""
+        """Verify if the provided temporary access token is valid and not expired."""
         try:
-            payload = jwt.decode(token, secret_key, algorithms=["HS256"])
-            user_id = payload.get("user_id")
+            user_id = verify_token_and_get_user_id(token)
             if not user_id:
-                logging.warning("Token missing required field: user_id.")
-                return None
-
+                logging.warning("Access token verification failed.")
             return user_id
-
-        except jwt.ExpiredSignatureError:
-            logging.warning("Access token expired.")
-            return None
-        except jwt.InvalidTokenError:
-            logging.warning("Invalid access token.")
-            return None
         except Exception as e:
             logging.error(f"Error verifying access token: {str(e)}")
             raise
@@ -97,7 +74,11 @@ class AuthService:
     def verify_refresh_token(self, token):
         """Verify if the provided refresh token is valid and not expired."""
         try:
-            payload = jwt.decode(token, secret_key, algorithms=["HS256"])
+            payload = decode_jwt_token(token)
+            if not payload:
+                logging.warning("Invalid or expired refresh token.")
+                return None
+                
             user_id = payload.get("user_id")
             if not user_id:
                 logging.warning("Token missing required field: user_id.")
@@ -108,13 +89,6 @@ class AuthService:
                 return None
             
             return user_id
-
-        except jwt.ExpiredSignatureError:
-            logging.warning("Refresh token expired.")
-            return None
-        except jwt.InvalidTokenError:
-            logging.warning("Invalid refresh token.")
-            return None
         except Exception as e:
             logging.error(f"Error verifying refresh token: {str(e)}")
             raise
@@ -186,7 +160,11 @@ class AuthService:
     def verify_verification_code(self, confirm_token, verification_code):
         """Verifies the confirmation token and verification code."""
         try:
-            payload = jwt.decode(confirm_token, secret_key, algorithms=["HS256"])
+            payload = decode_jwt_token(confirm_token)
+            if not payload:
+                logging.warning("Invalid or expired confirm token.")
+                return None
+                
             user_id = payload.get("user_id")
             if not user_id:
                 logging.warning("Token missing required field: user_id.")
@@ -202,13 +180,6 @@ class AuthService:
                 return None
             
             return self.user_repo.get_user_by_id(user_id)
-        
-        except jwt.ExpiredSignatureError:
-            logging.warning("Confirm token expired.")
-            return None
-        except jwt.InvalidTokenError:
-            logging.warning("Invalid confirm token.")
-            return None
         except Exception as e:
             logging.error(f"Error verifying verification code: {str(e)}")
             raise
@@ -217,7 +188,11 @@ class AuthService:
     def verify_reset_code(self, reset_token, reset_code):
         """Verifies the reset password token and reset password code."""
         try:
-            payload = jwt.decode(reset_token, secret_key, algorithms=["HS256"])
+            payload = decode_jwt_token(reset_token)
+            if not payload:
+                logging.warning("Invalid or expired reset token.")
+                return None
+                
             user_id = payload.get("user_id")
             if not user_id:
                 logging.warning("Token missing required field: user_id.")
@@ -232,13 +207,6 @@ class AuthService:
                 return None
             
             return self.user_repo.get_user_by_id(user_id)
-        
-        except jwt.ExpiredSignatureError:
-            logging.warning("Reset token expired.")
-            return None
-        except jwt.InvalidTokenError:
-            logging.warning("Invalid reset token.")
-            return None
         except Exception as e:
             logging.error(f"Error verifying reset code: {str(e)}")
             raise
@@ -248,18 +216,9 @@ class AuthService:
         """Generates a confirmation token for the user."""
         try:
             user_id = self.user_repo.get_user_by_email(email).id
-            payload = {
-                "user_id": user_id,
-                "exp":  datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in)
-            }
-            new_confirm_token = jwt.encode(payload, secret_key, algorithm="HS256")
+            new_confirm_token = encode_jwt_token(user_id, expires_in)
             self.token_repo.save_confirm_token(user_id, new_confirm_token)
             return new_confirm_token
-        
-        except jwt.PyJWTError as e:
-            logging.error(f"JWT Error: {str(e)}")
-            raise
-
         except Exception as e:
             logging.error(f"Error generating confirm token: {str(e)}")
             raise
@@ -269,18 +228,9 @@ class AuthService:
         """Generates a reset password token for the user."""
         try:
             user_id = self.user_repo.get_user_by_email(email).id
-            payload = {
-                "user_id": user_id,
-                "exp":  datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in)
-            }
-            new_reset_token = jwt.encode(payload, secret_key, algorithm="HS256")
+            new_reset_token = encode_jwt_token(user_id, expires_in)
             self.token_repo.save_reset_token(user_id, new_reset_token)
             return new_reset_token
-        
-        except jwt.PyJWTError as e:
-            logging.error(f"JWT Error: {str(e)}")
-            raise
-
         except Exception as e: 
             logging.error(f"Error generating reset token: {str(e)}")
             raise

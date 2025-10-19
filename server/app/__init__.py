@@ -49,12 +49,12 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             from flask_migrate import upgrade
-            print("🔄 Running database migration...")
+            print("Running database migration...")
             upgrade()
-            print("✅ Database migration completed successfully")
+            print("Database migration completed successfully")
         except Exception as e:
-            print(f"⚠️ Database migration failed: {str(e)}")
-            print("🔧 Server will continue startup - please check migrations manually if needed")
+            print(f"Database migration failed: {str(e)}")
+            print("Server will continue startup - please check migrations manually if needed")
             # Continue startup even if migration fails
     
     from .model.baseModel import BaseModel

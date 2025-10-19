@@ -40,7 +40,6 @@ class User(BaseModel):
         Hàm khởi tạo cho User.
         Các trường id, created_at, updated_at, is_deleted sẽ được SQLAlchemy/BaseModel xử lý qua default.
         """
-        print("hehehehe \n\n\n\n")
         self.email = email
         self.set_password(password)
         self.username = username

@@ -1,11 +1,14 @@
 """Validation helper functions for request data."""
-from flask import request, jsonify
+from flask import jsonify
 from validate_email_address import validate_email as validate_email_address
 
 
-def get_json_or_error():
+def get_json_or_error(request):
     """
     Get JSON from request or return error response.
+    
+    Args:
+        request: Flask request object
     
     Returns:
         tuple: (data, error_response) where error_response is None if successful

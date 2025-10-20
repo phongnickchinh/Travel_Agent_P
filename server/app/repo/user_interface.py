@@ -37,3 +37,20 @@ class UserInterface(ABC):
     @abstractmethod
     def delete_user(self, user):
         pass
+    
+    @abstractmethod
+    def get_user_by_google_id(self, google_id: str) -> UserModel:
+        """Get user by Google ID."""
+        pass
+    
+    @abstractmethod
+    def create_google_user(self, email: str, name: str, google_id: str, 
+                          profile_picture: str = None, language: str = 'en') -> UserModel:
+        """Create a new user from Google OAuth."""
+        pass
+    
+    @abstractmethod
+    def update_google_profile(self, user: UserModel, name: str = None, 
+                             profile_picture: str = None) -> UserModel:
+        """Update user's Google profile information."""
+        pass

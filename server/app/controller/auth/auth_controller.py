@@ -22,6 +22,8 @@ class AuthController:
     def _register_routes(self):
         """Register all routes with Flask."""
         auth_api.add_url_rule("/login", "login", self.login, methods=["POST"])
+        auth_api.add_url_rule("/google", "google_login", self.google_login, methods=["POST"])
+        auth_api.add_url_rule("/link-google", "link_google", self._wrap_jwt_required(self.link_google), methods=["POST"])
         auth_api.add_url_rule("/refresh-token", "refresh_token", self.refresh_token, methods=["POST"])
         auth_api.add_url_rule("/logout", "logout", self._wrap_jwt_required(self.logout), methods=["POST"])
         auth_api.add_url_rule("/register", "register", self.register, methods=["POST"])
@@ -42,7 +44,7 @@ class AuthController:
         return wrapper
     
     def login(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -77,8 +79,86 @@ class AuthController:
             }
         )
     
+    def google_login(self):
+        """Handle Google OAuth login."""
+        # data, error = get_json_or_error(request)
+        #TODO: use get_json_or_error instead of manual parsing, check error cant gent request
+        data = {}
+        auth_header = request.headers.get("Authorization", "")
+        data["google_token"] = auth_header.replace("Bearer ", "")
+        error = None
+        if error:
+            return error
+        
+        error = validate_required_fields(data, ["google_token"])
+        if error:
+            return error
+        
+        try:
+            user, tokens, role = self.auth_service.authenticate_google_user(data["google_token"])
+            
+            if not user:
+                return build_error_response(
+                    "Google authentication failed. Please try again.",
+                    "Xác thực Google thất bại. Vui lòng thử lại.",
+                    "00090"
+                )
+            
+            access_token, refresh_token = tokens
+            
+            return build_success_response(
+                "You have successfully logged in with Google.",
+                "Bạn đã đăng nhập thành công bằng Google.",
+                "00091",
+                {
+                    "user": user.as_dict(exclude=["password_hash"]),
+                    "role": role,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token
+                }
+            )
+        except Exception as e:
+            return build_error_response(
+                "An error occurred during Google authentication.",
+                "Đã xảy ra lỗi trong quá trình xác thực Google.",
+                "00092"
+            )
+    
+    def link_google(self, user_id):
+        """Link Google account to existing user account."""
+        data, error = get_json_or_error(request)
+        if error:
+            return error
+        
+        error = validate_required_fields(data, ["google_token"])
+        if error:
+            return error
+        
+        try:
+            success, message = self.auth_service.link_google_account(user_id, data["google_token"])
+            
+            if success:
+                return build_success_response(
+                    "Google account linked successfully.",
+                    "Liên kết tài khoản Google thành công.",
+                    "00093",
+                    {"message": message}
+                )
+            else:
+                return build_error_response(
+                    message,
+                    "Liên kết tài khoản Google thất bại.",
+                    "00094"
+                )
+        except Exception as e:
+            return build_error_response(
+                "An error occurred while linking Google account.",
+                "Đã xảy ra lỗi khi liên kết tài khoản Google.",
+                "00095"
+            )
+    
     def refresh_token(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -127,7 +207,7 @@ class AuthController:
         )
     
     def register(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -183,7 +263,7 @@ class AuthController:
         )
     
     def send_verification_code(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -228,7 +308,7 @@ class AuthController:
         )
     
     def verify_email(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -257,7 +337,7 @@ class AuthController:
             )
     
     def request_reset_password(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -295,7 +375,7 @@ class AuthController:
         )
     
     def validate_reset_code(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         
@@ -320,7 +400,7 @@ class AuthController:
             )
     
     def reset_password(self):
-        data, error = get_json_or_error()
+        data, error = get_json_or_error(request)
         if error:
             return error
         

@@ -139,3 +139,75 @@ class UserRepository(UserInterface):
             # db.session.rollback() đã được xử lý trong user.soft_delete()
             logging.error(f"Error soft deleting user via repository: {str(e)}")
             raise
+    
+    # --- GOOGLE OAUTH METHODS ---
+    def get_user_by_google_id(self, google_id: str) -> UserModel | None:
+        """
+        Get user by Google ID.
+        """
+        return db.session.execute(
+            db.select(UserModel).where(
+                and_(
+                    UserModel.google_id == google_id,
+                    UserModel.is_deleted == False
+                )
+            )
+        ).scalar_one_or_none()
+    
+    def create_google_user(self, email: str, name: str, google_id: str, 
+                          profile_picture: str = None, language: str = 'en') -> UserModel:
+        """
+        Create a new user from Google OAuth.
+        """
+        try:
+            from ...utils.google_oauth_helper import generate_username_from_email, generate_device_id_for_oauth
+            
+            # Generate username and device ID
+            username = generate_username_from_email(email)
+            device_id = generate_device_id_for_oauth()
+            
+            # Create user without password (OAuth user)
+            new_user = UserModel(
+                email=email,
+                password=None,  # No password for OAuth users
+                username=username,
+                name=name,
+                language=language,
+                timezone=None,
+                deviceId=device_id,
+                google_id=google_id,
+                auth_provider='google',
+                profile_picture=profile_picture,
+                is_verified=True  # Google accounts are pre-verified
+            )
+            
+            return new_user.save()
+        
+        except Exception as e:
+            logging.error(f"Error creating Google user: {str(e)}")
+            raise
+    
+    def update_google_profile(self, user: UserModel, name: str = None, 
+                             profile_picture: str = None) -> UserModel | None:
+        """
+        Update user's Google profile information.
+        """
+        try:
+            if not isinstance(user, UserModel):
+                logging.error("Invalid user object passed to update_google_profile")
+                return None
+            
+            update_data = {}
+            if name:
+                update_data['name'] = name
+            if profile_picture:
+                update_data['profile_picture'] = profile_picture
+            
+            if update_data:
+                return user.update(**update_data)
+            
+            return user
+        
+        except Exception as e:
+            logging.error(f"Error updating Google profile: {str(e)}")
+            raise

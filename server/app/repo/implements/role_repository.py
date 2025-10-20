@@ -39,8 +39,8 @@ class RoleRepository(RoleInterface):
 class UserRoleRepository(UserRoleInterface):
     def __init__(self):
         pass
-    
-    
+
+
     def create_user_role(self, user_id, role_id):
         try:
             new_user_role = UserRoleModel(user_id=user_id, role_id=role_id)

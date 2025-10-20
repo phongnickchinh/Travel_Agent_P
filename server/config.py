@@ -41,8 +41,14 @@ class Config:
 
     ACCESS_TOKEN_EXPIRE_SEC = int(os.environ.get("ACCESS_TOKEN_EXPIRE_SEC", 3600))
     REFRESH_TOKEN_EXPIRE_SEC = int(os.environ.get("REFRESH_TOKEN_EXPIRE_SEC", 604800))
+    
+    # Google OAuth Configuration
+    GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 
 
 secret_key = Config.SECRET_KEY
 access_token_expire_sec = Config.ACCESS_TOKEN_EXPIRE_SEC
 refresh_token_expire_sec = Config.REFRESH_TOKEN_EXPIRE_SEC
+google_client_id = Config.GOOGLE_CLIENT_ID
+google_client_secret = Config.GOOGLE_CLIENT_SECRET

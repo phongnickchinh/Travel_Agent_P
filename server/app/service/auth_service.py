@@ -32,7 +32,16 @@ class AuthService:
     def validate_login(self, email, password):
         """Validate the login credentials of an user."""
         user = self.user_repo.get_user_by_email(email)
-        if not user or not check_password_hash(user.password_hash, password):
+        if not user:
+            return None, None
+        
+        # Check if user can login with password
+        if not user.has_local_auth():
+            logging.warning(f"User {email} cannot login with password (Google-only account)")
+            return None, None
+        
+        # Verify password
+        if not user.check_password(password):
             return None, None
         
         role = self.role_repository.get_role_of_user(user.id)
@@ -279,7 +288,14 @@ class AuthService:
             if user is None:
                 return False
             
+            # Update password
             self.user_repo.update_password(user, new_password)
+            
+            # Update auth_provider if user has Google linked
+            if user.google_id:
+                user.update(auth_provider='both')
+                logging.info(f"Updated auth_provider to 'both' for user {user_id}")
+            
             return True
         
         except Exception as e: 
@@ -307,5 +323,120 @@ class AuthService:
         
         self.token_repo.save_new_refresh_token(user_id, refresh_token)
         return {"access_token": access_token, "refresh_token": refresh_token}
+    
+    # --- GOOGLE OAUTH METHODS ---
+    def authenticate_google_user(self, google_token: str):
+        """
+        Authenticate user with Google OAuth token.
+        Returns user and tokens if successful, None otherwise.
+        """
+        try:
+            from ..utils.google_oauth_helper import verify_google_token
+            
+            # Verify Google token and get user info
+            google_user_info = verify_google_token(google_token)
+            if not google_user_info:
+                logging.warning("Invalid Google token")
+                return None, None, None
+            
+            google_id = google_user_info.get('sub')
+            email = google_user_info.get('email')
+            name = google_user_info.get('name')
+            profile_picture = google_user_info.get('picture')
+            email_verified = google_user_info.get('email_verified', False)
+            
+            if not email_verified:
+                logging.warning(f"Google email not verified: {email}")
+                return None, None, None
+            
+            # Check if user exists by Google ID
+            user = self.user_repo.get_user_by_google_id(google_id)
+            
+            if user:
+                # User exists, update profile if needed
+                self.user_repo.update_google_profile(user, name, profile_picture)
+            else:
+                # Check if email already exists (local account)
+                user = self.user_repo.get_user_by_email(email)
+                if user:
+                    # Link Google account to existing local account
+                    # Determine new auth_provider
+                    new_auth_provider = 'both' if user.password_hash else 'google'
+                    
+                    user.update(
+                        google_id=google_id,
+                        profile_picture=profile_picture,
+                        auth_provider=new_auth_provider,
+                        is_verified=True
+                    )
+                    logging.info(f"Linked Google to existing account: {email}, auth_provider={new_auth_provider}")
+                else:
+                    # Create new Google user
+                    user = self.user_repo.create_google_user(
+                        email=email,
+                        name=name,
+                        google_id=google_id,
+                        profile_picture=profile_picture
+                    )
+                    
+                    # Assign default role
+                    default_role = self.role_repository.get_role_by_role_name("user")
+                    if default_role:
+                        self.user_role_repository.create_user_role(user.id, default_role.id)
+            
+            # Generate tokens
+            access_token = self.generate_access_token(user.id)
+            refresh_token = self.generate_refresh_token(user.id)
+            
+            # Get user role
+            role = self.role_repository.get_role_of_user(user.id)
+            
+            return user, (access_token, refresh_token), role.role_name if role else "user"
+        
+        except Exception as e:
+            logging.error(f"Error authenticating Google user: {str(e)}")
+            raise
+    
+    def link_google_account(self, user_id: str, google_token: str):
+        """
+        Link Google account to existing user account.
+        """
+        try:
+            from ..utils.google_oauth_helper import verify_google_token
+            
+            # Verify Google token
+            google_user_info = verify_google_token(google_token)
+            if not google_user_info:
+                return False, "Invalid Google token"
+            
+            google_id = google_user_info.get('sub')
+            profile_picture = google_user_info.get('picture')
+            
+            # Check if Google ID is already linked to another account
+            existing_user = self.user_repo.get_user_by_google_id(google_id)
+            if existing_user and existing_user.id != user_id:
+                return False, "This Google account is already linked to another account"
+            
+            # Get current user
+            user = self.user_repo.get_user_by_id(user_id)
+            if not user:
+                return False, "User not found"
+            
+            # Determine new auth_provider
+            new_auth_provider = 'both' if user.password_hash else 'google'
+            
+            # Link Google account
+            user.update(
+                google_id=google_id,
+                profile_picture=profile_picture,
+                auth_provider=new_auth_provider
+            )
+            
+            logging.info(f"Linked Google account for user {user_id}, auth_provider={new_auth_provider}")
+            return True, "Google account linked successfully"
+        
+        except Exception as e:
+            logging.error(f"Error linking Google account: {str(e)}")
+            raise
 
 

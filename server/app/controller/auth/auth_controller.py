@@ -81,21 +81,16 @@ class AuthController:
     
     def google_login(self):
         """Handle Google OAuth login."""
-        # data, error = get_json_or_error(request)
-        #TODO: use get_json_or_error instead of manual parsing, check error cant gent request
-        data = {}
-        auth_header = request.headers.get("Authorization", "")
-        data["google_token"] = auth_header.replace("Bearer ", "")
-        error = None
+        data, error = get_json_or_error(request)
         if error:
             return error
         
-        error = validate_required_fields(data, ["google_token"])
+        error = validate_required_fields(data, ["token"])
         if error:
             return error
         
         try:
-            user, tokens, role = self.auth_service.authenticate_google_user(data["google_token"])
+            user, tokens, role = self.auth_service.authenticate_google_user(data["token"])
             
             if not user:
                 return build_error_response(

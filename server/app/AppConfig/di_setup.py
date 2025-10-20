@@ -31,7 +31,7 @@ def setup_dependencies():
 
     # Import services
     from ..service.user_service import UserService
-    # from ..UserService.service.edit_service import EditService
+    from ..service.edit_service import EditService
     from ..service.auth_service import AuthService
     # from ..InvitationService.service.guest_service import GuestService
     # from ..GuestBookService.service.guestBook_service import GuestBookService
@@ -54,8 +54,8 @@ def setup_dependencies():
     # container.register(GuestBookInterface.__name__, GuestBookRepository)
     # Register services
     container.register(AuthService.__name__, AuthService)
-    # container.register(UserService.__name__, UserService)
-    # container.register(EditService.__name__, EditService)
+    container.register(UserService.__name__, UserService)
+    container.register(EditService.__name__, EditService)
     # container.register(GuestService.__name__, GuestService)
     # container.register(GuestBookService.__name__, GuestBookService)
 

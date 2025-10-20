@@ -67,9 +67,9 @@ def create_app(config_class=Config):
     auth_api = auth_api_init()
     app.register_blueprint(auth_api, url_prefix="/")
 
-    # from .UserService.controller import init_app as user_api_init
-    # user_api = user_api_init()
-    # app.register_blueprint(user_api, url_prefix="/user")
+    from .controller.user import init_app as user_api_init
+    user_api = user_api_init()
+    app.register_blueprint(user_api, url_prefix="/user")
 
     # from .InvitationService.controller import init_app as guest_api_init
     # guest_api = guest_api_init()

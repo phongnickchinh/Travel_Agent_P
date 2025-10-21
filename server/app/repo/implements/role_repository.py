@@ -41,11 +41,14 @@ class UserRoleRepository(UserRoleInterface):
         pass
 
 
-    def create_user_role(self, user_id, role_id):
+    def create_user_role(self, user_id, role_id, commit=True):
         try:
             new_user_role = UserRoleModel(user_id=user_id, role_id=role_id)
             db.session.add(new_user_role)
-            db.session.commit()
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()
         except Exception as e:
             db.session.rollback()
             logging.error(f"Error creating user role: {str(e)}")

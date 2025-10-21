@@ -2,8 +2,6 @@ from datetime import datetime, timezone, timedelta
 import logging
 import random
 
-from werkzeug.security import check_password_hash
-
 from ..core.di_container import DIContainer
 from ..repo.token_interface import TokenInterface
 from ..repo.user_interface import UserInterface
@@ -301,29 +299,7 @@ class AuthService:
         except Exception as e: 
             logging.error(f"Error setting password: {str(e)}")
             raise
-
-    # ! Do not use this method because of security issue
-    def authenticate_user(self, email, password):
-        # Example method using injected repositories
-        user = self.user_repo.get_user_by_email(email)
-        if user and self._verify_password(user, password):
-            return user
-        return None
-    
-    def _verify_password(self, user, password):
-        # Example password verification
-        # In a real implementation, you'd use a secure password comparison
-        return user.password == password  # This is insecure, just for illustration
-
-    def create_tokens(self, user_id):
-        # Example of using token repository
-        # Generate tokens and save refresh token
-        refresh_token = "example_refresh_token"
-        access_token = "example_access_token"
-        
-        self.token_repo.save_new_refresh_token(user_id, refresh_token)
-        return {"access_token": access_token, "refresh_token": refresh_token}
-    
+                
     # --- GOOGLE OAUTH METHODS ---
     def authenticate_google_user(self, google_token: str):
         """

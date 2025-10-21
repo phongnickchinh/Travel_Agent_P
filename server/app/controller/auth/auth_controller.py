@@ -1,4 +1,5 @@
 from flask import request, jsonify
+import logging
 
 from . import auth_api
 from ...service.auth_service import AuthService
@@ -274,7 +275,7 @@ class AuthController:
         if not registered_user:
             return build_error_response(
                 "Your email has not been activated, please register first.",
-                "Email của bạn chưa được kích hoạt, vui lòng đăng ký trước.",
+                "Email không liên kết với tài khoản nào, vui lòng đăng ký trước.",
                 "00043"
             )
             
@@ -289,7 +290,7 @@ class AuthController:
         confirm_token = self.auth_service.generate_confirm_token(data["email"])
         send_email(
             to=data["email"], 
-            subject="Your Verification Code from Meal Planner",
+            subject="Your Verification Code from Travel Agent P",
             template="confirm",
             user=registered_user,
             code=verification_code

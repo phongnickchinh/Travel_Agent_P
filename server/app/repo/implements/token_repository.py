@@ -18,12 +18,13 @@ class TokenRepository(TokenInterface):
         ).scalar()
     
     
-    def _upsert_token(self, user_id, **fields):
+    def _upsert_token(self, user_id, commit=True, **fields):
         """
         Private helper to fetch-or-create token row and update fields.
         
         Args:
             user_id: User ID
+            commit: Nếu True, commit ngay vào DB. Nếu False, chỉ add/update trong session.
             **fields: Field names and values to set
             
         Raises:
@@ -41,35 +42,40 @@ class TokenRepository(TokenInterface):
                 for field_name, field_value in fields.items():
                     setattr(token, field_name, field_value)
             
-            db.session.commit()
+            if commit:
+                db.session.commit()
+            else:
+                db.session.flush()  # Flush để có thể query trong cùng transaction
         except Exception as e:
             db.session.rollback()
             logging.error(f"Error upserting token: {str(e)}")
             raise
         
         
-    def save_new_refresh_token(self, user_id, new_refresh_token):
-        self._upsert_token(user_id, refresh_token=new_refresh_token)
+    def save_new_refresh_token(self, user_id, new_refresh_token, commit=True):
+        self._upsert_token(user_id, commit=commit, refresh_token=new_refresh_token)
     
-    def save_verification_code(self, user_id, code):
+    def save_verification_code(self, user_id, code, commit=True):
         self._upsert_token(
             user_id,
+            commit=commit,
             verification_code=code,
             verification_code_expires_at=datetime.now(tz=timezone.utc) + timedelta(minutes=10)
         )
         
-    def save_reset_code(self, user_id, code):
+    def save_reset_code(self, user_id, code, commit=True):
         self._upsert_token(
             user_id,
+            commit=commit,
             reset_code=code,
             reset_code_expires_at=datetime.now(tz=timezone.utc) + timedelta(minutes=10)
         )
         
-    def save_confirm_token(self, user_id, token):
-        self._upsert_token(user_id, confirm_token=token)
+    def save_confirm_token(self, user_id, token, commit=True):
+        self._upsert_token(user_id, commit=commit, confirm_token=token)
         
-    def save_reset_token(self, user_id, token):
-        self._upsert_token(user_id, reset_token=token)
+    def save_reset_token(self, user_id, token, commit=True):
+        self._upsert_token(user_id, commit=commit, reset_token=token)
         
         
     def delete_refresh_token(self, user_id):

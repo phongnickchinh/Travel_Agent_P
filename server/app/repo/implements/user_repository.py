@@ -42,9 +42,12 @@ class UserRepository(UserInterface):
         ).scalar_one_or_none()
             
     # --- CÁC PHƯƠNG THỨC GHI (CREATE, UPDATE, DELETE) - ĐƯỢC SỬA ĐỔI ---
-    def save_user_to_db(self, email, password, username, name, language, timezone, device_id, avatar_url=None, is_verified=False) -> UserModel:
+    def save_user_to_db(self, email, password, username, name, language, timezone, device_id, avatar_url=None, is_verified=False, commit=True) -> UserModel:
         """
         Tạo một user mới và lưu vào DB sử dụng phương thức save() của model.
+        
+        Args:
+            commit: Nếu True, commit ngay vào DB. Nếu False, chỉ add vào session (dùng cho transaction).
         """
         try:
             # UserModel.__init__ đã xử lý việc hash password
@@ -59,10 +62,9 @@ class UserRepository(UserInterface):
                 avatar_url=avatar_url,
                 is_verified=is_verified
             )
-            # Gọi phương thức save() từ BaseModel (được UserModel kế thừa)
-            # Phương thức save() này đã bao gồm db.session.add() và db.session.commit()
-            # cùng với xử lý rollback.
-            return new_user.save() 
+            # Gọi phương thức save() từ BaseModel với tham số commit
+            # Nếu commit=False, chỉ add vào session mà không commit (cho phép rollback)
+            return new_user.save(commit=commit) 
         
         except Exception as e: 
             # db.session.rollback() đã được xử lý trong new_user.save() nếu có lỗi

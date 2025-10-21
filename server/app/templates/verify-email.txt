@@ -1,4 +1,4 @@
-Dear {{ user }},
+Dear {{ user.name }},
 
 We’re thrilled to welcome you to Travel Agent P – your ultimate travel companion!
 To complete your registration and get started, please use the verification code below:

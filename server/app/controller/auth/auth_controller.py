@@ -242,8 +242,26 @@ class AuthController:
             data["email"], data["password"], data["username"], 
             data["name"], data["language"], data["timezone"], data["deviceId"]
         )
+        
+        # Generate tokens để user có thể dùng ngay
+        access_token = self.auth_service.generate_access_token(new_user.id)
+        refresh_token = self.auth_service.generate_refresh_token(new_user.id)
+        
+        # Generate verification code (để verify sau)
         verification_code = self.auth_service.generate_verification_code(new_user.email)
         confirm_token = self.auth_service.generate_confirm_token(new_user.email)
+        
+        try:
+            send_email(
+                to=new_user.email,
+                subject="Verify Your Email Address for Meal Planner",
+                template="verify-email",
+                user=new_user,
+                code=verification_code
+            )
+        except Exception as e:
+            logging.error(f"Error sending verification email: {str(e)}")
+            # Tiếp tục trả về thành công dù email gửi thất bại
         
         return build_success_response(
             "You registered successfully.",
@@ -251,7 +269,8 @@ class AuthController:
             "00035",
             {
                 "user": new_user.as_dict(exclude=["password_hash"]),
-                "verificationCode": verification_code,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "role": "user",
                 "confirmToken": confirm_token
             },
@@ -285,22 +304,11 @@ class AuthController:
                 "Email của bạn đã được xác minh.",
                 "00046"
             )
-
-        verification_code = self.auth_service.generate_verification_code(data["email"])
-        confirm_token = self.auth_service.generate_confirm_token(data["email"])
-        send_email(
-            to=data["email"], 
-            subject="Your Verification Code from Travel Agent P",
-            template="confirm",
-            user=registered_user,
-            code=verification_code
-        )
-
+        
         return build_success_response(
-            "Code has been sent to your email successfully.",
-            "Mã đã được gửi đến email của bạn thành công.",
-            "00048",
-            {"confirmToken": confirm_token}
+            "Registration successful.",
+            "Đã đăng ký thành công.",
+            "00053"
         )
     
     def verify_email(self):
@@ -357,7 +365,7 @@ class AuthController:
         reset_token = self.auth_service.generate_reset_token(data["email"])
         send_email(
             to=data["email"], 
-            subject="Reset Your Password from Meal Planner",
+            subject="Reset Your Password from Travel Agent P",
             template="reset-password",
             user=registered_user,
             code=reset_code

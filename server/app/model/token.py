@@ -16,6 +16,9 @@ class Token(BaseModel):
     
     verification_code: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
     verification_code_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    reset_code: Mapped[Optional[str]] = mapped_column(String(255), unique=True, nullable=True, index=True)
+    reset_code_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user = relationship('User', back_populates='tokens', foreign_keys=[user_id])
 

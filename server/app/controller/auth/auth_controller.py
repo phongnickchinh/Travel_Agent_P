@@ -254,7 +254,7 @@ class AuthController:
         try:
             send_email(
                 to=new_user.email,
-                subject="Verify Your Email Address for Meal Planner",
+                subject="Verify Your Email Address for Travel Agent P",
                 template="verify-email",
                 user=new_user,
                 code=verification_code

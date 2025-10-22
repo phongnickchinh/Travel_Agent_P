@@ -113,7 +113,7 @@ Content-Type: application/json
 
 #### Email Template
 Email được gửi với:
-- **Subject**: "Your Verification Code from Meal Planner"
+- **Subject**: "Your Verification Code from Travel Agent P"
 - **Template**: `confirm.html` / `confirm.txt`
 - **Content**: Mã verification 6 chữ số (ví dụ: `123456`)
 

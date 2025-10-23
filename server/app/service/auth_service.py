@@ -13,7 +13,7 @@ from ..utils.jwt_helpers import (
     generate_refresh_token_jwt,
     verify_token_and_get_user_id
 )
-from config import secret_key, access_token_expire_sec, refresh_token_expire_sec
+from config import access_token_expire_sec, refresh_token_expire_sec
 
 class AuthService:
     """Auth service with dependency injection."""
@@ -46,18 +46,24 @@ class AuthService:
         return user, role.role_name
 
 
-    def generate_access_token(self, user_id, expires_in=access_token_expire_sec):
+    def generate_access_token(self, user_id, expires_in=None):
         """Generate a new access token for the user."""
         try:
+            # Use environment variable if expires_in is not provided
+            if expires_in is None:
+                expires_in = access_token_expire_sec
             return jwt_generate_access_token(user_id, expires_in)
         except Exception as e:
             logging.error(f"Error generating access token: {str(e)}")
             raise
 
 
-    def generate_refresh_token(self, user_id, expires_in=refresh_token_expire_sec): 
+    def generate_refresh_token(self, user_id, expires_in=None): 
         """Generate a new refresh token for the user."""
         try:
+            # Use environment variable if expires_in is not provided
+            if expires_in is None:
+                expires_in = refresh_token_expire_sec
             new_refresh_token = generate_refresh_token_jwt(user_id, expires_in)
             self.token_repo.save_new_refresh_token(user_id, new_refresh_token)
             return new_refresh_token

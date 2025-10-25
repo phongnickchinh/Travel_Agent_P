@@ -102,6 +102,10 @@ export default function Dashboard() {
             <span className="info-label">Refresh Token:</span>
             <span className="info-value token-value">{tokenInfo.refreshToken}</span>
           </div>
+          <div className="info-item">
+            <span className="info-label">User Info:</span>
+            <span className="info-value token-value">{JSON.stringify(user)}</span>
+          </div>
         </div>
 
         <div className="info-card">

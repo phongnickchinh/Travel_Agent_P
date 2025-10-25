@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  requestPasswordResetApi,
+  resendResetCodeApi,
+  resetPasswordApi,
+  validateEmail,
+  validatePassword,
+  validateResetCodeApi
+} from '../../services/authApi';
 import './ResetPassword.css';
 
 export default function ResetPassword() {
@@ -38,14 +46,6 @@ export default function ResetPassword() {
     };
   }, [resendTimer]);
 
-  // Validate email
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) return 'Email is required';
-    if (!emailRegex.test(email)) return 'Please enter a valid email';
-    return '';
-  };
-
   // Show alert
   const showAlert = (message, type = 'info') => {
     setAlert({ message, type });
@@ -78,30 +78,21 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/request-reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: email.trim() })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const responseData = data.data || data;
-        setResetToken(responseData.resetToken);
-        setCurrentStep(2);
-        startResendTimer();
-        showAlert('Verification code sent to your email!', 'success');
-      } else {
-        const errorMessage = data.resultMessage?.en || data.message || 'Failed to send code';
-        showAlert(errorMessage, 'error');
-      }
+      // Use requestPasswordResetApi from authApi
+      const data = await requestPasswordResetApi(email.trim());
+      const responseData = data.data || data;
+      
+      setResetToken(responseData.resetToken);
+      setCurrentStep(2);
+      startResendTimer();
+      showAlert('Verification code sent to your email!', 'success');
 
     } catch (error) {
       console.error('Send code error:', error);
-      showAlert('An error occurred. Please try again.', 'error');
+      const errorMessage = error.response?.data?.resultMessage?.en || 
+                           error.response?.data?.message || 
+                           'An error occurred. Please try again.';
+      showAlert(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -120,31 +111,19 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/validate-reset-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          resetToken: resetToken,
-          resetCode: resetCode
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setTempAccessToken(data.tempAccessToken);
-        setCurrentStep(3);
-        showAlert('Code verified successfully!', 'success');
-      } else {
-        const errorMessage = data.resultMessage?.en || data.message || 'Invalid verification code';
-        setErrors(prev => ({ ...prev, resetCode: errorMessage }));
-      }
+      // Use validateResetCodeApi from authApi
+      const data = await validateResetCodeApi(resetToken, resetCode);
+      
+      setTempAccessToken(data.tempAccessToken);
+      setCurrentStep(3);
+      showAlert('Code verified successfully!', 'success');
 
     } catch (error) {
       console.error('Verify code error:', error);
-      setErrors(prev => ({ ...prev, resetCode: 'An error occurred. Please try again.' }));
+      const errorMessage = error.response?.data?.resultMessage?.en || 
+                           error.response?.data?.message || 
+                           'Invalid verification code';
+      setErrors(prev => ({ ...prev, resetCode: errorMessage }));
     } finally {
       setLoading(false);
     }
@@ -155,14 +134,10 @@ export default function ResetPassword() {
     e.preventDefault();
     clearErrors();
 
-    // Validate password
-    if (!newPassword) {
-      setErrors(prev => ({ ...prev, newPassword: 'Password is required' }));
-      return;
-    }
-
-    if (newPassword.length < 6 || newPassword.length > 20) {
-      setErrors(prev => ({ ...prev, newPassword: 'Password must be 6-20 characters long' }));
+    // Validate password using authApi function
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      setErrors(prev => ({ ...prev, newPassword: passwordError }));
       return;
     }
 
@@ -174,29 +149,17 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/reset-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          tempAccessToken: tempAccessToken,
-          newPassword: newPassword
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setCurrentStep(4);
-      } else {
-        const errorMessage = data.resultMessage?.en || data.message || 'Failed to reset password';
-        showAlert(errorMessage, 'error');
-      }
+      // Use resetPasswordApi from authApi
+      await resetPasswordApi(tempAccessToken, newPassword);
+      
+      setCurrentStep(4);
 
     } catch (error) {
       console.error('Reset password error:', error);
-      showAlert('An error occurred. Please try again.', 'error');
+      const errorMessage = error.response?.data?.resultMessage?.en || 
+                           error.response?.data?.message || 
+                           'Failed to reset password';
+      showAlert(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -205,28 +168,20 @@ export default function ResetPassword() {
   // Resend code
   const handleResendCode = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/request-reset-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email: email })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const responseData = data.data || data;
-        setResetToken(responseData.resetToken);
-        showAlert('New verification code sent!', 'success');
-        startResendTimer();
-      } else {
-        showAlert('Failed to resend code', 'error');
-      }
+      // Use resendResetCodeApi from authApi
+      const data = await resendResetCodeApi(email);
+      const responseData = data.data || data;
+      
+      setResetToken(responseData.resetToken);
+      showAlert('New verification code sent!', 'success');
+      startResendTimer();
 
     } catch (error) {
       console.error('Resend error:', error);
-      showAlert('An error occurred. Please try again.', 'error');
+      const errorMessage = error.response?.data?.resultMessage?.en || 
+                           error.response?.data?.message || 
+                           'Failed to resend code';
+      showAlert(errorMessage, 'error');
     }
   };
 

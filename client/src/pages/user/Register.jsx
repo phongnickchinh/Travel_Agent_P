@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  getDeviceId,
+  parseApiError,
+  registerApi,
+  sendVerificationCodeApi,
+  validateConfirmPassword,
+  validateEmail,
+  validateName,
+  validatePassword,
+  validateRegistrationForm,
+  validateUsername,
+  verifyEmailApi
+} from '../../services/authApi';
 import './Register.css';
 
 export default function Register() {
@@ -39,14 +52,8 @@ export default function Register() {
 
   const [alert, setAlert] = useState({ message: '', type: '' });
 
-  // Initialize device ID
-  if (!localStorage.getItem('deviceId')) {
-    localStorage.setItem('deviceId', generateDeviceId());
-  }
-
-  function generateDeviceId() {
-    return 'device-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-  }
+  // Initialize device ID on mount
+  getDeviceId();
 
   // Handle input change
   const handleChange = (e) => {
@@ -57,51 +64,6 @@ export default function Register() {
     setAlert({ message: '', type: '' });
   };
 
-  // Validation functions
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) return 'Email is required';
-    if (!emailRegex.test(email)) return 'Please enter a valid email address';
-    return '';
-  };
-
-  const validatePassword = (password) => {
-    if (!password) return 'Password is required';
-    if (password.length < 6 || password.length > 20) {
-      return 'Password must be 6-20 characters long';
-    }
-    return '';
-  };
-
-  const validateConfirmPassword = () => {
-    if (!formData.confirmPassword) return 'Please confirm your password';
-    if (formData.password !== formData.confirmPassword) {
-      return 'Passwords do not match';
-    }
-    return '';
-  };
-
-  const validateUsername = (username) => {
-    if (!username) return 'Username is required';
-    if (username.length < 3) return 'Username must be at least 3 characters';
-    return '';
-  };
-
-  const validateAllFields = () => {
-    const newErrors = {
-      email: validateEmail(formData.email),
-      password: validatePassword(formData.password),
-      confirmPassword: validateConfirmPassword(),
-      username: validateUsername(formData.username),
-      name: formData.name ? '' : 'Full name is required',
-      verificationCode: '',
-      general: ''
-    };
-
-    setErrors(newErrors);
-    return !Object.values(newErrors).some(error => error !== '');
-  };
-
   // Show alert
   const showAlert = (message, type = 'info') => {
     setAlert({ message, type });
@@ -110,7 +72,7 @@ export default function Register() {
     }, 5000);
   };
 
-  // Handle field blur
+  // Handle field blur - use validation functions from authApi
   const handleBlur = (field) => {
     let error = '';
     switch (field) {
@@ -121,13 +83,13 @@ export default function Register() {
         error = validatePassword(formData.password);
         break;
       case 'confirmPassword':
-        error = validateConfirmPassword();
+        error = validateConfirmPassword(formData.password, formData.confirmPassword);
         break;
       case 'username':
         error = validateUsername(formData.username);
         break;
       case 'name':
-        error = formData.name ? '' : 'Full name is required';
+        error = validateName(formData.name);
         break;
       default:
         break;
@@ -144,76 +106,55 @@ export default function Register() {
     });
     setAlert({ message: '', type: '' });
 
-    if (!validateAllFields()) {
+    // Validate using authApi function
+    const { errors: validationErrors, isValid } = validateRegistrationForm(formData);
+    if (!isValid) {
+      setErrors({ ...validationErrors, verificationCode: '', general: '' });
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...formData,
-          deviceId: localStorage.getItem('deviceId')
-        })
-      });
+      // Call registerApi from authApi service
+      const data = await registerApi(formData);
+      const responseData = data.data || data;
+      
+      // Save tokens for immediate use
+      localStorage.setItem('access_token', responseData.access_token);
+      localStorage.setItem('refresh_token', responseData.refresh_token);
+      localStorage.setItem('user', JSON.stringify(responseData.user));
 
-      const data = await response.json();
-
-      if (response.ok) {
-        const responseData = data.data || data;
-        
-        // Save tokens for immediate use
-        localStorage.setItem('access_token', responseData.access_token);
-        localStorage.setItem('refresh_token', responseData.refresh_token);
-        localStorage.setItem('user', JSON.stringify(responseData.user));
-
-        // Save confirm token for later verification
-        if (responseData.confirm_token) {
-          localStorage.setItem('confirmToken', responseData.confirm_token);
-          setConfirmToken(responseData.confirm_token);
-        }
-
-        const message = data.resultMessage?.en || 'Registration successful! Redirecting to dashboard...';
-        showAlert(message, 'success');
-
-        // Redirect to dashboard
-        setTimeout(() => {
-          navigate(`/user/${responseData.user.username}/guests`);
-        }, 1500);
-
-      } else {
-        handleApiError(data);
+      // Save confirm token for later verification
+      if (responseData.confirm_token) {
+        localStorage.setItem('confirmToken', responseData.confirm_token);
+        setConfirmToken(responseData.confirm_token);
       }
+
+      const message = data.resultMessage?.en || 'Registration successful! Redirecting to dashboard...';
+      showAlert(message, 'success');
+
+      // Redirect to dashboard
+      setTimeout(() => {
+        navigate(`/user/${responseData.user.username}/guests`);
+      }, 1500);
 
     } catch (error) {
       console.error('Registration error:', error);
-      showAlert('An error occurred. Please try again.', 'error');
+      
+      // Parse API error using authApi helper
+      if (error.response?.data) {
+        const { field, message, isFieldError } = parseApiError(error.response.data);
+        if (isFieldError) {
+          setErrors(prev => ({ ...prev, [field]: message }));
+        } else {
+          showAlert(message, 'error');
+        }
+      } else {
+        showAlert('An error occurred. Please try again.', 'error');
+      }
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle API errors
-  const handleApiError = (data) => {
-    const errorCode = data.resultCode;
-    const errorMessage = data.resultMessage?.en || 'An error occurred';
-
-    const errorMap = {
-      '00032': { field: 'email', message: 'This email is already registered' },
-      '00067': { field: 'username', message: 'This username is already taken' },
-      '00066': { field: 'password', message: 'Password must be 6-20 characters' },
-      '00005': { field: 'email', message: 'Invalid email format' }
-    };
-
-    if (errorMap[errorCode]) {
-      setErrors(prev => ({ ...prev, [errorMap[errorCode].field]: errorMap[errorCode].message }));
-    } else {
-      showAlert(errorMessage, 'error');
     }
   };
 
@@ -229,49 +170,28 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/verify-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          confirm_token: confirmToken,
-          verification_code: verificationCode
-        })
-      });
+      // Call verifyEmailApi from authApi service
+      const data = await verifyEmailApi(confirmToken, verificationCode);
 
-      const data = await response.json();
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
 
-      if (response.ok) {
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('refresh_token', data.refresh_token);
+      showAlert('Email verified successfully! Redirecting...', 'success');
 
-        showAlert('Email verified successfully! Redirecting...', 'success');
-
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
-
-      } else {
-        if (data.resultCode === '00054') {
-          setErrors(prev => ({ 
-            ...prev, 
-            verificationCode: 'Invalid verification code. Please try again.' 
-          }));
-        } else {
-          setErrors(prev => ({ 
-            ...prev, 
-            verificationCode: data.resultMessage?.en || 'Verification failed' 
-          }));
-        }
-      }
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
 
     } catch (error) {
       console.error('Verification error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
-        verificationCode: 'An error occurred. Please try again.' 
-      }));
+      
+      // Parse API error using authApi helper
+      if (error.response?.data) {
+        const { message } = parseApiError(error.response.data);
+        setErrors(prev => ({ ...prev, verificationCode: message }));
+      } else {
+        setErrors(prev => ({ ...prev, verificationCode: 'An error occurred. Please try again.' }));
+      }
     } finally {
       setLoading(false);
     }
@@ -280,29 +200,18 @@ export default function Register() {
   // Handle resend code
   const handleResendCode = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:5000/send-verification-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email
-        })
-      });
+      // Call sendVerificationCodeApi from authApi service
+      const data = await sendVerificationCodeApi(formData.email);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setConfirmToken(data.confirm_token);
-        showAlert('New verification code sent to your email!', 'success');
-        startResendTimer();
-      } else {
-        showAlert(data.resultMessage?.en || 'Failed to resend code', 'error');
-      }
+      setConfirmToken(data.confirm_token);
+      showAlert('New verification code sent to your email!', 'success');
+      startResendTimer();
 
     } catch (error) {
       console.error('Resend error:', error);
-      showAlert('An error occurred. Please try again.', 'error');
+      
+      const message = error.response?.data?.resultMessage?.en || 'Failed to resend code';
+      showAlert(message, 'error');
     }
   };
 

@@ -3,7 +3,7 @@ from flask import jsonify
 from . import user_api
 from ...service.user_service import UserService
 from ...middleware import JWT_required
-from ...utils.validation_helpers import build_success_response
+from ...utils.response_helpers import build_success_response
 from ...core.di_container import DIContainer
 
 

@@ -39,19 +39,24 @@ class AuthService:
         """Validate the login credentials of an user."""
         user = self.user_repo.get_user_by_email(email)
         if not user:
-            return None, None
+            return None, None, None
         
         # Check if user can login with password
         if not user.has_local_auth():
             logging.warning(f"User {email} cannot login with password (Google-only account)")
-            return None, None
+            return None, None, None
+        
+        # Check if email is verified (only for local auth users)
+        if user.auth_provider in ['local', 'both'] and not user.is_verified:
+            logging.warning(f"User {email} attempted login without email verification")
+            return None, None, "NOT_VERIFIED"
         
         # Verify password
         if not user.check_password(password):
-            return None, None
+            return None, None, None
         
         role = self.role_repository.get_role_of_user(user.id)
-        return user, role.role_name
+        return user, role.role_name, None
 
 
     def generate_access_token(self, user_id, expires_in=None):

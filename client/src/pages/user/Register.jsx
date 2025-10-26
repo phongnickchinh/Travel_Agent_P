@@ -120,24 +120,21 @@ export default function Register() {
       const data = await registerApi(formData);
       const responseData = data.data || data;
       
-      // Save tokens for immediate use
-      localStorage.setItem('access_token', responseData.access_token);
-      localStorage.setItem('refresh_token', responseData.refresh_token);
-      localStorage.setItem('user', JSON.stringify(responseData.user));
-
-      // Save confirm token for later verification
-      if (responseData.confirm_token) {
-        localStorage.setItem('confirmToken', responseData.confirm_token);
-        setConfirmToken(responseData.confirm_token);
+      // Save confirm token for email verification
+      if (responseData.confirmToken || responseData.confirm_token) {
+        const token = responseData.confirmToken || responseData.confirm_token;
+        localStorage.setItem('confirmToken', token);
+        setConfirmToken(token);
       }
 
-      const message = data.resultMessage?.en || 'Registration successful! Redirecting to dashboard...';
+      // Store user email for verification page
+      localStorage.setItem('pendingVerificationEmail', formData.email);
+
+      const message = data.resultMessage?.en || 'Registration successful! Please verify your email.';
       showAlert(message, 'success');
 
-      // Redirect to dashboard
-      setTimeout(() => {
-        navigate(`/user/${responseData.user.username}/guests`);
-      }, 1500);
+      // Switch to verification step
+      setCurrentStep(2);
 
     } catch (error) {
       console.error('Registration error:', error);
@@ -173,13 +170,15 @@ export default function Register() {
       // Call verifyEmailApi from authApi service
       const data = await verifyEmailApi(confirmToken, verificationCode);
 
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
+      // Clear pending verification data
+      localStorage.removeItem('confirmToken');
+      localStorage.removeItem('pendingVerificationEmail');
 
-      showAlert('Email verified successfully! Redirecting...', 'success');
+      showAlert('Email verified successfully! Please login to continue.', 'success');
 
+      // Redirect to login page
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/login');
       }, 2000);
 
     } catch (error) {

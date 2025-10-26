@@ -59,7 +59,16 @@ class AuthController:
         if error:
             return error
 
-        user, role = self.auth_service.validate_login(data["email"], data["password"])
+        user, role, verification_status = self.auth_service.validate_login(data["email"], data["password"])
+        
+        if verification_status == "NOT_VERIFIED":
+            return build_error_response(
+                "Please verify your email before logging in. Check your inbox for the verification code.",
+                "Vui lòng xác minh email của bạn trước khi đăng nhập. Kiểm tra hộp thư để lấy mã xác minh.",
+                "EMAIL_NOT_VERIFIED",
+                403
+            )
+        
         if not user:
             return build_error_response(
                 "You have entered an invalid email or password.",
@@ -245,11 +254,7 @@ class AuthController:
             data["name"], data["language"], data["timezone"], data["deviceId"]
         )
         
-        # Generate tokens để user có thể dùng ngay
-        access_token = self.auth_service.generate_access_token(new_user.id)
-        refresh_token = self.auth_service.generate_refresh_token(new_user.id)
-        
-        # Generate verification code (để verify sau)
+        # Generate verification code để verify email
         verification_code = self.auth_service.generate_verification_code(new_user.email)
         confirm_token = self.auth_service.generate_confirm_token(new_user.email)
         
@@ -263,18 +268,24 @@ class AuthController:
             )
         except Exception as e:
             logging.error(f"Error sending verification email: {str(e)}")
-            # Tiếp tục trả về thành công dù email gửi thất bại
+            # Vẫn trả về thành công nhưng báo lỗi gửi email
+            return build_error_response(
+                "Registration successful but failed to send verification email. Please try resending the verification code.",
+                "Đăng ký thành công nhưng không thể gửi email xác minh. Vui lòng thử gửi lại mã xác minh.",
+                "EMAIL_SEND_FAILED",
+                201
+            )
         
+        # KHÔNG trả về access_token và refresh_token
+        # User phải verify email trước khi login
         return build_success_response(
-            "You registered successfully.",
-            "Bạn đã đăng ký thành công.",
+            "Registration successful. Please check your email to verify your account before logging in.",
+            "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản trước khi đăng nhập.",
             "00035",
             {
                 "user": new_user.as_dict(exclude=["password_hash"]),
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "role": "user",
-                "confirmToken": confirm_token
+                "confirmToken": confirm_token,
+                "message": "Please verify your email before logging in"
             },
             201
         )
@@ -324,15 +335,15 @@ class AuthController:
         
         user = self.auth_service.verify_verification_code(data["confirm_token"], data["verification_code"])
         if user and self.auth_service.verify_user_email(user.email):
-            access_token = self.auth_service.generate_access_token(user.id)
-            refresh_token = self.auth_service.generate_refresh_token(user.id)
+            # Chỉ xác nhận verification thành công
+            # KHÔNG trả về tokens - user phải login
             return build_success_response(
-                "Your email address has been verified successfully.",
-                "Địa chỉ email của bạn đã được xác minh thành công.",
+                "Your email address has been verified successfully. Please login to continue.",
+                "Địa chỉ email của bạn đã được xác minh thành công. Vui lòng đăng nhập để tiếp tục.",
                 "00058",
                 {
-                    "access_token": access_token,
-                    "refresh_token": refresh_token
+                    "verified": True,
+                    "email": user.email
                 }
             )
         else:

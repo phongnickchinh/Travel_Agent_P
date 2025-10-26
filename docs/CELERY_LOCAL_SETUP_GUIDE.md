@@ -168,6 +168,10 @@ source venv/bin/activate
 # Start Celery worker
 celery -A celery_worker.celery worker --loglevel=info
 ```
+or
+```bash# Using gevent pool for better concurrency
+celery -A celery_worker.celery worker --pool=gevent --concurrency=10 --loglevel=info
+```
 
 ### 📊 Output khi Celery chạy thành công:
 

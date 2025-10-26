@@ -21,7 +21,7 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GRADUATION_CARD_6B393 }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRAVEL_AGENT_P }}
           channelId: live
-          projectId: graduation-card-6b393
+          projectId: travelagent-8df72
           entryPoint: ./client

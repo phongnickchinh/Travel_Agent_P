@@ -4,7 +4,7 @@ import logging
 from . import auth_api
 from ...service.auth_service import AuthService
 from ...email import send_email
-from ...utils.middleware import JWT_required
+from ...middleware import JWT_required
 from ...utils.validation_helpers import (
     get_json_or_error, 
     validate_required_fields, 

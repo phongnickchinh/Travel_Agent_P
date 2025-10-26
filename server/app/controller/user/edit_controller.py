@@ -3,7 +3,7 @@ from flask import request, jsonify
 from . import user_api
 from ...service.edit_service import EditService
 from ...service.auth_service import AuthService
-from ...utils.middleware import JWT_required
+from ...middleware import JWT_required
 from ...utils.validation_helpers import (
     get_json_or_error,
     validate_required_fields,

@@ -1,0 +1,105 @@
+.
+├── app/
+│   ├── AppConfig/
+│   │   └── di_setup.py                                   (EXISTING, sẽ bổ sung bind Mongo/Redis/Providers/LLM)
+│   ├── controller/
+│   │   ├── auth/                                         (EXISTING)
+│   │   │   ├── auth_controller.py
+│   │   │   └── __init__.py
+│   │   ├── user/                                         (EXISTING)
+│   │   │   ├── edit_controller.py
+│   │   │   ├── user_controller.py
+│   │   │   └── __init__.py
+│   │   ├── health.py                                     (EXISTING)
+│   │   ├── plan/                                         (NEW)
+│   │   │   ├── __init__.py
+│   │   │   └── plan_controller.py                        # POST /api/plan, GET /api/plan/<id>
+│   │   └── places/                                       (NEW)
+│   │       ├── __init__.py
+│   │       └── places_controller.py                      # GET /api/places/search, /{id}
+│   ├── core/
+│   │   └── di_container.py                                (EXISTING, sẽ bổ sung token/keys DI)
+│   ├── domain/                                           (NEW)
+│   │   ├── __init__.py
+│   │   ├── models.py                                     # DTO/Pydantic cho Plan/POI (khác với app/model SQL)
+│   │   ├── routing_simple.py                             # nearest-neighbor + time-window
+│   │   └── schemas/
+│   │       └── plan_v1.json                              # JSON Schema ép output LLM
+│   ├── email.py                                          (EXISTING)
+│   ├── errors.py                                         (EXISTING)
+│   ├── llm/                                              (NEW)
+│   │   ├── __init__.py
+│   │   ├── hf_adapter.py                                 # gọi HuggingFace + validate JSON
+│   │   └── lc_chain.py                                   # (tuỳ chọn) LangChain Prompt+Parser
+│   ├── middleware/                                       (EXISTING)
+│   ├── model/                                            (EXISTING, SQLAlchemy – giữ nguyên)
+│   │   ├── baseModel.py
+│   │   ├── blacklist.py
+│   │   ├── login_attempt.py
+│   │   ├── role.py
+│   │   ├── token.py
+│   │   └── user.py
+│   ├── providers/                                        (NEW)
+│   │   ├── __init__.py
+│   │   ├── base.py                                       # interface PlacesProvider/TAProvider
+│   │   ├── google_places.py
+│   │   ├── tripadvisor.py                                # optional (feature-flag)
+│   │   └── factory.py                                    # bật/tắt TA, hợp nhất providers
+│   ├── repo/
+│   │   ├── implements/                                   (EXISTING)
+│   │   │   ├── role_repository.py
+│   │   │   ├── token_repository.py
+│   │   │   └── user_repository.py
+│   │   ├── mg/                                           (NEW)  # Mongo
+│   │   │   ├── __init__.py
+│   │   │   ├── plans_repo.py
+│   │   │   ├── pois_repo.py
+│   │   │   └── flags_repo.py
+│   │   ├── pg/                                           (NEW)  # Postgres bổ sung (cost logs)
+│   │   │   ├── __init__.py
+│   │   │   └── cost_usage_repo.py
+│   │   ├── role_interface.py                              (EXISTING)
+│   │   ├── token_interface.py                             (EXISTING)
+│   │   └── user_interface.py                              (EXISTING)
+│   ├── service/
+│   │   ├── auth_service.py                                (EXISTING)
+│   │   ├── edit_service.py                                (EXISTING)
+│   │   ├── user_service.py                                (EXISTING)
+│   │   ├── planner_service.py                             (NEW)  # enqueue job, get plan
+│   │   └── places_service.py                              (NEW)  # search đọc Mongo, miss -> providers
+│   ├── templates/                                         (EXISTING)
+│   │   ├── reset-password.html
+│   │   ├── reset-password.txt
+│   │   ├── verify-email.html
+│   │   └── verify-email.txt
+│   ├── utils/
+│   │   ├── blacklist_cleaner.py                           (EXISTING)
+│   │   ├── firebase_helper.py                             (EXISTING)
+│   │   ├── firebase_interface.py                          (EXISTING)
+│   │   ├── google_oauth_helper.py                         (EXISTING)
+│   │   ├── jwt_helpers.py                                 (EXISTING)
+│   │   ├── middleware.py                                  (EXISTING)
+│   │   ├── validation_helpers.py                          (EXISTING)
+│   │   ├── rate_limit.py                                  (NEW)  # Redis token bucket
+│   │   ├── retry_backoff.py                               (NEW)  # retry + jitter + circuit breaker đơn giản
+│   │   └── cost_meter.py                                  (NEW)  # ghi log chi phí LLM/providers
+│   └── __init__.py                                        (EXISTING)
+├── celery_worker.py                                        (EXISTING, sẽ bổ sung task generate_plan)
+├── config.py                                               (EXISTING, thêm MONGO_URI/MONGO_DB/REDIS_URL/HF_API_TOKEN/FEATURE_TA)
+├── migrations/                                             (EXISTING)
+│   ├── alembic.ini
+│   ├── env.py
+│   ├── README
+│   ├── script.py.mako
+│   └── versions/
+│       ├── 026525d5c409_support_both_auth_methods.py
+│       ├── 157d06053aa6_add_reset_token.py
+│       ├── 63b16323740d_rm_unuse_relationship.py
+│       ├── 681bc624f728_rm_unuse_relationship.py
+│       ├── a9db35a73e1b_add_google_autentication.py
+│       └── c733f1b0209f_fix_boolean_default_false.py
+├── requirements.txt                                        (EXISTING, nhớ thêm: pymongo, redis, pydantic, jsonschema, geopy, [langchain*])
+├── run.py                                                  (EXISTING)
+├── secrets/
+│   └── serviceAccount.json                                 (EXISTING)
+└── start.sh                                                (EXISTING)

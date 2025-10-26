@@ -1,8 +1,8 @@
 import logging
 from sqlalchemy import and_
 
-from ..user_interface import UserInterface
-from ...model.user import User as UserModel # UserModel giờ đã kế thừa từ BaseModel
+from ..interfaces.user_repository_interface import UserInterface
+from ...model.user import User as UserModel
 from ... import db
 
 class UserRepository(UserInterface):

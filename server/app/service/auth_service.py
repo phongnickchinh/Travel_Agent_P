@@ -3,9 +3,9 @@ import logging
 import random
 
 from ..core.di_container import DIContainer
-from ..repo.token_interface import TokenInterface
-from ..repo.user_interface import UserInterface
-from ..repo.role_interface import RoleInterface, UserRoleInterface
+from ..repo.interfaces.token_repository_interface import TokenInterface
+from ..repo.interfaces.user_repository_interface import UserInterface
+from ..repo.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
 from ..utils.jwt_helpers import (
     encode_jwt_token,
     decode_jwt_token,
@@ -18,13 +18,21 @@ from config import access_token_expire_sec, refresh_token_expire_sec
 class AuthService:
     """Auth service with dependency injection."""
 
-    def __init__(self):
-        # Instead of creating repositories here, we'll resolve them from the container
-        container = DIContainer.get_instance()
-        self.token_repo = container.resolve(TokenInterface.__name__)
-        self.user_repo = container.resolve(UserInterface.__name__)
-        self.role_repository = container.resolve(RoleInterface.__name__)
-        self.user_role_repository = container.resolve(UserRoleInterface.__name__)
+    def __init__(self, token_repo: TokenInterface, user_repo: UserInterface, 
+                 role_repo: RoleInterface, user_role_repo: UserRoleInterface):
+        """
+        Initialize AuthService with injected dependencies.
+        
+        Args:
+            token_repo: Token repository implementation
+            user_repo: User repository implementation
+            role_repo: Role repository implementation
+            user_role_repo: UserRole repository implementation
+        """
+        self.token_repo = token_repo
+        self.user_repo = user_repo
+        self.role_repository = role_repo
+        self.user_role_repository = user_role_repo
         
 
     def validate_login(self, email, password):

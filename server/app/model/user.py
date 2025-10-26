@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
 
-from .baseModel import BaseModel
+from ..core.base_model import BaseModel
 
 class User(BaseModel):
     __tablename__ = 'users'

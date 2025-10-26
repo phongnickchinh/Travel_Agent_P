@@ -57,10 +57,10 @@ def create_app(config_class=Config):
             print("Server will continue startup - please check migrations manually if needed")
             # Continue startup even if migration fails
     
-    from .model.baseModel import BaseModel
+    from .core.base_model import BaseModel
     
     # Import and initialize DI after models are imported
-    from .AppConfig.di_setup import init_di
+    from .config.di_setup import init_di
     init_di()
     
     from .controller.auth import init_app as auth_api_init

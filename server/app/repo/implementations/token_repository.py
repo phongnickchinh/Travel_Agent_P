@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import logging
 
-from ..token_interface import TokenInterface
+from ..interfaces.token_repository_interface import TokenInterface
 from ...model.token import Token as TokenModel
 from ...model.blacklist import Blacklist as BlacklistModel
 from ... import db

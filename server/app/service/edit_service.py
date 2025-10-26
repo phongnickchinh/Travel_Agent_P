@@ -5,15 +5,21 @@ from werkzeug.utils import secure_filename
 
 from ..core.di_container import DIContainer
 
-from ..repo.user_interface import UserInterface
+from ..repo.interfaces.user_repository_interface import UserInterface
 from ..utils.firebase_interface import FirebaseInterface
 
 
 class EditService:
-    def __init__(self):
-        container = DIContainer.get_instance()
-        self.user_repository = container.resolve(UserInterface.__name__)
-        self.firebase_helper = container.resolve(FirebaseInterface.__name__)
+    def __init__(self, user_repo: UserInterface, firebase_helper: FirebaseInterface):
+        """
+        Initialize EditService with injected dependencies.
+        
+        Args:
+            user_repo: User repository implementation
+            firebase_helper: Firebase service implementation
+        """
+        self.user_repository = user_repo
+        self.firebase_helper = firebase_helper
 
     def verify_old_password(self, user, old_password):
         if not check_password_hash(user.password_hash, old_password):

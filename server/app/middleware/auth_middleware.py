@@ -9,7 +9,7 @@ from flask import request, jsonify
 
 from config import secret_key
 from ..core.di_container import DIContainer
-from ..repo.user_interface import UserInterface
+from ..repo.interfaces.user_repository_interface import UserInterface
 
 
 def _build_token_error_response():

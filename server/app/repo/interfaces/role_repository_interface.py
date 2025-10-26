@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from ..model.role import Role as RoleModel, UserRole as UserRoleModel
+from ...model.role import Role as RoleModel, UserRole as UserRoleModel
 
 
 class RoleInterface(ABC):

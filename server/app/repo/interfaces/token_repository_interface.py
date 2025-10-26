@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from ..model.token import Token
+from ...model.token import Token
 
 
 class TokenInterface(ABC):

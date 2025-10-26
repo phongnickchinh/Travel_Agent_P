@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from ..model.user import User as UserModel
+from ...model.user import User as UserModel
 
 
 class UserInterface(ABC):

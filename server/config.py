@@ -45,6 +45,26 @@ class Config:
     # Google OAuth Configuration
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+    
+    # Redis Configuration
+    REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
+    REDIS_DB = int(os.environ.get("REDIS_DB", 0))
+    REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
+    
+    # Rate Limiting Configuration
+    RATE_LIMIT_ENABLED = os.environ.get("RATE_LIMIT_ENABLED", "True").lower() == "true"
+    RATE_LIMIT_LOGIN = int(os.environ.get("RATE_LIMIT_LOGIN", 5))  # 5 attempts
+    RATE_LIMIT_LOGIN_WINDOW = int(os.environ.get("RATE_LIMIT_LOGIN_WINDOW", 300))  # 5 minutes
+    RATE_LIMIT_REGISTER = int(os.environ.get("RATE_LIMIT_REGISTER", 3))  # 3 attempts
+    RATE_LIMIT_REGISTER_WINDOW = int(os.environ.get("RATE_LIMIT_REGISTER_WINDOW", 3600))  # 1 hour
+    RATE_LIMIT_RESET_PASSWORD = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD", 3))
+    RATE_LIMIT_RESET_PASSWORD_WINDOW = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD_WINDOW", 3600))
+    
+    # Cache Configuration
+    CACHE_ENABLED = os.environ.get("CACHE_ENABLED", "True").lower() == "true"
+    CACHE_DEFAULT_TTL = int(os.environ.get("CACHE_DEFAULT_TTL", 300))  # 5 minutes
+    CACHE_USER_PROFILE_TTL = int(os.environ.get("CACHE_USER_PROFILE_TTL", 600))  # 10 minutes
 
 
 secret_key = Config.SECRET_KEY

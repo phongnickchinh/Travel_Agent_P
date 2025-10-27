@@ -20,7 +20,7 @@ import logging
 from datetime import datetime
 
 from app.core.mongodb_client import get_mongodb_client
-from app.model.poi import POI, POISearchRequest, CategoryEnum, PriceLevelEnum
+from server.app.model.mongo.poi import POI, POISearchRequest, CategoryEnum, PriceLevelEnum
 from app.utils.poi_dedupe import (
     generate_dedupe_key,
     normalize_poi_name,

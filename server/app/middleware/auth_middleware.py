@@ -71,7 +71,7 @@ def JWT_required(f):
         # Use DI container instead of direct instantiation
         container = DIContainer.get_instance()
         user_repo = container.resolve(UserInterface.__name__)
-        user = user_repo.postgre.get_user_by_id(user_id)
+        user = user_repo.get_user_by_id(user_id)
         if not user:
             return _build_token_error_response()
             

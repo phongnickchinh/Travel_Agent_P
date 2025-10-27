@@ -39,6 +39,31 @@ def create_app(config_class=Config):
         "allow_headers": "*",
         "expose_headers": "*"
     }})
+    
+    # ✅ Initialize Redis connection
+    from .core.redis_client import RedisClient
+    try:
+        RedisClient.get_instance()
+        print("✅ Redis initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Redis initialization failed: {str(e)}")
+        print("⚠️  Application will continue in degraded mode (without Redis features)")
+    
+    # ✅ Initialize MongoDB connection and create indexes
+    from .core.mongodb_client import get_mongodb_client
+    try:
+        mongodb_client = get_mongodb_client()
+        if mongodb_client.is_healthy():
+            print("✅ MongoDB initialized successfully")
+            # Create indexes on first startup
+            mongodb_client.create_indexes()
+            print("✅ MongoDB indexes created/verified")
+        else:
+            print("⚠️  MongoDB connection not healthy")
+    except Exception as e:
+        print(f"⚠️  MongoDB initialization failed: {str(e)}")
+        print("⚠️  POI and Itinerary features will not be available")
+    
     from .utils.blacklist_cleaner import cleanup_expired_tokens
     db.init_app(app)
     migrate.init_app(app, db)
@@ -86,12 +111,13 @@ def create_app(config_class=Config):
 
     app.register_error_handler(Exception, handle_exception)
 
-    scheduler.init_app(app)
-    scheduler.start()
-    def job_wrapper():
-        with app.app_context():
-            cleanup_expired_tokens()
-
-    scheduler.add_job(id='cleanup_blacklist_job', func=job_wrapper, trigger='interval', minutes=5)
+    # ❌ REMOVED: Database blacklist cleanup cron job
+    # Redis blacklist uses TTL for automatic cleanup - no cron needed
+    # scheduler.init_app(app)
+    # scheduler.start()
+    # def job_wrapper():
+    #     with app.app_context():
+    #         cleanup_expired_tokens()
+    # scheduler.add_job(id='cleanup_blacklist_job', func=job_wrapper, trigger='interval', minutes=5)
 
     return app

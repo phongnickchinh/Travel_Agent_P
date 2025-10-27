@@ -1,0 +1,305 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "POI (Point of Interest) Unified Model",
+  "description": "Unified schema for POI from multiple sources with deduplication",
+  "type": "object",
+  "required": ["poi_id", "name", "location", "dedupe_key"],
+  "properties": {
+    "poi_id": {
+      "type": "string",
+      "description": "Unique identifier (auto-generated)",
+      "pattern": "^poi_[a-z0-9]+$",
+      "example": "poi_phocohoia123"
+    },
+    "dedupe_key": {
+      "type": "string",
+      "description": "Deduplication key: unidecode(name).lower() + geohash(lat,lng,precision=7)",
+      "example": "phocohoan_wecpueb",
+      "comment": "Used to detect duplicate POI from different sources"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name (with accents)",
+      "example": "Phố Cổ Hội An"
+    },
+    "name_unaccented": {
+      "type": "string",
+      "description": "Name without accents (for search)",
+      "example": "pho co hoi an"
+    },
+    "name_alternatives": {
+      "type": "array",
+      "description": "Alternative names in different languages",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": {"type": "string", "example": "en"},
+          "name": {"type": "string", "example": "Hoi An Ancient Town"}
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["type", "coordinates"],
+      "description": "GeoJSON Point format",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Point"],
+          "example": "Point"
+        },
+        "coordinates": {
+          "type": "array",
+          "description": "[longitude, latitude] - MongoDB GeoJSON format",
+          "items": {"type": "number"},
+          "minItems": 2,
+          "maxItems": 2,
+          "example": [108.3259, 15.8801]
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": {"type": "string", "example": "Trần Phú"},
+        "ward": {"type": "string", "example": "Minh An"},
+        "district": {"type": "string", "example": "Hội An"},
+        "city": {"type": "string", "example": "Quảng Nam"},
+        "country": {"type": "string", "example": "Vietnam"},
+        "postal_code": {"type": "string", "example": "560000"},
+        "full_address": {"type": "string", "example": "Trần Phú, Minh An, Hội An, Quảng Nam"}
+      }
+    },
+    "categories": {
+      "type": "array",
+      "description": "Hierarchical categories",
+      "items": {
+        "type": "string",
+        "enum": [
+          "historical", "beach", "museum", "restaurant", "hotel",
+          "temple", "park", "shopping", "nightlife", "adventure",
+          "cultural", "nature", "unesco", "landmark"
+        ]
+      },
+      "example": ["historical", "cultural", "unesco"]
+    },
+    "description": {
+      "type": "object",
+      "properties": {
+        "short": {
+          "type": "string",
+          "maxLength": 200,
+          "example": "UNESCO World Heritage Site with well-preserved ancient trading port"
+        },
+        "long": {
+          "type": "string",
+          "example": "Hội An Ancient Town is an exceptionally well-preserved example..."
+        }
+      }
+    },
+    "ratings": {
+      "type": "object",
+      "properties": {
+        "average": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5,
+          "example": 4.7
+        },
+        "count": {
+          "type": "integer",
+          "example": 15234
+        },
+        "breakdown": {
+          "type": "object",
+          "properties": {
+            "5_star": {"type": "integer", "example": 10000},
+            "4_star": {"type": "integer", "example": 3000},
+            "3_star": {"type": "integer", "example": 1500},
+            "2_star": {"type": "integer", "example": 500},
+            "1_star": {"type": "integer", "example": 234}
+          }
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["free", "budget", "moderate", "expensive", "luxury"],
+          "example": "moderate"
+        },
+        "entrance_fee": {
+          "type": "object",
+          "properties": {
+            "adult": {"type": "number", "example": 120000},
+            "child": {"type": "number", "example": 60000},
+            "currency": {"type": "string", "example": "VND"}
+          }
+        },
+        "average_cost": {
+          "type": "object",
+          "description": "Average cost for a visit",
+          "properties": {
+            "min": {"type": "number", "example": 100000},
+            "max": {"type": "number", "example": 500000},
+            "currency": {"type": "string", "example": "VND"}
+          }
+        }
+      }
+    },
+    "opening_hours": {
+      "type": "object",
+      "properties": {
+        "monday": {"type": "string", "example": "08:00-17:00"},
+        "tuesday": {"type": "string", "example": "08:00-17:00"},
+        "wednesday": {"type": "string", "example": "08:00-17:00"},
+        "thursday": {"type": "string", "example": "08:00-17:00"},
+        "friday": {"type": "string", "example": "08:00-17:00"},
+        "saturday": {"type": "string", "example": "08:00-18:00"},
+        "sunday": {"type": "string", "example": "08:00-18:00"},
+        "is_24_hours": {"type": "boolean", "example": false},
+        "notes": {"type": "string", "example": "Closed during Tet Holiday"}
+      }
+    },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "phone": {"type": "string", "example": "+84 235 3861 327"},
+        "email": {"type": "string", "format": "email"},
+        "website": {"type": "string", "format": "uri"},
+        "social_media": {
+          "type": "object",
+          "properties": {
+            "facebook": {"type": "string"},
+            "instagram": {"type": "string"},
+            "tripadvisor": {"type": "string"}
+          }
+        }
+      }
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {"type": "string", "format": "uri"},
+          "caption": {"type": "string"},
+          "source": {"type": "string"},
+          "is_primary": {"type": "boolean", "default": false}
+        }
+      }
+    },
+    "amenities": {
+      "type": "array",
+      "description": "Available facilities",
+      "items": {
+        "type": "string",
+        "enum": [
+          "wifi", "parking", "wheelchair_accessible", "restroom",
+          "cafe", "gift_shop", "guided_tours", "audio_guide"
+        ]
+      },
+      "example": ["wifi", "parking", "restroom"]
+    },
+    "best_time_to_visit": {
+      "type": "object",
+      "properties": {
+        "season": {
+          "type": "array",
+          "items": {"type": "string"},
+          "example": ["spring", "autumn"]
+        },
+        "time_of_day": {
+          "type": "string",
+          "enum": ["early_morning", "morning", "afternoon", "evening", "night"],
+          "example": "early_morning"
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "description": "Recommended visit duration",
+          "example": 180
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Data sources for this POI (for deduplication tracking)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["google_places", "tripadvisor", "foursquare", "manual", "scraped"],
+            "example": "google_places"
+          },
+          "external_id": {"type": "string", "example": "ChIJw..."},
+          "last_updated": {"type": "string", "format": "date-time"},
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence score for this data source",
+            "example": 0.95
+          }
+        }
+      }
+    },
+    "embedding": {
+      "type": "array",
+      "description": "Vector embedding for semantic search (384-dim for MiniLM)",
+      "items": {"type": "number"},
+      "minItems": 384,
+      "maxItems": 384
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "verified": {
+          "type": "boolean",
+          "description": "Whether POI data has been manually verified",
+          "example": true
+        },
+        "popularity_score": {
+          "type": "number",
+          "description": "Calculated popularity (0-100)",
+          "minimum": 0,
+          "maximum": 100,
+          "example": 87.5
+        },
+        "view_count": {"type": "integer", "example": 5000},
+        "booking_count": {"type": "integer", "example": 500}
+      }
+    }
+  },
+  "indexes": [
+    {
+      "name": "dedupe_key_unique",
+      "keys": {"dedupe_key": 1},
+      "unique": true,
+      "comment": "Prevent duplicate POI"
+    },
+    {
+      "name": "location_2dsphere",
+      "keys": {"location": "2dsphere"},
+      "comment": "Geospatial queries"
+    },
+    {
+      "name": "categories",
+      "keys": {"categories": 1},
+      "comment": "Filter by category"
+    },
+    {
+      "name": "text_search",
+      "keys": {
+        "name": "text",
+        "name_unaccented": "text",
+        "description.short": "text"
+      },
+      "comment": "Full-text search"
+    }
+  ]
+}

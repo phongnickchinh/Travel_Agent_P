@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Travel Itinerary Plan v1",
+  "description": "Schema for AI-generated travel itinerary output",
+  "type": "object",
+  "required": ["plan_id", "destination", "duration", "budget", "days"],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "description": "Unique identifier for this plan",
+      "pattern": "^plan_[a-zA-Z0-9]+$",
+      "example": "plan_abc123"
+    },
+    "destination": {
+      "type": "object",
+      "required": ["city", "country"],
+      "properties": {
+        "city": {
+          "type": "string",
+          "example": "Da Nang"
+        },
+        "country": {
+          "type": "string",
+          "example": "Vietnam"
+        },
+        "region": {
+          "type": "string",
+          "example": "Central Vietnam"
+        }
+      }
+    },
+    "duration": {
+      "type": "object",
+      "required": ["days", "nights"],
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30,
+          "example": 3
+        },
+        "nights": {
+          "type": "integer",
+          "minimum": 0,
+          "example": 2
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["total", "currency"],
+      "properties": {
+        "total": {
+          "type": "number",
+          "minimum": 0,
+          "example": 5000000
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["VND", "USD", "EUR"],
+          "example": "VND"
+        },
+        "breakdown": {
+          "type": "object",
+          "properties": {
+            "accommodation": {"type": "number"},
+            "food": {"type": "number"},
+            "transportation": {"type": "number"},
+            "activities": {"type": "number"},
+            "other": {"type": "number"}
+          }
+        }
+      }
+    },
+    "user_preferences": {
+      "type": "object",
+      "properties": {
+        "interests": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "beach", "historical", "cultural", "adventure", 
+              "food", "nightlife", "shopping", "nature", "relaxation"
+            ]
+          },
+          "example": ["beach", "cultural", "food"]
+        },
+        "travel_style": {
+          "type": "string",
+          "enum": ["budget", "mid-range", "luxury"],
+          "example": "mid-range"
+        },
+        "pace": {
+          "type": "string",
+          "enum": ["relaxed", "moderate", "fast-paced"],
+          "example": "moderate"
+        }
+      }
+    },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["day_number", "date", "activities"],
+        "properties": {
+          "day_number": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2025-11-01"
+          },
+          "theme": {
+            "type": "string",
+            "example": "Beach Day & Seafood"
+          },
+          "activities": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["time_slot", "activity_type", "poi"],
+              "properties": {
+                "time_slot": {
+                  "type": "string",
+                  "enum": ["morning", "afternoon", "evening", "night"],
+                  "example": "morning"
+                },
+                "start_time": {
+                  "type": "string",
+                  "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                  "example": "09:00"
+                },
+                "duration_minutes": {
+                  "type": "integer",
+                  "minimum": 15,
+                  "example": 120
+                },
+                "activity_type": {
+                  "type": "string",
+                  "enum": [
+                    "visit_poi", "meal", "transportation", 
+                    "activity", "rest", "shopping"
+                  ],
+                  "example": "visit_poi"
+                },
+                "poi": {
+                  "type": "object",
+                  "required": ["poi_id", "name"],
+                  "properties": {
+                    "poi_id": {
+                      "type": "string",
+                      "example": "poi_mykhembeach"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Mỹ Khê Beach"
+                    },
+                    "category": {
+                      "type": "string",
+                      "example": "beach"
+                    },
+                    "location": {
+                      "type": "object",
+                      "properties": {
+                        "lat": {"type": "number", "example": 16.0544},
+                        "lng": {"type": "number", "example": 108.2428}
+                      }
+                    },
+                    "estimated_cost": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {"type": "number", "example": 0},
+                        "currency": {"type": "string", "example": "VND"}
+                      }
+                    }
+                  }
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Enjoy the sunrise at one of Vietnam's most beautiful beaches"
+                },
+                "tips": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "example": ["Arrive early to avoid crowds", "Bring sunscreen"]
+                }
+              }
+            }
+          },
+          "total_cost": {
+            "type": "number",
+            "example": 500000
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2025-10-27T10:30:00Z"
+        },
+        "ai_model": {
+          "type": "string",
+          "example": "gpt-4-turbo"
+        },
+        "user_id": {
+          "type": "string",
+          "example": "user_123"
+        },
+        "version": {
+          "type": "string",
+          "example": "1.0"
+        }
+      }
+    }
+  }
+}

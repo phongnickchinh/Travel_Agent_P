@@ -4,12 +4,16 @@ Authentication middleware for JWT token validation.
 from functools import wraps
 from inspect import signature
 import jwt
+import logging
 
 from flask import request, jsonify
 
 from config import secret_key
 from ..core.di_container import DIContainer
 from ..repo.postgre.interfaces.user_repository_interface import UserInterface
+from ..cache.redis_blacklist import RedisBlacklist
+
+logger = logging.getLogger(__name__)
 
 
 def _build_token_error_response():
@@ -47,6 +51,12 @@ def JWT_required(f):
             return _build_no_token_response()
             
         token = auth_header_parts[1]
+        
+        # ✅ CHECK 1: Verify token is not blacklisted in Redis
+        if RedisBlacklist.is_blacklisted(token):
+            logger.warning(f"⚠️  Attempted access with blacklisted token")
+            return _build_token_error_response()
+        
         try:
             payload = jwt.decode(token, secret_key, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:

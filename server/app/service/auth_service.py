@@ -13,6 +13,7 @@ from ..utils.jwt_helpers import (
     generate_refresh_token_jwt,
     verify_token_and_get_user_id
 )
+from ..cache.redis_blacklist import RedisBlacklist
 from config import access_token_expire_sec, refresh_token_expire_sec
 
 class AuthService:
@@ -286,11 +287,23 @@ class AuthService:
         
     def invalidate_token(self, user_id, access_token):
         """Invalidate a user's refresh token and access token."""
-
         try:
-            oka = self.token_repo.postgre.delete_refresh_token(user_id);
-            # save access token to blacklist
+            # Delete refresh token from DB
+            oka = self.token_repo.postgre.delete_refresh_token(user_id)
+            
+            # Add access token to Redis blacklist
             if oka:
+                # Decode token to get expiration time
+                payload = decode_jwt_token(access_token)
+                if payload and 'exp' in payload:
+                    expires_at = datetime.fromtimestamp(payload['exp'], tz=timezone.utc)
+                    RedisBlacklist.add_token(access_token, user_id, expires_at)
+                    logging.info(f"✅ Access token blacklisted in Redis for user {user_id}")
+                else:
+                    # Fallback: use default TTL if can't decode
+                    RedisBlacklist.add_token(access_token, user_id)
+                    logging.warning(f"⚠️  Blacklisted token without expiry info for user {user_id}")
+                
                 return True
             return False
         except Exception as e:

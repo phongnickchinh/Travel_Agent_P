@@ -15,6 +15,8 @@ from ...utils.response_helpers import (
     build_success_response
 )
 from ...core.di_container import DIContainer
+from ...rate_limiter import rate_limit, get_identifier_by_email
+from config import Config
 
 
 class AuthController:
@@ -47,49 +49,58 @@ class AuthController:
         return wrapper
     
     def login(self):
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        error = validate_required_fields(data, ["email", "password"])
-        if error:
-            return error
-            
-        error = validate_email(data["email"])
-        if error:
-            return error
-
-        user, role, verification_status = self.auth_service.validate_login(data["email"], data["password"])
-        
-        if verification_status == "NOT_VERIFIED":
-            return build_error_response(
-                "Please verify your email before logging in. Check your inbox for the verification code.",
-                "Vui lòng xác minh email của bạn trước khi đăng nhập. Kiểm tra hộp thư để lấy mã xác minh.",
-                "EMAIL_NOT_VERIFIED",
-                403
-            )
-        
-        if not user:
-            return build_error_response(
-                "You have entered an invalid email or password.",
-                "Bạn đã nhập một email hoặc mật khẩu không hợp lệ.",
-                "00045"
-            )
-            
-        access_token = self.auth_service.generate_access_token(user.id)
-        refresh_token = self.auth_service.generate_refresh_token(user.id)
-
-        return build_success_response(
-            "You have successfully logged in.",
-            "Bạn đã đăng nhập thành công.",
-            "00047",
-            {
-                "user": user.as_dict(exclude=["password_hash"]),
-                "role": role,
-                "access_token": access_token,
-                "refresh_token": refresh_token
-            }
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_LOGIN,
+            window_seconds=Config.RATE_LIMIT_LOGIN_WINDOW,
+            identifier_func=get_identifier_by_email,
+            key_prefix='login'
         )
+        def _login_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
+            
+            error = validate_required_fields(data, ["email", "password"])
+            if error:
+                return error
+                
+            error = validate_email(data["email"])
+            if error:
+                return error
+
+            user, role, verification_status = self.auth_service.validate_login(data["email"], data["password"])
+            
+            if verification_status == "NOT_VERIFIED":
+                return build_error_response(
+                    "Please verify your email before logging in. Check your inbox for the verification code.",
+                    "Vui lòng xác minh email của bạn trước khi đăng nhập. Kiểm tra hộp thư để lấy mã xác minh.",
+                    "EMAIL_NOT_VERIFIED",
+                    403
+                )
+            
+            if not user:
+                return build_error_response(
+                    "You have entered an invalid email or password.",
+                    "Bạn đã nhập một email hoặc mật khẩu không hợp lệ.",
+                    "00045"
+                )
+                
+            access_token = self.auth_service.generate_access_token(user.id)
+            refresh_token = self.auth_service.generate_refresh_token(user.id)
+
+            return build_success_response(
+                "You have successfully logged in.",
+                "Bạn đã đăng nhập thành công.",
+                "00047",
+                {
+                    "user": user.as_dict(exclude=["password_hash"]),
+                    "role": role,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token
+                }
+            )
+        
+        return _login_handler()
     
     def google_login(self):
         """Handle Google OAuth login."""
@@ -214,81 +225,90 @@ class AuthController:
         )
     
     def register(self):
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        REQUIRED_FIELDS = {"email", "password", "username", "name", "language", "timezone", "deviceId"}
-        error = validate_required_fields(data, REQUIRED_FIELDS)
-        if error:
-            return error
-        
-        error = validate_email(data["email"])
-        if error:
-            return error
-        
-        existed_user = self.auth_service.check_email_registered(data["email"])
-        if existed_user:
-            return build_error_response(
-                "An account with this email address already exists.",
-                "Một tài khoản với địa chỉ email này đã tồn tại.",
-                "00032"
-            )
-            
-        if not self.auth_service.validate_password(data["password"]):
-            return build_error_response(
-                "Your password should be between 6 and 20 characters long.",
-                "Vui lòng cung cấp một mật khẩu dài hơn 6 và ngắn hơn 20 ký tự.",
-                "00066"
-            )
-            
-        if self.auth_service.is_duplicated_username(data["username"]):
-            return build_error_response(
-                "This username is already in use.",
-                "Username này đã được sử dụng.",
-                "00067"
-            )
-            
-        new_user = self.auth_service.save_new_user(
-            data["email"], data["password"], data["username"], 
-            data["name"], data["language"], data["timezone"], data["deviceId"]
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_REGISTER,
+            window_seconds=Config.RATE_LIMIT_REGISTER_WINDOW,
+            identifier_func=get_identifier_by_email,
+            key_prefix='register'
         )
-        
-        # Generate verification code để verify email
-        verification_code = self.auth_service.generate_verification_code(new_user.email)
-        confirm_token = self.auth_service.generate_confirm_token(new_user.email)
-        
-        try:
-            send_email(
-                to=new_user.email,
-                subject="Verify Your Email Address for Travel Agent P",
-                template="verify-email",
-                user=new_user,
-                code=verification_code
+        def _register_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
+            
+            REQUIRED_FIELDS = {"email", "password", "username", "name", "language", "timezone", "deviceId"}
+            error = validate_required_fields(data, REQUIRED_FIELDS)
+            if error:
+                return error
+            
+            error = validate_email(data["email"])
+            if error:
+                return error
+            
+            existed_user = self.auth_service.check_email_registered(data["email"])
+            if existed_user:
+                return build_error_response(
+                    "An account with this email address already exists.",
+                    "Một tài khoản với địa chỉ email này đã tồn tại.",
+                    "00032"
+                )
+                
+            if not self.auth_service.validate_password(data["password"]):
+                return build_error_response(
+                    "Your password should be between 6 and 20 characters long.",
+                    "Vui lòng cung cấp một mật khẩu dài hơn 6 và ngắn hơn 20 ký tự.",
+                    "00066"
+                )
+                
+            if self.auth_service.is_duplicated_username(data["username"]):
+                return build_error_response(
+                    "This username is already in use.",
+                    "Username này đã được sử dụng.",
+                    "00067"
+                )
+                
+            new_user = self.auth_service.save_new_user(
+                data["email"], data["password"], data["username"], 
+                data["name"], data["language"], data["timezone"], data["deviceId"]
             )
-        except Exception as e:
-            logging.error(f"Error sending verification email: {str(e)}")
-            # Vẫn trả về thành công nhưng báo lỗi gửi email
-            return build_error_response(
-                "Registration successful but failed to send verification email. Please try resending the verification code.",
-                "Đăng ký thành công nhưng không thể gửi email xác minh. Vui lòng thử gửi lại mã xác minh.",
-                "EMAIL_SEND_FAILED",
+            
+            # Generate verification code để verify email
+            verification_code = self.auth_service.generate_verification_code(new_user.email)
+            confirm_token = self.auth_service.generate_confirm_token(new_user.email)
+            
+            try:
+                send_email(
+                    to=new_user.email,
+                    subject="Verify Your Email Address for Travel Agent P",
+                    template="verify-email",
+                    user=new_user,
+                    code=verification_code
+                )
+            except Exception as e:
+                logging.error(f"Error sending verification email: {str(e)}")
+                # Vẫn trả về thành công nhưng báo lỗi gửi email
+                return build_error_response(
+                    "Registration successful but failed to send verification email. Please try resending the verification code.",
+                    "Đăng ký thành công nhưng không thể gửi email xác minh. Vui lòng thử gửi lại mã xác minh.",
+                    "EMAIL_SEND_FAILED",
+                    201
+                )
+            
+            # KHÔNG trả về access_token và refresh_token
+            # User phải verify email trước khi login
+            return build_success_response(
+                "Registration successful. Please check your email to verify your account before logging in.",
+                "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản trước khi đăng nhập.",
+                "00035",
+                {
+                    "user": new_user.as_dict(exclude=["password_hash"]),
+                    "confirmToken": confirm_token,
+                    "message": "Please verify your email before logging in"
+                },
                 201
             )
         
-        # KHÔNG trả về access_token và refresh_token
-        # User phải verify email trước khi login
-        return build_success_response(
-            "Registration successful. Please check your email to verify your account before logging in.",
-            "Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản trước khi đăng nhập.",
-            "00035",
-            {
-                "user": new_user.as_dict(exclude=["password_hash"]),
-                "confirmToken": confirm_token,
-                "message": "Please verify your email before logging in"
-            },
-            201
-        )
+        return _register_handler()
     
     def send_verification_code(self):
         data, error = get_json_or_error(request)
@@ -354,42 +374,51 @@ class AuthController:
             )
     
     def request_reset_password(self):
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        error = validate_required_fields(data, ["email"])
-        if error:
-            return error
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_RESET_PASSWORD,
+            window_seconds=Config.RATE_LIMIT_RESET_PASSWORD_WINDOW,
+            identifier_func=get_identifier_by_email,
+            key_prefix='reset_password'
+        )
+        def _request_reset_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
             
-        error = validate_email(data["email"])
-        if error:
-            return error
+            error = validate_required_fields(data, ["email"])
+            if error:
+                return error
+                
+            error = validate_email(data["email"])
+            if error:
+                return error
 
-        registered_user = self.auth_service.check_email_registered(data["email"])
-        if not registered_user:
-            return build_error_response(
-                "Your email has not been registered, please register first.",
-                "Email của bạn chưa được đăng ký, vui lòng đăng ký trước.",
-                "00043"
+            registered_user = self.auth_service.check_email_registered(data["email"])
+            if not registered_user:
+                return build_error_response(
+                    "Your email has not been registered, please register first.",
+                    "Email của bạn chưa được đăng ký, vui lòng đăng ký trước.",
+                    "00043"
+                )
+                
+            reset_code = self.auth_service.generate_reset_code(data["email"])
+            reset_token = self.auth_service.generate_reset_token(data["email"])
+            send_email(
+                to=data["email"], 
+                subject="Reset Your Password from Travel Agent P",
+                template="reset-password",
+                user=registered_user,
+                code=reset_code
             )
-            
-        reset_code = self.auth_service.generate_reset_code(data["email"])
-        reset_token = self.auth_service.generate_reset_token(data["email"])
-        send_email(
-            to=data["email"], 
-            subject="Reset Your Password from Travel Agent P",
-            template="reset-password",
-            user=registered_user,
-            code=reset_code
-        )
 
-        return build_success_response(
-            "Reset code has been sent to your email successfully.",
-            "Mã reset đã được gửi đến email của bạn thành công.",
-            "00048",
-            {"resetToken": reset_token}
-        )
+            return build_success_response(
+                "Reset code has been sent to your email successfully.",
+                "Mã reset đã được gửi đến email của bạn thành công.",
+                "00048",
+                {"resetToken": reset_token}
+            )
+        
+        return _request_reset_handler()
     
     def validate_reset_code(self):
         data, error = get_json_or_error(request)

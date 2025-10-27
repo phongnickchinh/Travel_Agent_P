@@ -141,8 +141,8 @@ class CostUsage(BaseModel):
         comment="Unique request ID for tracing"
     )
     
-    # Metadata
-    metadata: Mapped[Optional[Dict]] = mapped_column(
+    # Extra Metadata (avoid 'metadata' - reserved by SQLAlchemy)
+    extra_metadata: Mapped[Optional[Dict]] = mapped_column(
         JSON,
         nullable=True,
         comment="Additional metadata (request params, response summary, etc.)"
@@ -179,7 +179,7 @@ class CostUsage(BaseModel):
         user_id: Optional[str] = None,
         plan_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        metadata: Optional[Dict] = None,
+        extra_metadata: Optional[Dict] = None,
         error_message: Optional[str] = None,
         **kwargs
     ):
@@ -198,7 +198,7 @@ class CostUsage(BaseModel):
         self.user_id = user_id
         self.plan_id = plan_id
         self.request_id = request_id
-        self.metadata = metadata
+        self.extra_metadata = extra_metadata
         self.error_message = error_message
     
     def __repr__(self):

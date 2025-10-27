@@ -40,7 +40,7 @@ class CostUsageInterface(ABC):
         user_id: Optional[str] = None,
         plan_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        metadata: Optional[Dict] = None,
+        extra_metadata: Optional[Dict] = None,
         error_message: Optional[str] = None,
         commit: bool = True
     ) -> CostUsageModel:

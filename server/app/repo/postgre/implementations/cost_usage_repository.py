@@ -55,7 +55,7 @@ class CostUsageRepository(CostUsageInterface):
         user_id: Optional[str] = None,
         plan_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        metadata: Optional[Dict] = None,
+        extra_metadata: Optional[Dict] = None,
         error_message: Optional[str] = None,
         commit: bool = True
     ) -> CostUsageModel:
@@ -79,7 +79,7 @@ class CostUsageRepository(CostUsageInterface):
                 user_id=user_id,
                 plan_id=plan_id,
                 request_id=request_id,
-                metadata=metadata,
+                extra_metadata=extra_metadata,
                 error_message=error_message
             )
             

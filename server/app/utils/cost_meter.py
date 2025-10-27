@@ -155,7 +155,7 @@ def track_cost(
                         user_id=user_id,
                         plan_id=plan_id,
                         request_id=None,
-                        metadata={
+                        extra_metadata={
                             'function': func.__name__,
                             'module': func.__module__
                         },

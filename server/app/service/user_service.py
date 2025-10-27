@@ -1,5 +1,5 @@
 import logging
-from ..repo.interfaces.user_repository_interface import UserInterface
+from ..repo.postgre.interfaces.user_repository_interface import UserInterface
 from ..core.di_container import DIContainer
 
 

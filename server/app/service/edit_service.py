@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 from ..core.di_container import DIContainer
 
-from ..repo.interfaces.user_repository_interface import UserInterface
+from ..repo.postgre.interfaces.user_repository_interface import UserInterface
 from ..utils.firebase_interface import FirebaseInterface
 
 

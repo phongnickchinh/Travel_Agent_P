@@ -1,8 +1,8 @@
 import logging
 
 from ..interfaces.role_repository_interface import RoleInterface, UserRoleInterface
-from ...model.role import Role as RoleModel, UserRole as UserRoleModel
-from ... import db
+from ....model.role import Role as RoleModel, UserRole as UserRoleModel
+from .... import db
 
 
 class RoleRepository(RoleInterface):

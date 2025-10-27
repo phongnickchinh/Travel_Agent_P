@@ -2,10 +2,9 @@ from datetime import datetime, timezone, timedelta
 import logging
 
 from ..interfaces.token_repository_interface import TokenInterface
-from ...model.token import Token as TokenModel
-from ...model.blacklist import Blacklist as BlacklistModel
-from ... import db
-
+from ....model.token import Token as TokenModel
+from ....model.blacklist import Blacklist as BlacklistModel
+from .... import db
 
 class TokenRepository(TokenInterface):
     def __init__(self):

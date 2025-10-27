@@ -11,14 +11,14 @@ def setup_dependencies():
         return
     
     # Import interfaces
-    from ..repo.interfaces.user_repository_interface import UserInterface
-    from ..repo.interfaces.token_repository_interface import TokenInterface
-    from ..repo.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
+    from ..repo.postgre.interfaces.user_repository_interface import UserInterface
+    from ..repo.postgre.interfaces.token_repository_interface import TokenInterface
+    from ..repo.postgre.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
 
     # Import repository implementations
-    from ..repo.implementations.user_repository import UserRepository
-    from ..repo.implementations.token_repository import TokenRepository
-    from ..repo.implementations.role_repository import RoleRepository, UserRoleRepository
+    from ..repo.postgre.implementations.user_repository import UserRepository
+    from ..repo.postgre.implementations.token_repository import TokenRepository
+    from ..repo.postgre.implementations.role_repository import RoleRepository, UserRoleRepository
 
     from ..utils.firebase_interface import FirebaseInterface
     from ..utils.firebase_helper import FirebaseHelper

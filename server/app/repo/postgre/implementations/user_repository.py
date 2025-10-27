@@ -2,8 +2,8 @@ import logging
 from sqlalchemy import and_
 
 from ..interfaces.user_repository_interface import UserInterface
-from ...model.user import User as UserModel
-from ... import db
+from ....model.user import User as UserModel
+from .... import db
 
 class UserRepository(UserInterface):
     def __init__(self):
@@ -162,7 +162,7 @@ class UserRepository(UserInterface):
         Create a new user from Google OAuth.
         """
         try:
-            from ...utils.google_oauth_helper import generate_username_from_email, generate_device_id_for_oauth
+            from ....utils.google_oauth_helper import generate_username_from_email, generate_device_id_for_oauth
             
             # Generate username and device ID
             username = generate_username_from_email(email)

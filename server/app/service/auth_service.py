@@ -3,9 +3,9 @@ import logging
 import random
 
 from ..core.di_container import DIContainer
-from ..repo.interfaces.token_repository_interface import TokenInterface
-from ..repo.interfaces.user_repository_interface import UserInterface
-from ..repo.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
+from ..repo.postgre.interfaces.token_repository_interface import TokenInterface
+from ..repo.postgre.interfaces.user_repository_interface import UserInterface
+from ..repo.postgre.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
 from ..utils.jwt_helpers import (
     encode_jwt_token,
     decode_jwt_token,
@@ -37,7 +37,7 @@ class AuthService:
 
     def validate_login(self, email, password):
         """Validate the login credentials of an user."""
-        user = self.user_repo.get_user_by_email(email)
+        user = self.user_repo.postgre.get_user_by_email(email)
         if not user:
             return None, None, None
         
@@ -78,7 +78,7 @@ class AuthService:
             if expires_in is None:
                 expires_in = refresh_token_expire_sec
             new_refresh_token = generate_refresh_token_jwt(user_id, expires_in)
-            self.token_repo.save_new_refresh_token(user_id, new_refresh_token)
+            self.token_repo.postgre.save_new_refresh_token(user_id, new_refresh_token)
             return new_refresh_token
         except Exception as e:
             logging.error(f"Error generating refresh token: {str(e)}")
@@ -110,7 +110,7 @@ class AuthService:
                 logging.warning("Token missing required field: user_id.")
                 return None
 
-            existing_token = self.token_repo.get_token_by_user_id(user_id)
+            existing_token = self.token_repo.postgre.get_token_by_user_id(user_id)
             if not existing_token or existing_token.refresh_token != token:
                 return None
             
@@ -129,18 +129,18 @@ class AuthService:
         
     def check_email_registered(self, email):
         """Checks if an email is already registered."""
-        return self.user_repo.get_user_by_email(email)
+        return self.user_repo.postgre.get_user_by_email(email)
     
     
     def is_duplicated_username(self, username):
         """Checks if a username is already in use."""
-        return self.user_repo.get_user_by_username(username) is not None
+        return self.user_repo.postgre.get_user_by_username(username) is not None
 
 
     def save_new_user(self, email, password, username, name, language, timezone, device_id):
         """Save a new user to the database."""
         try:
-            new_user = self.user_repo.save_user_to_db(email, password, username, name, language, timezone, device_id)
+            new_user = self.user_repo.postgre.save_user_to_db(email, password, username, name, language, timezone, device_id)
             existed_role_for_user = self.role_repository.get_role_by_role_name("user")
             if not existed_role_for_user:
                 new_role = self.role_repository.create_role("user")
@@ -159,8 +159,8 @@ class AuthService:
         """Generate a new verification code for the user."""
         try:
             verification_code = "".join([str(random.randint(0, 9)) for _ in range(6)])
-            user = self.user_repo.get_user_by_email(email)
-            self.token_repo.save_verification_code(user.id, verification_code)
+            user = self.user_repo.postgre.get_user_by_email(email)
+            self.token_repo.postgre.save_verification_code(user.id, verification_code)
             logging.error(f"VERIFICATION CODE: {verification_code}")
             return verification_code
         
@@ -173,8 +173,8 @@ class AuthService:
         """Generates a reset password code for a user."""
         try:
             reset_code = "".join([str(random.randint(0, 9)) for _ in range(6)])
-            user = self.user_repo.get_user_by_email(email)
-            self.token_repo.save_reset_code(user.id, reset_code)
+            user = self.user_repo.postgre.get_user_by_email(email)
+            self.token_repo.postgre.save_reset_code(user.id, reset_code)
             logging.error(f"RESET CODE: {reset_code}")
             return reset_code
         
@@ -196,7 +196,7 @@ class AuthService:
                 logging.warning("Token missing required field: user_id.")
                 return None
 
-            token = self.token_repo.get_token_by_user_id(user_id)
+            token = self.token_repo.postgre.get_token_by_user_id(user_id)
             
             if (
                 token is None or token.confirm_token != confirm_token or
@@ -205,7 +205,7 @@ class AuthService:
             ):
                 return None
             
-            return self.user_repo.get_user_by_id(user_id)
+            return self.user_repo.postgre.get_user_by_id(user_id)
         except Exception as e:
             logging.error(f"Error verifying verification code: {str(e)}")
             raise
@@ -224,7 +224,7 @@ class AuthService:
                 logging.warning("Token missing required field: user_id.")
                 return None
 
-            token = self.token_repo.get_token_by_user_id(user_id)
+            token = self.token_repo.postgre.get_token_by_user_id(user_id)
             if (
                 token is None or token.reset_token != reset_token or
                 token.reset_code != reset_code or
@@ -232,7 +232,7 @@ class AuthService:
             ):
                 return None
             
-            return self.user_repo.get_user_by_id(user_id)
+            return self.user_repo.postgre.get_user_by_id(user_id)
         except Exception as e:
             logging.error(f"Error verifying reset code: {str(e)}")
             raise
@@ -241,9 +241,9 @@ class AuthService:
     def generate_confirm_token(self, email, expires_in=1800):
         """Generates a confirmation token for the user."""
         try:
-            user_id = self.user_repo.get_user_by_email(email).id
+            user_id = self.user_repo.postgre.get_user_by_email(email).id
             new_confirm_token = encode_jwt_token(user_id, expires_in)
-            self.token_repo.save_confirm_token(user_id, new_confirm_token)
+            self.token_repo.postgre.save_confirm_token(user_id, new_confirm_token)
             return new_confirm_token
         except Exception as e:
             logging.error(f"Error generating confirm token: {str(e)}")
@@ -253,9 +253,9 @@ class AuthService:
     def generate_reset_token(self, email, expires_in=1800):
         """Generates a reset password token for the user."""
         try:
-            user_id = self.user_repo.get_user_by_email(email).id
+            user_id = self.user_repo.postgre.get_user_by_email(email).id
             new_reset_token = encode_jwt_token(user_id, expires_in)
-            self.token_repo.save_reset_token(user_id, new_reset_token)
+            self.token_repo.postgre.save_reset_token(user_id, new_reset_token)
             return new_reset_token
         except Exception as e: 
             logging.error(f"Error generating reset token: {str(e)}")
@@ -264,7 +264,7 @@ class AuthService:
         
     def is_verified(self, email):
         """Check if a user has been verified."""
-        user = self.user_repo.get_user_by_email(email)
+        user = self.user_repo.postgre.get_user_by_email(email)
         if user and user.is_verified:
             return True
         
@@ -274,7 +274,7 @@ class AuthService:
     def verify_user_email(self, email):
         """Verifies a user's email."""
         try:
-            is_verified = self.user_repo.update_verification_status(email)
+            is_verified = self.user_repo.postgre.update_verification_status(email)
             if not is_verified:
                 return False
             return True
@@ -288,7 +288,7 @@ class AuthService:
         """Invalidate a user's refresh token and access token."""
 
         try:
-            oka = self.token_repo.delete_refresh_token(user_id);
+            oka = self.token_repo.postgre.delete_refresh_token(user_id);
             # save access token to blacklist
             if oka:
                 return True
@@ -301,12 +301,12 @@ class AuthService:
     def set_password(self, user_id, new_password):
         """Set a new password for the user."""
         try:
-            user = self.user_repo.get_user_by_id(user_id)
+            user = self.user_repo.postgre.get_user_by_id(user_id)
             if user is None:
                 return False
             
             # Update password
-            self.user_repo.update_password(user, new_password)
+            self.user_repo.postgre.update_password(user, new_password)
             
             # Update auth_provider if user has Google linked
             if user.google_id:
@@ -345,14 +345,14 @@ class AuthService:
                 return None, None, None
             
             # Check if user exists by Google ID
-            user = self.user_repo.get_user_by_google_id(google_id)
+            user = self.user_repo.postgre.get_user_by_google_id(google_id)
             
             if user:
                 # User exists, update profile if needed
-                self.user_repo.update_google_profile(user, name, profile_picture)
+                self.user_repo.postgre.update_google_profile(user, name, profile_picture)
             else:
                 # Check if email already exists (local account)
-                user = self.user_repo.get_user_by_email(email)
+                user = self.user_repo.postgre.get_user_by_email(email)
                 if user:
                     # Link Google account to existing local account
                     # Determine new auth_provider
@@ -367,7 +367,7 @@ class AuthService:
                     logging.info(f"Linked Google to existing account: {email}, auth_provider={new_auth_provider}")
                 else:
                     # Create new Google user
-                    user = self.user_repo.create_google_user(
+                    user = self.user_repo.postgre.create_google_user(
                         email=email,
                         name=name,
                         google_id=google_id,
@@ -408,12 +408,12 @@ class AuthService:
             profile_picture = google_user_info.get('picture')
             
             # Check if Google ID is already linked to another account
-            existing_user = self.user_repo.get_user_by_google_id(google_id)
+            existing_user = self.user_repo.postgre.get_user_by_google_id(google_id)
             if existing_user and existing_user.id != user_id:
                 return False, "This Google account is already linked to another account"
             
             # Get current user
-            user = self.user_repo.get_user_by_id(user_id)
+            user = self.user_repo.postgre.get_user_by_id(user_id)
             if not user:
                 return False, "User not found"
             

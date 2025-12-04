@@ -7,6 +7,11 @@ myenv/
 # dotenv
 .env
 app/hehehe
+
+# Logs
+logs/
+*.log
+
 # Python bytecode cache
 __pycache__/
 

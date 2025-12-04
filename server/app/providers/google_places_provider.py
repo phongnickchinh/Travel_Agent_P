@@ -92,8 +92,8 @@ class GooglePlacesProvider(BaseProvider):
         
         if not self.api_key:
             logger.warning("GOOGLE_PLACES_API_KEY not found in environment")
-        
-        logger.info(f"Initialized GooglePlacesProvider with key: {self.api_key[:20] if self.api_key else 'None'}...")
+        else:
+            logger.info("[INFO] GooglePlacesProvider initialized with API key")
     
     def get_provider_name(self) -> str:
         """Return provider name"""

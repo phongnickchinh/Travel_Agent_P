@@ -81,7 +81,9 @@ class MongoDBClient:
             server_selection_timeout_ms = int(os.getenv('MONGODB_SERVER_SELECTION_TIMEOUT_MS', '5000'))
             connect_timeout_ms = int(os.getenv('MONGODB_CONNECT_TIMEOUT_MS', '10000'))
             
-            logger.info(f"🔗 Connecting to MongoDB: {mongodb_uri}")
+            # Mask sensitive connection string for logging
+            masked_uri = mongodb_uri.split('@')[-1] if '@' in mongodb_uri else 'localhost:27017'
+            logger.info(f"🔗 Connecting to MongoDB: mongodb+srv://***:***@{masked_uri}")
             
             # Create MongoDB client
             self._client = MongoClient(

@@ -3,6 +3,7 @@ Middleware package for Flask request/response interceptors.
 """
 
 from .auth_middleware import JWT_required
+from .admin_middleware import admin_required
 from .validation_middleware import (
     validate_fields,
     get_json_or_error,
@@ -12,6 +13,7 @@ from .validation_middleware import (
 
 __all__ = [
     'JWT_required',
+    'admin_required',
     'validate_fields',
     'get_json_or_error',
     'validate_required_fields',

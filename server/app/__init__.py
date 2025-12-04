@@ -90,34 +90,31 @@ def create_app(config_class=Config):
     
     from .controller.auth import init_app as auth_api_init
     auth_api = auth_api_init()
-    app.register_blueprint(auth_api, url_prefix="/")
+    app.register_blueprint(auth_api)
+    
+    # Register Admin authentication blueprint
+    from .controller.admin import init_app as admin_api_init
+    admin_api = admin_api_init()
+    app.register_blueprint(admin_api)
 
     from .controller.user import init_app as user_api_init
     user_api = user_api_init()
-    app.register_blueprint(user_api, url_prefix="/user")
-
-    # from .InvitationService.controller import init_app as guest_api_init
-    # guest_api = guest_api_init()
-    # app.register_blueprint(guest_api, url_prefix="/guest")
-
-    # from .GuestBookService.controller import init_app as guestbook_api_init
-    # guestbook_api = guestbook_api_init()
-    # app.register_blueprint(guestbook_api, url_prefix="/guestbook")
+    app.register_blueprint(user_api)
+    
+    # Register POI/Places blueprints
+    from .controller.places import init_app as places_api_init
+    places_api = places_api_init()
+    app.register_blueprint(places_api)
+    
+    from .controller.search import init_app as search_api_init
+    search_api = search_api_init()
+    app.register_blueprint(search_api)
 
     # # Register health check endpoint
     from .controller.health import init_app as health_api_init
     health_api = health_api_init()
-    app.register_blueprint(health_api, url_prefix="/")
+    app.register_blueprint(health_api)
 
     app.register_error_handler(Exception, handle_exception)
-
-    # ❌ REMOVED: Database blacklist cleanup cron job
-    # Redis blacklist uses TTL for automatic cleanup - no cron needed
-    # scheduler.init_app(app)
-    # scheduler.start()
-    # def job_wrapper():
-    #     with app.app_context():
-    #         cleanup_expired_tokens()
-    # scheduler.add_job(id='cleanup_blacklist_job', func=job_wrapper, trigger='interval', minutes=5)
 
     return app

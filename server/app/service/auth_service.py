@@ -154,6 +154,78 @@ class AuthService:
         except Exception as e:
             logging.error(f"Error saving new user: {str(e)}")
             raise
+    
+    def create_admin_user(self, username, password, email=None, name=None):
+        """
+        Create a new admin user.
+        
+        Args:
+            username: Admin username (required)
+            password: Admin password (required)
+            email: Admin email (optional)
+            name: Admin display name (optional)
+        
+        Returns:
+            User object if successful, None otherwise
+        """
+        try:
+            # Check if username already exists
+            existing_user = self.user_repo.get_user_by_username(username)
+            if existing_user:
+                logging.warning(f"Username '{username}' already exists")
+                return None
+            
+            # Check if email already exists (if provided)
+            if email:
+                existing_email = self.user_repo.get_user_by_email(email)
+                if existing_email:
+                    logging.warning(f"Email '{email}' already exists")
+                    return None
+            
+            # Create admin user with verified email
+            new_admin = self.user_repo.save_user_to_db(
+                email=email if email else f"{username}@admin.local",
+                password=password,
+                username=username,
+                name=name if name else username,
+                language='en',
+                timezone='UTC',
+                device_id='admin_device'
+            )
+            
+            # Mark as verified (admins don't need email verification)
+            new_admin.is_verified = True
+            new_admin.verified_at = datetime.now(timezone.utc)
+            
+            # Assign admin role
+            admin_role = self.role_repository.get_role_by_role_name("admin")
+            if not admin_role:
+                # Create admin role if doesn't exist
+                admin_role = self.role_repository.create_role("admin")
+                logging.info("Created 'admin' role")
+            
+            self.user_role_repository.create_user_role(new_admin.id, admin_role.id)
+            
+            logging.info(f"Created admin user: {username}")
+            return new_admin
+        
+        except Exception as e:
+            logging.error(f"Error creating admin user: {str(e)}")
+            return None
+    
+    def generate_tokens(self, user_id):
+        """
+        Generate both access and refresh tokens for a user.
+        
+        Args:
+            user_id: User ID
+        
+        Returns:
+            Tuple of (access_token, refresh_token)
+        """
+        access_token = self.generate_access_token(user_id)
+        refresh_token = self.generate_refresh_token(user_id)
+        return access_token, refresh_token
         
 
     def generate_verification_code(self, email):

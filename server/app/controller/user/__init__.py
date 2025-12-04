@@ -1,7 +1,7 @@
 from flask import Blueprint
 
 # Define the blueprint first
-user_api = Blueprint("user_api", __name__)
+user_api = Blueprint("user_api", __name__, url_prefix="/user")
 
 def init_app():
     """Initialize all controllers for the user service."""

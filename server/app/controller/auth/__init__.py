@@ -1,6 +1,6 @@
 from flask import Blueprint
 
-auth_api = Blueprint("auth_api", __name__)
+auth_api = Blueprint("auth_api", __name__, url_prefix="/")
 def init_app():
     """Initialize all controllers for the AuthService."""
     from .auth_controller import init_auth_controller

@@ -30,6 +30,7 @@ class CategoryEnum(str, Enum):
     """POI categories (can be extended)."""
     BEACH = "beach"
     NATURE = "nature"
+    NATURAL_FEATURE = "natural_feature"
     HISTORICAL = "historical"
     CULTURAL = "cultural"
     ADVENTURE = "adventure"

@@ -1,6 +1,7 @@
 import pymysql
 
 from flask import Flask
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -8,11 +9,23 @@ from flask_mail import Mail
 from sqlalchemy.orm import DeclarativeBase
 from celery import Celery
 from flask_apscheduler import APScheduler
+from bson import ObjectId
+from datetime import datetime
 
 
 
 from config import Config
 from .errors import handle_exception
+
+
+# Custom JSON Provider to handle MongoDB ObjectId and datetime (Flask 3.x)
+class MongoJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 
 # Removing the import that causes circular imports
@@ -33,6 +46,14 @@ def create_app(config_class=Config):
     # NEED FIX: logout endpoint is not working, access token not being add to blacklist property. Big issue. Do not delete this message unless you fixed it..
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    # ✅ Setup logging (console + file)
+    from .logging_config import setup_logging
+    setup_logging(app)
+    
+    # ✅ Set custom JSON provider to handle MongoDB ObjectId (Flask 3.x)
+    app.json = MongoJSONProvider(app)
+    
     CORS(app, resources={r"/*": {
         "origins": "*", 
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

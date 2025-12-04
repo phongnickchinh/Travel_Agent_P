@@ -5,7 +5,7 @@ Flask Blueprint for admin authentication endpoints
 
 from flask import Blueprint
 
-admin_bp = Blueprint("admin", __name__, url_prefix="/")
+admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 def init_app():
     """Initialize Admin controller."""

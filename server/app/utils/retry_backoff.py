@@ -85,7 +85,7 @@ def retry_with_backoff(
                     # Log attempt
                     if attempt > 0:
                         logger.info(
-                            f"🔄 Retry attempt {attempt}/{max_retries} for {func.__name__}"
+                            f"[RETRY] Retry attempt {attempt}/{max_retries} for {func.__name__}"
                         )
                     
                     # Execute function
@@ -94,7 +94,7 @@ def retry_with_backoff(
                     # Success - log recovery if this was a retry
                     if attempt > 0:
                         logger.info(
-                            f"✅ {func.__name__} succeeded after {attempt} retries"
+                            f"[RETRY] {func.__name__} succeeded after {attempt} retries"
                         )
                     
                     return result
@@ -106,7 +106,7 @@ def retry_with_backoff(
                     # Check if we should retry
                     if attempt > max_retries:
                         logger.error(
-                            f"❌ {func.__name__} failed after {max_retries} retries: {e}"
+                            f"[RETRY] {func.__name__} failed after {max_retries} retries: {e}"
                         )
                         raise
                     
@@ -123,7 +123,7 @@ def retry_with_backoff(
                     
                     # Log retry information
                     logger.warning(
-                        f"⚠️ {func.__name__} failed (attempt {attempt}/{max_retries}), "
+                        f"[RETRY] {func.__name__} failed (attempt {attempt}/{max_retries}), "
                         f"retrying in {delay:.2f}s: {type(e).__name__}: {str(e)}"
                     )
                     
@@ -133,7 +133,7 @@ def retry_with_backoff(
                             on_retry(attempt, e, delay)
                         except Exception as callback_error:
                             logger.error(
-                                f"❌ Retry callback failed: {callback_error}"
+                                f"[RETRY] Retry callback failed: {callback_error}"
                             )
                     
                     # Wait before retry
@@ -177,14 +177,14 @@ def retry_async_with_backoff(
                 try:
                     if attempt > 0:
                         logger.info(
-                            f"🔄 Retry attempt {attempt}/{max_retries} for {func.__name__}"
+                            f"[RETRY] Retry attempt {attempt}/{max_retries} for {func.__name__}"
                         )
                     
                     result = await func(*args, **kwargs)
                     
                     if attempt > 0:
                         logger.info(
-                            f"✅ {func.__name__} succeeded after {attempt} retries"
+                            f"[RETRY] {func.__name__} succeeded after {attempt} retries"
                         )
                     
                     return result
@@ -195,7 +195,7 @@ def retry_async_with_backoff(
                     
                     if attempt > max_retries:
                         logger.error(
-                            f"❌ {func.__name__} failed after {max_retries} retries: {e}"
+                            f"[RETRY] {func.__name__} failed after {max_retries} retries: {e}"
                         )
                         raise
                     
@@ -208,7 +208,7 @@ def retry_async_with_backoff(
                         delay = delay * (0.5 + random.random())
                     
                     logger.warning(
-                        f"⚠️ {func.__name__} failed (attempt {attempt}/{max_retries}), "
+                        f"[RETRY] {func.__name__} failed (attempt {attempt}/{max_retries}), "
                         f"retrying in {delay:.2f}s: {type(e).__name__}: {str(e)}"
                     )
                     

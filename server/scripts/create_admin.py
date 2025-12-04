@@ -44,7 +44,7 @@ def create_initial_admin():
         password = input("Password (min 8 chars): ").strip()
         
         while len(password) < 8:
-            print("❌ Password must be at least 8 characters!")
+            print("[ERROR] Password must be at least 8 characters!")
             password = input("Password (min 8 chars): ").strip()
         
         email = input("Email (optional, press Enter to skip): ").strip() or None
@@ -66,20 +66,20 @@ def create_initial_admin():
         )
         
         if admin:
-            print("\n✅ ADMIN USER CREATED SUCCESSFULLY!")
+            print("\n[SUCCESS] ADMIN USER CREATED SUCCESSFULLY!")
             print(f"\nAdmin Details:")
             print(f"  ID: {admin.id}")
             print(f"  Username: {admin.username}")
             print(f"  Email: {admin.email}")
             print(f"  Name: {admin.name}")
             print(f"  Roles: {[r.role_name for r in admin.roles]}")
-            print(f"\n🔐 You can now login at:")
+            print(f"\n[INFO] You can now login at:")
             print(f"  POST /api/admin/auth/login")
             print(f"  Body: {{\"username\": \"{username}\", \"password\": \"***\"}}")
             print("\n" + "=" * 60)
             return True
         else:
-            print("\n❌ FAILED TO CREATE ADMIN USER!")
+            print("\n[ERROR] FAILED TO CREATE ADMIN USER!")
             print("Username or email may already exist.")
             print("=" * 60)
             return False
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         success = create_initial_admin()
         sys.exit(0 if success else 1)
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n[ERROR] {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

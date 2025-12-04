@@ -87,14 +87,14 @@ class CostUsageRepository(CostUsageInterface):
             cost_record.save(commit=commit)
             
             logger.info(
-                f"💰 Cost tracked: {provider}/{service} "
+                f"[COST] Cost tracked: {provider}/{service} "
                 f"${cost_usd:.6f} {latency_ms}ms"
             )
             
             return cost_record
         
         except Exception as e:
-            logger.error(f"❌ Failed to create cost record: {e}")
+            logger.error(f"[COST] Failed to create cost record: {e}")
             raise
     
     # --- READ OPERATIONS ---
@@ -388,12 +388,12 @@ class CostUsageRepository(CostUsageInterface):
                 deleted_count += 1
             
             logger.info(
-                f"🗑️ Soft deleted {deleted_count} old cost records "
+                f"[COST] Soft deleted {deleted_count} old cost records "
                 f"(older than {days} days)"
             )
             
             return deleted_count
         
         except Exception as e:
-            logger.error(f"❌ Failed to delete old records: {e}")
+            logger.error(f"[COST] Failed to delete old records: {e}")
             raise

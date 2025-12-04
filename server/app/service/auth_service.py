@@ -380,22 +380,22 @@ class AuthService:
                     logging.info(f"[LOGOUT] RedisBlacklist.add_token returned: {result}")
                 else:
                     # Fallback: use default TTL if can't decode
-                    logging.warning(f"⚠️  Could not decode token expiry, using default TTL")
+                    logging.warning(f"[LOGOUT] Could not decode token expiry, using default TTL")
                     result = RedisBlacklist.add_token(access_token, user_id)
                     logging.info(f"[LOGOUT] RedisBlacklist.add_token (no expiry) returned: {result}")
                 
                 if result:
-                    logging.info(f"✅ Logout successful for user {user_id}")
+                    logging.info(f"[LOGOUT] Logout successful for user {user_id}")
                 else:
-                    logging.error(f"❌ RedisBlacklist.add_token failed for user {user_id}")
+                    logging.error(f"[LOGOUT] RedisBlacklist.add_token failed for user {user_id}")
                 
                 return True
             else:
-                logging.error(f"❌ Failed to delete refresh token from DB for user {user_id}")
+                logging.error(f"[LOGOUT] Failed to delete refresh token from DB for user {user_id}")
                 return False
                 
         except Exception as e:
-            logging.error(f"❌ Error invalidating token: {str(e)}", exc_info=True)
+            logging.error(f"[LOGOUT] Error invalidating token: {str(e)}", exc_info=True)
             raise
         
         

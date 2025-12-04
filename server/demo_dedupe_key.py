@@ -29,7 +29,7 @@ def demo_dedupe_key():
     print("=" * 80)
     
     # Case 1: Same POI from different sources
-    print("\n📍 CASE 1: Same POI từ nhiều nguồn (Google Places + TripAdvisor)")
+    print("\n[CASE 1] Same POI từ nhiều nguồn (Google Places + TripAdvisor)")
     print("-" * 80)
     
     # Google Places data
@@ -49,12 +49,12 @@ def demo_dedupe_key():
     print(f"  → dedupe_key:  {google_key}")
     print(f"\nTripAdvisor:     '{tripadvisor_name}' ({tripadvisor_lat}, {tripadvisor_lng})")
     print(f"  → dedupe_key:  {tripadvisor_key}")
-    print(f"\n✅ RESULT: {'SAME ✓' if google_key == tripadvisor_key else 'DIFFERENT ✗'}")
+    print(f"\n[RESULT] {'SAME ✓' if google_key == tripadvisor_key else 'DIFFERENT ✗'}")
     print(f"   → Hệ thống sẽ {'MERGE data' if google_key == tripadvisor_key else 'TẠO 2 POI riêng'}")
     
     
     # Case 2: Different POI with similar names
-    print("\n\n📍 CASE 2: Different POI có tên giống nhau nhưng khác vị trí")
+    print("\n\n[CASE 2] Different POI có tên giống nhau nhưng khác vị trí")
     print("-" * 80)
     
     beach1_name = "Bãi Biển Mỹ Khê"
@@ -73,12 +73,12 @@ def demo_dedupe_key():
     print(f"  → dedupe_key:  {beach1_key}")
     print(f"\nPhan Thiết:    '{beach2_name}' ({beach2_lat}, {beach2_lng})")
     print(f"  → dedupe_key:  {beach2_key}")
-    print(f"\n✅ RESULT: {'SAME ✓' if beach1_key == beach2_key else 'DIFFERENT ✗'}")
+    print(f"\n[RESULT] {'SAME ✓' if beach1_key == beach2_key else 'DIFFERENT ✗'}")
     print(f"   → Hệ thống sẽ {'MERGE (SAI!)' if beach1_key == beach2_key else 'TẠO 2 POI riêng (ĐÚNG!)'}")
     
     
     # Case 3: Name normalization
-    print("\n\n📍 CASE 3: Name Normalization (remove accents, special chars)")
+    print("\n\n[CASE 3] Name Normalization (remove accents, special chars)")
     print("-" * 80)
     
     test_names = [
@@ -99,7 +99,7 @@ def demo_dedupe_key():
     
     
     # Case 4: Geohash precision
-    print("\n\n📍 CASE 4: Geohash Precision (ảnh hưởng đến dedupe)")
+    print("\n\n[CASE 4] Geohash Precision (ảnh hưởng đến dedupe)")
     print("-" * 80)
     
     name = "Mỹ Khê Beach"
@@ -121,11 +121,11 @@ def demo_dedupe_key():
         
         print(f"Precision {precision} ({box_sizes[precision]:>7}):  {key}")
     
-    print(f"\n💡 TIP: Dùng precision=7 (~150m) là optimal cho POI du lịch")
+    print(f"\n[TIP] Dùng precision=7 (~150m) là optimal cho POI du lịch")
     
     
     # Case 5: Fuzzy duplicate detection
-    print("\n\n📍 CASE 5: Fuzzy Duplicate Detection")
+    print("\n\n[CASE 5] Fuzzy Duplicate Detection")
     print("-" * 80)
     
     poi1 = {
@@ -160,7 +160,7 @@ def demo_dedupe_key():
     
     
     # Case 6: Real-world examples
-    print("\n\n📍 CASE 6: Real-World Examples (Đà Nẵng POIs)")
+    print("\n\n[CASE 6] Real-World Examples (Đà Nẵng POIs)")
     print("-" * 80)
     
     danang_pois = [
@@ -182,9 +182,9 @@ def demo_dedupe_key():
     
     
     print("\n\n" + "=" * 80)
-    print("✅ DEMO COMPLETE!")
+    print("[DEMO] COMPLETE!")
     print("=" * 80)
-    print("\n💡 KEY TAKEAWAYS:")
+    print("\n[INFO] KEY TAKEAWAYS:")
     print("   1. dedupe_key = normalize(name) + geohash(lat, lng, precision=7)")
     print("   2. Same dedupe_key → MERGE data from multiple sources")
     print("   3. Different dedupe_key → Create separate POI")

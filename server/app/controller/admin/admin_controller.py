@@ -129,7 +129,7 @@ class AdminController:
                 # Check admin role
                 user_roles = [r.role_name for r in user.roles]
                 if 'admin' not in user_roles:
-                    logger.warning(f"⚠️ Non-admin user {username} attempted admin login")
+                    logger.warning(f"[ADMIN] Non-admin user {username} attempted admin login")
                     return build_error_response(
                         "Access denied. Admin privileges required.",
                         "Truy cập bị từ chối. Yêu cầu quyền quản trị viên.",
@@ -140,7 +140,7 @@ class AdminController:
                 # Generate tokens
                 access_token, refresh_token = self.auth_service.generate_tokens(user.id)
                 
-                logger.info(f"✅ Admin login successful: {user.email or user.username}")
+                logger.info(f"[ADMIN] Admin login successful: {user.email or user.username}")
                 
                 return build_success_response(
                     "Admin login successful",
@@ -176,7 +176,7 @@ class AdminController:
         """
         Create new admin account (admin-only).
         
-        ⚠️ PROTECTED: Only existing admins can create new admin accounts
+        PROTECTED: Only existing admins can create new admin accounts
         
         Request Body:
             {
@@ -253,7 +253,7 @@ class AdminController:
                     400
                 )
             
-            logger.info(f"✅ New admin created: {new_admin.username} by {user_id}")
+            logger.info(f"[ADMIN] New admin created: {new_admin.username} by {user_id}")
             
             return build_success_response(
                 "Admin account created successfully",

@@ -45,11 +45,11 @@ class RedisClient:
                 # Test connection
                 cls._instance.ping()
                 cls._initialized = True
-                logger.info(f"✅ Redis connected: {Config.REDIS_HOST}:{Config.REDIS_PORT}")
+                logger.info(f"[REDIS] Connected: {Config.REDIS_HOST}:{Config.REDIS_PORT}")
                 
             except redis.ConnectionError as e:
-                logger.error(f"❌ Redis connection failed: {str(e)}")
-                logger.warning("⚠️  Application will continue without Redis (degraded mode)")
+                logger.error(f"[REDIS] Connection failed: {str(e)}")
+                logger.warning("[REDIS] Application will continue without Redis (degraded mode)")
                 cls._instance = None
                 
         return cls._instance

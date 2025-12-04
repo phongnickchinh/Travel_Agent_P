@@ -29,7 +29,7 @@ class PlacesController:
     """
     Places Controller - ADMIN & TESTING ONLY
     
-    ⚠️ WARNING: These endpoints are for debugging and testing purposes.
+    WARNING: These endpoints are for debugging and testing purposes.
     Regular users should NOT access these directly.
     User-facing features should use ItineraryController instead.
     

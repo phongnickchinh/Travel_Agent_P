@@ -52,9 +52,9 @@ def JWT_required(f):
             
         token = auth_header_parts[1]
         
-        # ✅ CHECK 1: Verify token is not blacklisted in Redis
+        # CHECK 1: Verify token is not blacklisted in Redis
         if RedisBlacklist.is_blacklisted(token):
-            logger.warning(f"⚠️  Attempted access with blacklisted token")
+            logger.warning(f"[AUTH] Attempted access with blacklisted token")
             return _build_token_error_response()
         
         try:

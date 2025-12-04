@@ -90,7 +90,7 @@ def admin_required(f):
         
         # Check 1: Verify token is not blacklisted
         if RedisBlacklist.is_blacklisted(token):
-            logger.warning("⚠️ Attempted admin access with blacklisted token")
+            logger.warning("[ADMIN] Attempted admin access with blacklisted token")
             return _build_token_error_response()
         
         # Check 2: Decode and validate JWT
@@ -117,10 +117,10 @@ def admin_required(f):
         user_roles = [role.role_name for role in user.roles]
         
         if 'admin' not in user_roles:
-            logger.warning(f"⚠️ User {user_id} ({user.email}) attempted admin access without admin role (roles: {user_roles})")
+            logger.warning(f"[ADMIN] User {user_id} ({user.email}) attempted admin access without admin role (roles: {user_roles})")
             return _build_admin_required_response()
         
-        logger.info(f"✅ Admin access granted: {user.email}")
+        logger.info(f"[ADMIN] Admin access granted: {user.email}")
         
         # Call original function with user_id or user object
         func_signature = signature(f)

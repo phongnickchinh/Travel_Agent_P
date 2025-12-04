@@ -47,11 +47,11 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
     
-    # ✅ Setup logging (console + file)
+    # Setup logging (console + file)
     from .logging_config import setup_logging
     setup_logging(app)
     
-    # ✅ Set custom JSON provider to handle MongoDB ObjectId (Flask 3.x)
+    # Set custom JSON provider to handle MongoDB ObjectId (Flask 3.x)
     app.json = MongoJSONProvider(app)
     
     CORS(app, resources={r"/*": {
@@ -61,29 +61,29 @@ def create_app(config_class=Config):
         "expose_headers": "*"
     }})
     
-    # ✅ Initialize Redis connection
+    # Initialize Redis connection
     from .core.redis_client import RedisClient
     try:
         RedisClient.get_instance()
-        print("✅ Redis initialized successfully")
+        print("[INIT] Redis initialized successfully")
     except Exception as e:
-        print(f"⚠️  Redis initialization failed: {str(e)}")
-        print("⚠️  Application will continue in degraded mode (without Redis features)")
+        print(f"[INIT] WARNING: Redis initialization failed: {str(e)}")
+        print("[INIT] WARNING: Application will continue in degraded mode (without Redis features)")
     
-    # ✅ Initialize MongoDB connection and create indexes
+    # Initialize MongoDB connection and create indexes
     from .core.mongodb_client import get_mongodb_client
     try:
         mongodb_client = get_mongodb_client()
         if mongodb_client.is_healthy():
-            print("✅ MongoDB initialized successfully")
+            print("[INIT] MongoDB initialized successfully")
             # Create indexes on first startup
             mongodb_client.create_indexes()
-            print("✅ MongoDB indexes created/verified")
+            print("[INIT] MongoDB indexes created/verified")
         else:
-            print("⚠️  MongoDB connection not healthy")
+            print("[INIT] WARNING: MongoDB connection not healthy")
     except Exception as e:
-        print(f"⚠️  MongoDB initialization failed: {str(e)}")
-        print("⚠️  POI and Itinerary features will not be available")
+        print(f"[INIT] WARNING: MongoDB initialization failed: {str(e)}")
+        print("[INIT] WARNING: POI and Itinerary features will not be available")
     
     from .utils.blacklist_cleaner import cleanup_expired_tokens
     db.init_app(app)

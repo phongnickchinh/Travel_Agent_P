@@ -123,7 +123,7 @@ class CircuitBreaker:
         self._lock = threading.Lock()
         
         logger.info(
-            f"🔌 Circuit Breaker '{self.name}' initialized: "
+            f"[CIRCUIT] Circuit Breaker '{self.name}' initialized: "
             f"threshold={failure_threshold}, timeout={timeout}s"
         )
     
@@ -134,7 +134,7 @@ class CircuitBreaker:
             self.state = new_state
             
             logger.info(
-                f"🔄 Circuit '{self.name}' state change: "
+                f"[CIRCUIT] Circuit '{self.name}' state change: "
                 f"{old_state.value.upper()} → {new_state.value.upper()}"
             )
             
@@ -152,9 +152,9 @@ class CircuitBreaker:
             # Call state change callback
             if self.on_state_change:
                 try:
-                    self.on_state_change(self.name, old_state, new_state)
+                    self.on_state_change(old_state, new_state)
                 except Exception as e:
-                    logger.error(f"❌ State change callback failed: {e}")
+                    logger.error(f"[CIRCUIT] State change callback failed: {e}")
     
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to attempt circuit reset."""
@@ -173,7 +173,7 @@ class CircuitBreaker:
             if self.state == CircuitState.HALF_OPEN:
                 # Half-open test succeeded, close circuit
                 logger.info(
-                    f"✅ Circuit '{self.name}' recovery test succeeded, closing circuit"
+                    f"[CIRCUIT] Circuit '{self.name}' recovery test succeeded, closing circuit"
                 )
                 self._change_state(CircuitState.CLOSED)
             elif self.state == CircuitState.CLOSED:
@@ -187,14 +187,14 @@ class CircuitBreaker:
             self.failure_count += 1
             
             logger.warning(
-                f"⚠️ Circuit '{self.name}' failure {self.failure_count}/{self.failure_threshold}: "
+                f"[CIRCUIT] Circuit '{self.name}' failure {self.failure_count}/{self.failure_threshold}: "
                 f"{type(exception).__name__}: {str(exception)}"
             )
             
             if self.state == CircuitState.HALF_OPEN:
                 # Half-open test failed, reopen circuit
                 logger.error(
-                    f"❌ Circuit '{self.name}' recovery test failed, reopening circuit"
+                    f"[CIRCUIT] Circuit '{self.name}' recovery test failed, reopening circuit"
                 )
                 self._change_state(CircuitState.OPEN)
             
@@ -202,7 +202,7 @@ class CircuitBreaker:
                 # Check if threshold exceeded
                 if self.failure_count >= self.failure_threshold:
                     logger.error(
-                        f"❌ Circuit '{self.name}' opened after {self.failure_count} failures"
+                        f"[CIRCUIT] Circuit '{self.name}' opened after {self.failure_count} failures"
                     )
                     self._change_state(CircuitState.OPEN)
     
@@ -220,7 +220,7 @@ class CircuitBreaker:
                 # Check if timeout elapsed
                 if self._should_attempt_reset():
                     logger.info(
-                        f"🔄 Circuit '{self.name}' timeout elapsed, entering HALF_OPEN"
+                        f"[CIRCUIT] Circuit '{self.name}' timeout elapsed, entering HALF_OPEN"
                     )
                     self._change_state(CircuitState.HALF_OPEN)
                 else:
@@ -262,7 +262,7 @@ class CircuitBreaker:
     def reset(self):
         """Manually reset circuit breaker to CLOSED state."""
         with self._lock:
-            logger.info(f"🔄 Circuit '{self.name}' manually reset to CLOSED")
+            logger.info(f"[CIRCUIT] Circuit '{self.name}' manually reset to CLOSED")
             self._change_state(CircuitState.CLOSED)
             self.failure_count = 0
             self.success_count = 0

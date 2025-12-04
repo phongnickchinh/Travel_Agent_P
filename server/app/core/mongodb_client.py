@@ -83,7 +83,7 @@ class MongoDBClient:
             
             # Mask sensitive connection string for logging
             masked_uri = mongodb_uri.split('@')[-1] if '@' in mongodb_uri else 'localhost:27017'
-            logger.info(f"🔗 Connecting to MongoDB: mongodb+srv://***:***@{masked_uri}")
+            logger.info(f"[MONGODB] Connecting to MongoDB: mongodb+srv://***:***@{masked_uri}")
             
             # Create MongoDB client
             self._client = MongoClient(
@@ -102,30 +102,30 @@ class MongoDBClient:
             # Test connection
             self._client.admin.command('ping')
             
-            logger.info(f"✅ MongoDB connected successfully to database: {db_name}")
-            logger.info(f"📊 Connection pool: min={min_pool_size}, max={max_pool_size}")
+            logger.info(f"[MONGODB] Connected successfully to database: {db_name}")
+            logger.info(f"[MONGODB] Connection pool: min={min_pool_size}, max={max_pool_size}")
             
         except ConnectionFailure as e:
-            logger.error(f"❌ MongoDB connection failed: {e}")
+            logger.error(f"[MONGODB] Connection failed: {e}")
             self._client = None
             self._db = None
             raise
         
         except ServerSelectionTimeoutError as e:
-            logger.error(f"❌ MongoDB server selection timeout: {e}")
+            logger.error(f"[MONGODB] Server selection timeout: {e}")
             logger.error("   Check if MongoDB is running and accessible")
             self._client = None
             self._db = None
             raise
         
         except ConfigurationError as e:
-            logger.error(f"❌ MongoDB configuration error: {e}")
+            logger.error(f"[MONGODB] Configuration error: {e}")
             self._client = None
             self._db = None
             raise
         
         except Exception as e:
-            logger.error(f"❌ Unexpected MongoDB error: {e}")
+            logger.error(f"[MONGODB] Unexpected error: {e}")
             self._client = None
             self._db = None
             raise
@@ -143,11 +143,11 @@ class MongoDBClient:
                 poi = db["poi"].find_one({"poi_id": "poi_123"})
         """
         if self._db is None:
-            logger.warning("⚠️ MongoDB database not available, attempting reconnect...")
+            logger.warning("[MONGODB] Database not available, attempting reconnect...")
             try:
                 self._connect()
             except Exception as e:
-                logger.error(f"❌ Reconnection failed: {e}")
+                logger.error(f"[MONGODB] Reconnection failed: {e}")
                 return None
         
         return self._db
@@ -160,11 +160,11 @@ class MongoDBClient:
             MongoClient instance if connected, None otherwise
         """
         if self._client is None:
-            logger.warning("⚠️ MongoDB client not available, attempting reconnect...")
+            logger.warning("[MONGODB] Client not available, attempting reconnect...")
             try:
                 self._connect()
             except Exception as e:
-                logger.error(f"❌ Reconnection failed: {e}")
+                logger.error(f"[MONGODB] Reconnection failed: {e}")
                 return None
         
         return self._client
@@ -190,7 +190,7 @@ class MongoDBClient:
             self._client.admin.command('ping')
             return True
         except Exception as e:
-            logger.warning(f"⚠️ MongoDB health check failed: {e}")
+            logger.warning(f"[MONGODB] Health check failed: {e}")
             return False
     
     def close(self):
@@ -204,11 +204,11 @@ class MongoDBClient:
             mongodb_client.close()
         """
         if self._client:
-            logger.info("🔌 Closing MongoDB connection...")
+            logger.info("[MONGODB] Closing MongoDB connection...")
             self._client.close()
             self._client = None
             self._db = None
-            logger.info("✅ MongoDB connection closed")
+            logger.info("[MONGODB] MongoDB connection closed")
     
     def get_collection(self, collection_name: str):
         """
@@ -246,25 +246,25 @@ class MongoDBClient:
         try:
             db = self.get_database()
             if db is None:
-                logger.error("❌ Cannot create indexes: Database not available")
+                logger.error("[MONGODB] Cannot create indexes: Database not available")
                 return
             
-            logger.info("🔨 Creating MongoDB indexes...")
+            logger.info("[MONGODB] Creating MongoDB indexes...")
             
             # POI Collection Indexes
             poi_collection = db["poi"]
             
             # Unique deduplication key
             poi_collection.create_index("dedupe_key", unique=True, name="idx_dedupe_key")
-            logger.info("✅ Created unique index: poi.dedupe_key")
+            logger.info("[MONGODB] Created unique index: poi.dedupe_key")
             
             # GeoJSON 2dsphere for location queries
             poi_collection.create_index([("location", "2dsphere")], name="idx_location_2dsphere")
-            logger.info("✅ Created 2dsphere index: poi.location")
+            logger.info("[MONGODB] Created 2dsphere index: poi.location")
             
             # Category filter
             poi_collection.create_index("categories", name="idx_categories")
-            logger.info("✅ Created index: poi.categories")
+            logger.info("[MONGODB] Created index: poi.categories")
             
             # Text search (fallback if no Elasticsearch)
             poi_collection.create_index(
@@ -276,59 +276,59 @@ class MongoDBClient:
                 name="idx_text_search",
                 default_language="english"
             )
-            logger.info("✅ Created text search index: poi.name/description")
+            logger.info("[MONGODB] Created text search index: poi.name/description")
             
             # Popularity & sorting
             poi_collection.create_index([("metadata.popularity_score", -1)], name="idx_popularity")
             poi_collection.create_index([("ratings.average", -1)], name="idx_ratings")
-            logger.info("✅ Created sorting indexes: poi.popularity/ratings")
+            logger.info("[MONGODB] Created sorting indexes: poi.popularity/ratings")
             
             # POI ID for fast lookups
             poi_collection.create_index("poi_id", unique=True, name="idx_poi_id")
-            logger.info("✅ Created unique index: poi.poi_id")
+            logger.info("[MONGODB] Created unique index: poi.poi_id")
             
             # Itinerary Collection Indexes
             itinerary_collection = db["itineraries"]
             
             # Plan ID (unique)
             itinerary_collection.create_index("plan_id", unique=True, name="idx_plan_id")
-            logger.info("✅ Created unique index: itineraries.plan_id")
+            logger.info("[MONGODB] Created unique index: itineraries.plan_id")
             
             # User's itineraries
             itinerary_collection.create_index("metadata.user_id", name="idx_user_id")
-            logger.info("✅ Created index: itineraries.user_id")
+            logger.info("[MONGODB] Created index: itineraries.user_id")
             
             # Created date for sorting
             itinerary_collection.create_index([("metadata.created_at", -1)], name="idx_created_at")
-            logger.info("✅ Created index: itineraries.created_at")
+            logger.info("[MONGODB] Created index: itineraries.created_at")
             
             # Public itineraries
             itinerary_collection.create_index("metadata.is_public", name="idx_is_public")
-            logger.info("✅ Created index: itineraries.is_public")
+            logger.info("[MONGODB] Created index: itineraries.is_public")
             
             # Share token lookup
             itinerary_collection.create_index("metadata.share_token", sparse=True, name="idx_share_token")
-            logger.info("✅ Created sparse index: itineraries.share_token")
+            logger.info("[MONGODB] Created sparse index: itineraries.share_token")
             
             # Review Collection Indexes (Future)
             review_collection = db["reviews"]
             
             # User's reviews
             review_collection.create_index("user_id", name="idx_review_user_id")
-            logger.info("✅ Created index: reviews.user_id")
+            logger.info("[MONGODB] Created index: reviews.user_id")
             
             # POI's reviews
             review_collection.create_index("poi_id", name="idx_review_poi_id")
-            logger.info("✅ Created index: reviews.poi_id")
+            logger.info("[MONGODB] Created index: reviews.poi_id")
             
             # Created date
             review_collection.create_index([("created_at", -1)], name="idx_review_created_at")
-            logger.info("✅ Created index: reviews.created_at")
+            logger.info("[MONGODB] Created index: reviews.created_at")
             
-            logger.info("🎉 All MongoDB indexes created successfully!")
+            logger.info("[MONGODB] All indexes created successfully!")
             
         except Exception as e:
-            logger.error(f"❌ Failed to create indexes: {e}")
+            logger.error(f"[MONGODB] Failed to create indexes: {e}")
             raise
 
 

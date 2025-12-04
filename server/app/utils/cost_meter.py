@@ -294,14 +294,14 @@ if __name__ == "__main__":
     
     try:
         result1 = search_places("restaurants in Danang")
-        print(f"✅ Places search completed: {result1}")
+        print(f"[SUCCESS] Places search completed: {result1}")
     except Exception as e:
-        print(f"❌ Places search failed: {e}")
+        print(f"[ERROR] Places search failed: {e}")
     
     try:
         result2 = generate_itinerary("3 days in Danang")
-        print(f"✅ Itinerary generation completed: {result2}")
+        print(f"[SUCCESS] Itinerary generation completed: {result2}")
     except Exception as e:
-        print(f"❌ Itinerary generation failed: {e}")
+        print(f"[ERROR] Itinerary generation failed: {e}")
     
-    print("\n💰 Cost records have been logged to database")
+    print("\n[COST] Cost records have been logged to database")

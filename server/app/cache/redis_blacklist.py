@@ -44,7 +44,7 @@ class RedisBlacklist:
         
         redis_client = get_redis()
         if not redis_client:
-            logger.error("❌ Redis unavailable - cannot blacklist token")
+            logger.error("[BLACKLIST] Redis unavailable - cannot blacklist token")
             return False
         
         try:
@@ -62,7 +62,7 @@ class RedisBlacklist:
                 
                 # Ensure TTL is positive
                 if ttl_seconds <= 0:
-                    logger.warning(f"⚠️  Token already expired for user {user_id}, using fallback TTL")
+                    logger.warning(f"[BLACKLIST] Token already expired for user {user_id}, using fallback TTL")
                     ttl_seconds = 60  # Keep for 1 minute anyway
             else:
                 # Default TTL if expiration not provided
@@ -81,7 +81,7 @@ class RedisBlacklist:
                 str(user_id)
             )
             
-            logger.info(f"✅ Token blacklisted successfully for user {user_id} (TTL: {ttl_seconds}s)")
+            logger.info(f"[BLACKLIST] Token blacklisted successfully for user {user_id} (TTL: {ttl_seconds}s)")
             
             # Verify it was actually set
             verify = redis_client.exists(key)
@@ -90,7 +90,7 @@ class RedisBlacklist:
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error blacklisting token: {str(e)}", exc_info=True)
+            logger.error(f"[BLACKLIST] Error blacklisting token: {str(e)}", exc_info=True)
             return False
     
     @staticmethod
@@ -187,7 +187,7 @@ class RedisBlacklist:
             keys = redis_client.keys(pattern)
             if keys:
                 count = redis_client.delete(*keys)
-                logger.warning(f"⚠️  Cleared {count} blacklisted tokens")
+                logger.warning(f"[BLACKLIST] Cleared {count} blacklisted tokens")
                 return count
             return 0
         except Exception as e:

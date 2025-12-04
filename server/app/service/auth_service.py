@@ -360,26 +360,42 @@ class AuthService:
     def invalidate_token(self, user_id, access_token):
         """Invalidate a user's refresh token and access token."""
         try:
+            logging.info(f"[LOGOUT] Starting logout for user {user_id}")
+            logging.info(f"[LOGOUT] Access token (first 50 chars): {access_token[:50]}...")
+            
             # Delete refresh token from DB
             oka = self.token_repo.delete_refresh_token(user_id)
+            logging.info(f"[LOGOUT] Refresh token deleted from DB: {oka}")
             
             # Add access token to Redis blacklist
             if oka:
                 # Decode token to get expiration time
+                logging.info(f"[LOGOUT] Decoding JWT token...")
                 payload = decode_jwt_token(access_token)
+                
                 if payload and 'exp' in payload:
                     expires_at = datetime.fromtimestamp(payload['exp'], tz=timezone.utc)
-                    RedisBlacklist.add_token(access_token, user_id, expires_at)
-                    logging.info(f"✅ Access token blacklisted in Redis for user {user_id}")
+                    logging.info(f"[LOGOUT] Token expires at: {expires_at}")
+                    result = RedisBlacklist.add_token(access_token, user_id, expires_at)
+                    logging.info(f"[LOGOUT] RedisBlacklist.add_token returned: {result}")
                 else:
                     # Fallback: use default TTL if can't decode
-                    RedisBlacklist.add_token(access_token, user_id)
-                    logging.warning(f"⚠️  Blacklisted token without expiry info for user {user_id}")
+                    logging.warning(f"⚠️  Could not decode token expiry, using default TTL")
+                    result = RedisBlacklist.add_token(access_token, user_id)
+                    logging.info(f"[LOGOUT] RedisBlacklist.add_token (no expiry) returned: {result}")
+                
+                if result:
+                    logging.info(f"✅ Logout successful for user {user_id}")
+                else:
+                    logging.error(f"❌ RedisBlacklist.add_token failed for user {user_id}")
                 
                 return True
-            return False
+            else:
+                logging.error(f"❌ Failed to delete refresh token from DB for user {user_id}")
+                return False
+                
         except Exception as e:
-            logging.error(f"Error invalidating token: {str(e)}")
+            logging.error(f"❌ Error invalidating token: {str(e)}", exc_info=True)
             raise
         
         

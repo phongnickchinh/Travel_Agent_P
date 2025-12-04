@@ -6,7 +6,7 @@ Uses TTL for automatic cleanup - no cron job needed.
 """
 import logging
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.redis_client import get_redis
 from config import Config
 
@@ -40,22 +40,29 @@ class RedisBlacklist:
         Returns:
             True if successful, False otherwise
         """
+        logger.info(f"[BLACKLIST] Attempting to blacklist token for user {user_id}")
+        
         redis_client = get_redis()
         if not redis_client:
-            logger.error("Redis unavailable - cannot blacklist token")
+            logger.error("❌ Redis unavailable - cannot blacklist token")
             return False
         
         try:
+            logger.info(f"[BLACKLIST] Redis client available, building key...")
             key = RedisBlacklist._build_key(token)
+            logger.info(f"[BLACKLIST] Key built: {key[:50]}...")
             
             # Calculate TTL based on token expiration
             if expires_at:
-                now = datetime.utcnow()
+                # Use timezone-aware datetime to match expires_at
+                now = datetime.now(timezone.utc)
                 ttl_seconds = int((expires_at - now).total_seconds())
+                
+                logger.info(f"[BLACKLIST] Token expires at: {expires_at}, TTL: {ttl_seconds}s")
                 
                 # Ensure TTL is positive
                 if ttl_seconds <= 0:
-                    logger.warning(f"Token already expired for user {user_id}")
+                    logger.warning(f"⚠️  Token already expired for user {user_id}, using fallback TTL")
                     ttl_seconds = 60  # Keep for 1 minute anyway
             else:
                 # Default TTL if expiration not provided
@@ -64,19 +71,26 @@ class RedisBlacklist:
                     Config.ACCESS_TOKEN_EXPIRE_SEC,
                     Config.REFRESH_TOKEN_EXPIRE_SEC
                 )
+                logger.info(f"[BLACKLIST] No expiry provided, using default TTL: {ttl_seconds}s")
             
             # Store with user_id as value and TTL
+            logger.info(f"[BLACKLIST] Calling redis.setex(key={key[:50]}..., ttl={ttl_seconds}, value={user_id})")
             redis_client.setex(
                 key,
                 ttl_seconds,
                 str(user_id)
             )
             
-            logger.info(f"✅ Token blacklisted for user {user_id} (TTL: {ttl_seconds}s)")
+            logger.info(f"✅ Token blacklisted successfully for user {user_id} (TTL: {ttl_seconds}s)")
+            
+            # Verify it was actually set
+            verify = redis_client.exists(key)
+            logger.info(f"[BLACKLIST] Verification check: token exists in Redis = {verify}")
+            
             return True
             
         except Exception as e:
-            logger.error(f"Error blacklisting token: {str(e)}")
+            logger.error(f"❌ Error blacklisting token: {str(e)}", exc_info=True)
             return False
     
     @staticmethod

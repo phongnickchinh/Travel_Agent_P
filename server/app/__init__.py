@@ -85,6 +85,13 @@ def create_app(config_class=Config):
         print(f"[INIT] WARNING: MongoDB initialization failed: {str(e)}")
         print("[INIT] WARNING: POI and Itinerary features will not be available")
     
+    # Initialize Elasticsearch and sync POIs from MongoDB
+    from .core.es_initializer import initialize_elasticsearch
+    try:
+        initialize_elasticsearch()
+    except Exception as es_error:
+        print(f"[INIT] WARNING: Elasticsearch initialization failed: {str(es_error)}")
+    
     from .utils.blacklist_cleaner import cleanup_expired_tokens
     db.init_app(app)
     migrate.init_app(app, db)

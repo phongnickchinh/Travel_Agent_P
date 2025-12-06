@@ -16,13 +16,13 @@ import logging
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 
-from app.providers.provider_factory import ProviderFactory
-from app.providers.base_provider import BaseProvider
-from app.repo.mongo.interfaces import POIRepositoryInterface
-from app.repo.es.interfaces import ESPOIRepositoryInterface
-from app.model.mongo.poi import POI, POISearchRequest
-from app.utils.poi_dedupe import generate_dedupe_key, are_pois_duplicate
-from app.core.elasticsearch_client import ElasticsearchClient
+from ..providers.provider_factory import ProviderFactory
+from ..providers.base_provider import BaseProvider
+from ..repo.mongo.interfaces import POIRepositoryInterface
+from ..repo.es.interfaces import ESPOIRepositoryInterface
+from ..model.mongo.poi import POI, POISearchRequest
+from ..utils.poi_dedupe import generate_dedupe_key, are_pois_duplicate
+from ..core.elasticsearch_client import ElasticsearchClient
 
 logger = logging.getLogger(__name__)
 

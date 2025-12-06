@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getAuthConfigApi } from '../../services/authApi';
 import './Login.css';
 
 // Load Google Sign-In script
@@ -30,13 +31,31 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [googleClientId, setGoogleClientId] = useState(null);
+
+  // Fetch Google Client ID from backend
+  useEffect(() => {
+    const fetchAuthConfig = async () => {
+      try {
+        const result = await getAuthConfigApi();
+        if (result.success && result.data.google_client_id) {
+          setGoogleClientId(result.data.google_client_id);
+        }
+      } catch (err) {
+        console.error('Failed to fetch auth config:', err);
+      }
+    };
+    fetchAuthConfig();
+  }, []);
 
   // Initialize Google Sign-In
   useEffect(() => {
+    if (!googleClientId) return;
+
     loadGoogleScript().then(() => {
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: '691313143015-dl1ao5k5nj9is2rs2v8c2u2ulnj4i6ge.apps.googleusercontent.com',
+          client_id: googleClientId,
           callback: handleGoogleLogin,
           auto_select: false,
         });
@@ -55,7 +74,7 @@ export default function Login() {
     }).catch(err => {
       console.error('Failed to load Google Sign-In script:', err);
     });
-  }, []);
+  }, [googleClientId]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -109,8 +128,6 @@ export default function Login() {
 
   const handleGoogleLogin = async (response) => {
     const id_token = response.credential;
-    console.log("Google ID Token:", id_token);
-
     try {
       const loggedInUser = await googleLogin(id_token);
       setSuccess('Google login successful! Redirecting...');

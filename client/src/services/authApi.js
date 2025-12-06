@@ -46,6 +46,14 @@ export async function googleLoginApi(idToken) {
 }
 
 /**
+ * Get authentication configuration (Google Client ID, etc.)
+ */
+export async function getAuthConfigApi() {
+  const res = await api.get('/config');
+  return res.data.google_client_id ? { success: true, data: { google_client_id: res.data.google_client_id } } : { success: false };
+}
+
+/**
  * Register new user account
  */
 export async function registerApi(userData) {

@@ -26,6 +26,7 @@ class AuthController:
     
     def _register_routes(self):
         """Register all routes with Flask."""
+        auth_api.add_url_rule("/config", "auth_config", self.get_auth_config, methods=["GET"])
         auth_api.add_url_rule("/login", "login", self.login, methods=["POST"])
         auth_api.add_url_rule("/google", "google_login", self.google_login, methods=["POST"])
         auth_api.add_url_rule("/link-google", "link_google", self._wrap_jwt_required(self.link_google), methods=["POST"])
@@ -47,6 +48,18 @@ class AuthController:
         def wrapper(user_id):
             return f(user_id)
         return wrapper
+    
+    def get_auth_config(self):
+        """Public endpoint to get authentication configuration (e.g., Google Client ID)."""
+        print(Config.GOOGLE_CLIENT_ID)
+        return build_success_response(
+            "Authentication configuration retrieved successfully.",
+            "Lấy cấu hình xác thực thành công.",
+            "00100",
+            {
+                "google_client_id": Config.GOOGLE_CLIENT_ID
+            }
+        )
     
     def login(self):
         @rate_limit(

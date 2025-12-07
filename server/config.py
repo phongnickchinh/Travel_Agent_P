@@ -65,6 +65,13 @@ class Config:
     CACHE_ENABLED = os.environ.get("CACHE_ENABLED", "True").lower() == "true"
     CACHE_DEFAULT_TTL = int(os.environ.get("CACHE_DEFAULT_TTL", 300))  # 5 minutes
     CACHE_USER_PROFILE_TTL = int(os.environ.get("CACHE_USER_PROFILE_TTL", 600))  # 10 minutes
+    
+    # Elasticsearch Configuration
+    ELASTICSEARCH_ENABLED = os.environ.get("ELASTICSEARCH_ENABLED", "True").lower() == "true"
+    ELASTICSEARCH_POI_INDEX = os.environ.get("ELASTICSEARCH_POI_INDEX", "pois")
+    ELASTICSEARCH_CONFIG_FILE_PATH = os.environ.get("ELASTICSEARCH_CONFIG_FILE_PATH", "repo/es/mappings/poi_index_mapping.json")
+    ELASTICSEARCH_TIMEOUT = int(os.environ.get("ELASTICSEARCH_TIMEOUT", 30))
+    ELASTICSEARCH_MAX_RETRIES = int(os.environ.get("ELASTICSEARCH_MAX_RETRIES", 3))
 
 
 secret_key = Config.SECRET_KEY

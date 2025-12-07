@@ -203,16 +203,105 @@ class PlacesService:
         """
         logger.info(f"[SEARCH] Get POI: {poi_id}")
         poi = self.poi_repo.get_by_id(poi_id)
-        
+
         if poi:
             logger.info(f"[INFO] Cache HIT: {poi_id}")
+            # If user requested fresh details or cached POI lacks detail fields, fetch provider details
+            needs_detail = (
+                include_fresh or
+                not poi.get('raw_data') or
+                not poi.get('images') or
+                not poi.get('description', {}).get('long')
+            )
+            if needs_detail:
+                try:
+                    detailed = self.get_details(poi_id, force_update=True)
+                    if detailed:
+                        return detailed
+                except Exception as e:
+                    logger.warning(f"[WARNING] Failed to fetch provider details for {poi_id}: {e}")
             return poi
+
+        # Not in cache: if include_fresh is True, attempt to ask provider if provider id is derivable
         if include_fresh:
             logger.info(f"[WARNING] Cache MISS: {poi_id}, trying provider...")
-            pass
+            # Try to find provider name/id by deducing from POI id (if provider id not present, cannot fetch)
+            # For now, we cannot deduce provider id from poi_id alone; return None
         
         logger.warning(f"[ERROR] POI not found: {poi_id}")
         return None
+
+    def get_details(self, poi_id: str, force_update: bool = False) -> Optional[Dict[str, Any]]:
+        """
+        Get full POI details by ID, optionally forcing provider fetch and cache refresh.
+
+        This method will:
+        1. Load POI from MongoDB
+        2. If provider info exists and force_update is True (or cached details missing), call provider.get_details
+        3. Transform provider data, update MongoDB and ES, and return the updated POI
+        """
+        logger.info(f"[DETAILS] Get details for POI: {poi_id} (force_update={force_update})")
+        poi = self.poi_repo.get_by_id(poi_id)
+        if not poi:
+            logger.warning(f"[DETAILS] POI {poi_id} not found in cache")
+            return None
+
+        provider_info = poi.get('provider', {})
+        provider_name = provider_info.get('name')
+        provider_id = provider_info.get('id')
+
+        # If we don't know which provider or the provider id, we cannot fetch details
+        if not provider_name or not provider_id:
+            logger.warning(f"[DETAILS] No provider info available for {poi_id}")
+            return poi
+
+        if not force_update and poi.get('raw_data') and poi.get('images'):
+            # We already have details cached
+            return poi
+
+        provider = self._get_provider_by_name(provider_name)
+        if not provider:
+            logger.warning(f"[DETAILS] Provider {provider_name} not available")
+            return poi
+
+        # Fetch details from provider
+        try:
+            detailed_data = provider.get_details(provider_id)
+            if not detailed_data:
+                logger.warning(f"[DETAILS] Provider returned no details for {provider_id}")
+                return poi
+
+            # Transform and upsert to MongoDB and ES
+            transformed = self._transform_provider_data(detailed_data)
+            # Maintain original poi_id if provider returns different dedupe
+            transformed['poi_id'] = poi_id
+            # Use upsert for safe write-through; to force update, call update directly with transformed payload
+            try:
+                # Force update ignoring staleness: use update to set transformed fields
+                updates = {k: v for k, v in transformed.items() if k != 'poi_id'}
+                updated = self.poi_repo.update(poi_id, updates)
+                if updated is None:
+                    logger.info(f"[DETAILS] Upsert fallback (insert) for {poi_id}")
+                    # If update returned None, try upsert
+                    self.poi_repo.upsert(POI(**transformed))
+                else:
+                    poi = updated
+            except Exception as e:
+                logger.error(f"[DETAILS] Failed to write details to MongoDB for {poi_id}: {e}")
+
+            # Update Elasticsearch if enabled
+            if self.es_enabled and self.es_repo:
+                try:
+                    self.es_repo.index_poi(poi_id, transformed)
+                except Exception as e:
+                    logger.warning(f"[DETAILS] ES indexing failed for {poi_id}: {e}")
+
+            # Return the latest document (fetch to ensure consistency)
+            return self.poi_repo.get_by_id(poi_id)
+
+        except Exception as e:
+            logger.error(f"[ERROR] Provider details fetch failed for {poi_id}: {e}")
+            return poi
     
     def refresh_stale_pois(self, limit: int = 100) -> Dict[str, Any]:
         """
@@ -373,7 +462,7 @@ class PlacesService:
         radius_km: float,
         **kwargs
     ) -> List[Dict[str, Any]]:
-        """Fetch from provider API (Google Places)."""
+        """Fetch from provider API (Google Places) with minimal fields for cost saving."""
         if not self.providers:
             logger.error("[ERROR] No providers available")
             return []
@@ -382,10 +471,15 @@ class PlacesService:
         provider = self.providers[0]
         
         try:
-            logger.info(f"[COST] Calling {provider.get_provider_name()} API (COST incurred)")
+            logger.info(f"[COST] Calling {provider.get_provider_name()} API with MINIMAL fields (cost optimized)")
             
             # Extract max_results to avoid duplicate argument error
             max_results = kwargs.pop('max_results', 20)
+            
+            # Add field_mode='minimal' to minimize API cost (only id, displayName, location, photos)
+            # User can override by passing field_mode='full' if detailed data is needed
+            if 'field_mode' not in kwargs:
+                kwargs['field_mode'] = 'minimal'
             
             results = provider.search(
                 query=query,

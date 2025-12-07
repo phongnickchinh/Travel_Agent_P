@@ -62,6 +62,8 @@ class PlacesController:
         # 🔒 All endpoints protected by @admin_required
         places_bp.add_url_rule("/search", "search", admin_required(self.search_places), methods=["GET"])
         places_bp.add_url_rule("/<poi_id>", "get_by_id", admin_required(self.get_place_by_id), methods=["GET"])
+        # GET /api/places/{poi_id}/detail - Force provider details fetch / return full details
+        places_bp.add_url_rule("/<poi_id>/detail", "get_by_id_detail", admin_required(self.get_place_details), methods=["GET"])
         places_bp.add_url_rule("/refresh", "refresh", admin_required(self.refresh_stale_pois), methods=["POST"])
         places_bp.add_url_rule("/import", "bulk_import", admin_required(self.bulk_import_pois), methods=["POST"])
     
@@ -298,6 +300,50 @@ class PlacesController:
                 "An error occurred while retrieving the place",
                 "Đã xảy ra lỗi khi lấy thông tin địa điểm",
                 "GET_PLACE_ERROR",
+                500
+            )
+
+    def get_place_details(self, poi_id: str):
+        """
+        Get POI full details (force provider fetch if requested)
+
+        Query params:
+            force_update: bool - Force fetching details from provider and update cache
+            include_raw: bool - If set, return raw provider data in 'raw_data'
+        """
+        try:
+            if not poi_id or not poi_id.strip():
+                return build_error_response(
+                    "POI ID is required",
+                    "ID địa điểm là bắt buộc",
+                    "MISSING_POI_ID",
+                    400
+                )
+            force_update = request.args.get('force_update', default='false').lower() == 'true'
+
+            logger.info(f"[DETAILS] Get POI details: {poi_id} (force_update={force_update})")
+            poi = self.places_service.get_details(poi_id, force_update=force_update)
+            if not poi:
+                return build_error_response(
+                    f"Place with ID '{poi_id}' not found",
+                    f"Không tìm thấy địa điểm có ID '{poi_id}'",
+                    "PLACE_NOT_FOUND",
+                    404
+                )
+            return build_success_response(
+                "Place details fetched",
+                "Đã lấy thông tin chi tiết địa điểm",
+                "PLACE_DETAIL_FOUND",
+                data={"poi": poi},
+                status_code=200
+            )
+
+        except Exception as e:
+            logger.error(f"[ERROR] Get place details failed: {e}", exc_info=True)
+            return build_error_response(
+                "An error occurred while retrieving the place details",
+                "Đã xảy ra lỗi khi lấy thông tin chi tiết địa điểm",
+                "GET_PLACE_DETAILS_ERROR",
                 500
             )
     

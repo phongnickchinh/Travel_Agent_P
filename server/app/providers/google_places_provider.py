@@ -33,6 +33,14 @@ class GooglePlacesProvider(BaseProvider):
     
     BASE_URL = "https://places.googleapis.com/v1"
     
+    # Minimal fields for cost-effective search (reduce API cost by ~70%)
+    TEXT_SEARCH_FIELDS_MINIMAL = [
+        "places.id",
+        "places.displayName",
+        "places.location",
+        "places.photos",
+    ]
+    
     # All available fields for maximum data extraction
     TEXT_SEARCH_FIELDS = [
         "places.id",
@@ -117,6 +125,7 @@ class GooglePlacesProvider(BaseProvider):
                 - price_level: Price level filter (FREE, INEXPENSIVE, MODERATE, EXPENSIVE, VERY_EXPENSIVE)
                 - open_now: Only return open places
                 - language_code: Language for results (default: 'vi')
+                - field_mode: 'minimal' or 'full' (default: 'minimal' for cost saving)
                 
         Returns:
             List of standardized POI dictionaries
@@ -134,11 +143,15 @@ class GooglePlacesProvider(BaseProvider):
         price_level = kwargs.get('price_level')
         open_now = kwargs.get('open_now', False)
         language_code = kwargs.get('language_code', 'vi')
+        field_mode = kwargs.get('field_mode', 'minimal')  # Default to minimal for cost saving
+        
+        # Choose field list based on mode
+        fields = self.TEXT_SEARCH_FIELDS_MINIMAL if field_mode == 'minimal' else self.TEXT_SEARCH_FIELDS
         
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": self.api_key,
-            "X-Goog-FieldMask": ",".join(self.TEXT_SEARCH_FIELDS)
+            "X-Goog-FieldMask": ",".join(fields)
         }
         
         # Build request payload

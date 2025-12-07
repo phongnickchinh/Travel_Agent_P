@@ -64,8 +64,10 @@ class ElasticsearchClient:
             Configured Elasticsearch client
         """
         # Get configuration from environment
+        deploy_type = os.getenv('ELASTICSEARCH_DEPLOY_TYPE', 'docker').lower()
         es_url = os.getenv('ELASTICSEARCH_URL', 'http://localhost:9200')
         api_key = os.getenv('ELASTICSEARCH_API_KEY')
+        cloud_api_key = os.getenv('ELASTICSEARCH_CLOUD_API_KEY')
         username = os.getenv('ELASTICSEARCH_USERNAME')
         password = os.getenv('ELASTICSEARCH_PASSWORD')
         cloud_id = os.getenv('ELASTICSEARCH_CLOUD_ID')
@@ -79,12 +81,15 @@ class ElasticsearchClient:
             'verify_certs': verify_certs,
         }
         
-        # Authentication methods (priority order)
-        if cloud_id:
+        # Authentication methods based on deployment type
+        logger.info(f"Elasticsearch type: {deploy_type}")
+        if deploy_type == 'cloud' and cloud_id:
             # Elastic Cloud
             client_config['cloud_id'] = cloud_id
             
-            if api_key:
+            if cloud_api_key:
+                client_config['api_key'] = cloud_api_key
+            elif api_key:
                 client_config['api_key'] = api_key
             elif username and password:
                 client_config['basic_auth'] = (username, password)
@@ -94,7 +99,7 @@ class ElasticsearchClient:
             logger.info(f"Connecting to Elastic Cloud: {cloud_id[:20]}...")
             
         else:
-            # Self-hosted / local ES
+            # Docker / Self-hosted ES
             client_config['hosts'] = [es_url]
             
             if api_key:

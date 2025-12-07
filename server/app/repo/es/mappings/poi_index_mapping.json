@@ -1,0 +1,126 @@
+{
+  "mappings": {
+    "properties": {
+      "poi_id": {
+        "type": "keyword"
+      },
+      "dedupe_key": {
+        "type": "keyword"
+      },
+      "provider": {
+        "type": "keyword"
+      },
+      "provider_id": {
+        "type": "keyword"
+      },
+      "name": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          },
+          "edge_ngram": {
+            "type": "text",
+            "analyzer": "autocomplete_index",
+            "search_analyzer": "autocomplete_search"
+          }
+        }
+      },
+      "types": {
+        "type": "keyword"
+      },
+      "primary_type": {
+        "type": "keyword"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "address": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "rating": {
+        "type": "float"
+      },
+      "total_reviews": {
+        "type": "integer"
+      },
+      "price_level": {
+        "type": "keyword"
+      },
+      "phone": {
+        "type": "keyword"
+      },
+      "website": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text"
+      },
+      "business_status": {
+        "type": "keyword"
+      },
+      "google_maps_uri": {
+        "type": "keyword"
+      },
+      "photos_count": {
+        "type": "integer"
+      },
+      "photos": {
+        "type": "keyword"
+      },
+      "reviews_count": {
+        "type": "integer"
+      },
+      "amenities": {
+        "type": "object",
+        "enabled": false
+      },
+      "opening_hours": {
+        "type": "object",
+        "enabled": false
+      },
+      "created_at": {
+        "type": "date"
+      },
+      "updated_at": {
+        "type": "date"
+      },
+      "fetched_at": {
+        "type": "date"
+      }
+    }
+  },
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "autocomplete_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "autocomplete_filter"
+          ]
+        },
+        "autocomplete_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase"
+          ]
+        }
+      },
+      "filter": {
+        "autocomplete_filter": {
+          "type": "edge_ngram",
+          "min_gram": 2,
+          "max_gram": 20
+        }
+      }
+    }
+  }
+}

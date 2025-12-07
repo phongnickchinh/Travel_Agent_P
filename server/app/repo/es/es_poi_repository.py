@@ -4,6 +4,8 @@ Manages POI indexing and search operations in Elasticsearch
 """
 
 import logging
+import json
+from pathlib import Path
 from typing import List, Dict, Optional, Any
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
@@ -11,6 +13,7 @@ from elasticsearch.exceptions import NotFoundError, RequestError
 
 from ...core.elasticsearch_client import ElasticsearchClient
 from ...repo.es.interfaces import ESPOIRepositoryInterface
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -40,106 +43,6 @@ class ESPOIRepository(ESPOIRepositoryInterface):
         results = repo.search(query="cafe", location={...}, radius=5000)
     """
     
-    INDEX_NAME = "pois"
-    
-    # Index mapping with autocomplete + geo support
-    INDEX_MAPPING = {
-        "mappings": {
-            "properties": {
-                # Identifiers
-                "poi_id": {"type": "keyword"},
-                "dedupe_key": {"type": "keyword"},
-                "provider": {"type": "keyword"},
-                "provider_id": {"type": "keyword"},
-                
-                # Name with autocomplete (edge n-gram)
-                "name": {
-                    "type": "text",
-                    "fields": {
-                        "keyword": {"type": "keyword"},
-                        "edge_ngram": {
-                            "type": "text",
-                            "analyzer": "autocomplete_index",
-                            "search_analyzer": "autocomplete_search"
-                        }
-                    }
-                },
-                
-                # Types
-                "types": {"type": "keyword"},
-                "primary_type": {"type": "keyword"},
-                
-                # Location (geo_point for distance queries)
-                "location": {"type": "geo_point"},
-                
-                # Address
-                "address": {
-                    "type": "text",
-                    "fields": {"keyword": {"type": "keyword"}}
-                },
-                
-                # Rating
-                "rating": {"type": "float"},
-                "total_reviews": {"type": "integer"},
-                
-                # Price level
-                "price_level": {"type": "keyword"},
-                
-                # Contact
-                "phone": {"type": "keyword"},
-                "website": {"type": "keyword"},
-                
-                # Description (full-text search)
-                "description": {"type": "text"},
-                
-                # Business info
-                "business_status": {"type": "keyword"},
-                "google_maps_uri": {"type": "keyword"},
-                
-                # Photos (count and references)
-                "photos_count": {"type": "integer"},
-                "photos": {"type": "keyword"},
-                
-                # Reviews (count and snippets)
-                "reviews_count": {"type": "integer"},
-                
-                # Amenities (boolean flags)
-                "amenities": {"type": "object", "enabled": False},
-                
-                # Opening hours
-                "opening_hours": {"type": "object", "enabled": False},
-                
-                # Timestamps
-                "created_at": {"type": "date"},
-                "updated_at": {"type": "date"},
-                "fetched_at": {"type": "date"}
-            }
-        },
-        "settings": {
-            "analysis": {
-                "analyzer": {
-                    "autocomplete_index": {
-                        "type": "custom",
-                        "tokenizer": "standard",
-                        "filter": ["lowercase", "autocomplete_filter"]
-                    },
-                    "autocomplete_search": {
-                        "type": "custom",
-                        "tokenizer": "standard",
-                        "filter": ["lowercase"]
-                    }
-                },
-                "filter": {
-                    "autocomplete_filter": {
-                        "type": "edge_ngram",
-                        "min_gram": 2,
-                        "max_gram": 20
-                    }
-                }
-            }
-        }
-    }
-    
     def __init__(self, es_client: Optional[Elasticsearch] = None):
         """
         Initialize ES POI Repository
@@ -148,6 +51,46 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             es_client: Elasticsearch client (defaults to singleton)
         """
         self.es = es_client or ElasticsearchClient.get_instance()
+        
+        # Load index name from config
+        self.INDEX_NAME = Config.ELASTICSEARCH_POI_INDEX
+        
+        # Load index mapping from JSON file
+        self.INDEX_MAPPING = self._load_index_mapping()
+        
+        logger.info(f"Initialized ESPOIRepository with index: {self.INDEX_NAME}")
+    
+    def _load_index_mapping(self) -> Dict:
+        """
+        Load index mapping configuration from JSON file
+        
+        Returns:
+            Dict: Index mapping configuration
+        """
+        try:
+            # Get mapping file path from config (relative to project root)
+            config_path = Config.ELASTICSEARCH_CONFIG_FILE_PATH
+            
+            # Resolve absolute path (assume config path is relative to server root)
+            if not Path(config_path).is_absolute():
+                project_root = Path(__file__).parent.parent.parent.parent  # Go up to server/
+                mapping_file = project_root / config_path
+            else:
+                mapping_file = Path(config_path)
+            
+            if not mapping_file.exists():
+                logger.error(f"Mapping file not found: {mapping_file}")
+                raise FileNotFoundError(f"ES mapping file not found: {mapping_file}")
+            
+            with open(mapping_file, 'r', encoding='utf-8') as f:
+                mapping = json.load(f)
+            
+            logger.info(f"Loaded ES mapping from: {mapping_file}")
+            return mapping
+            
+        except Exception as e:
+            logger.error(f"Failed to load ES mapping: {e}")
+            raise
         logger.info(f"Initialized ESPOIRepository with index: {self.INDEX_NAME}")
     
     def create_index(self, delete_if_exists: bool = False) -> bool:

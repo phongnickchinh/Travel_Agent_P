@@ -41,12 +41,16 @@ const SearchAutocomplete = ({
   /**
    * Handle input change with debouncing
    */
+  // Read autocomplete cost from Vite env to adjust keyboard/input behavior
+  const autocompleteCost = (import.meta.env.VITE_AUTOCOMPLETE_COST || 'NORMAL').toUpperCase();
+  const effectiveMinLength = (autocompleteCost === 'CHEAP') ? Math.max(1, minLength) : minLength;
+
   const handleInputChange = useCallback(async (value) => {
     setQuery(value);
     setSelectedIndex(-1);
 
     // Clear results if query too short
-    if (value.trim().length < minLength) {
+    if (value.trim().length < effectiveMinLength) {
       setResults([]);
       setIsOpen(false);
       setShowRecent(false);

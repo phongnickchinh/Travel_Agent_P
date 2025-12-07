@@ -22,7 +22,19 @@ class SearchAPI {
     
     // Debounce timer
     this.debounceTimer = null;
-    this.debounceDelay = 300; // 300ms as recommended
+    // Read AUTOCOMPLETE cost from Vite env; default to NORMAL mapping
+    const costEnv = (import.meta.env.VITE_AUTOCOMPLETE_COST || 'NORMAL').toUpperCase();
+    const explicitDebounce = import.meta.env.VITE_AUTOCOMPLETE_DEBOUNCE_MS;
+
+    // Map costs to debounce delays
+    const costMap = {
+      CHEAP: 50,
+      NORMAL: 300,
+      EXPENSIVE: 500,
+      NONE: 0
+    };
+
+    this.debounceDelay = explicitDebounce ? Number(explicitDebounce) : (costMap[costEnv] ?? 300);
     
     // Recent searches (localStorage backup)
     this.recentSearchesKey = 'recent_autocomplete_searches';
@@ -130,6 +142,15 @@ class SearchAPI {
    */
   debouncedAutocomplete(query, options = {}) {
     return new Promise((resolve) => {
+      // If there is no debounce delay (NONE or 0), call the autocomplete directly
+      if (!this.debounceDelay || this.debounceDelay <= 0) {
+        this.autocomplete(query, options).then(resolve).catch((err) => {
+          console.error('[ERROR] Debounced autocomplete direct call failed:', err);
+          resolve([]);
+        });
+        return;
+      }
+
       // Clear previous timer
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
@@ -270,6 +291,13 @@ class SearchAPI {
       cacheExpiry: `${this.cacheExpiry / 1000}s`,
       debounceDelay: `${this.debounceDelay}ms`
     };
+  }
+
+  /**
+   * Return current debounce delay (ms) for diagnostic/other components
+   */
+  getDebounceDelay() {
+    return this.debounceDelay;
   }
 }
 

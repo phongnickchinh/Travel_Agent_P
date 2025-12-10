@@ -13,7 +13,7 @@ from ..utils.jwt_helpers import (
     generate_refresh_token_jwt,
     verify_token_and_get_user_id
 )
-from ..cache.redis_blacklist import RedisBlacklist
+from ..core.cache.redis_blacklist import RedisBlacklist
 from config import access_token_expire_sec, refresh_token_expire_sec
 
 class AuthService:

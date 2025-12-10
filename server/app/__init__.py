@@ -15,7 +15,7 @@ from datetime import datetime
 
 
 from config import Config
-from .errors import handle_exception
+from .common.errors import handle_exception
 
 
 # Custom JSON Provider to handle MongoDB ObjectId and datetime (Flask 3.x)
@@ -48,7 +48,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     
     # Setup logging (console + file)
-    from .logging_config import setup_logging
+    from .common.logging_config import setup_logging
     setup_logging(app)
     
     # Set custom JSON provider to handle MongoDB ObjectId (Flask 3.x)
@@ -62,7 +62,7 @@ def create_app(config_class=Config):
     }})
     
     # Initialize Redis connection
-    from .core.redis_client import RedisClient
+    from .core.clients.redis_client import RedisClient
     try:
         RedisClient.get_instance()
         print("[INIT] Redis initialized successfully")
@@ -71,7 +71,7 @@ def create_app(config_class=Config):
         print("[INIT] WARNING: Application will continue in degraded mode (without Redis features)")
     
     # Initialize MongoDB connection and create indexes
-    from .core.mongodb_client import get_mongodb_client
+    from .core.clients.mongodb_client import get_mongodb_client
     try:
         mongodb_client = get_mongodb_client()
         if mongodb_client.is_healthy():
@@ -113,7 +113,7 @@ def create_app(config_class=Config):
     from .core.base_model import BaseModel
     
     # Import and initialize DI after models are imported
-    from .config.di_setup import init_di
+    from .core.di_setup import init_di
     init_di()
     
     from .controller.auth import init_app as auth_api_init
@@ -137,6 +137,11 @@ def create_app(config_class=Config):
     from .controller.search import init_app as search_api_init
     search_api = search_api_init()
     app.register_blueprint(search_api)
+    
+    # Register Plan blueprint (Week 4)
+    from .controller.plan import init_app as plan_api_init
+    plan_api = plan_api_init()
+    app.register_blueprint(plan_api)
 
     # # Register health check endpoint
     from .controller.health import init_app as health_api_init

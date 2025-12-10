@@ -8,8 +8,9 @@ import logging
 import functools
 from typing import Callable, Optional
 from flask import request, jsonify
-from app.core.redis_client import get_redis
+import jwt
 from config import Config
+from app.core.clients.redis_client import get_redis
 
 logger = logging.getLogger(__name__)
 
@@ -228,5 +229,24 @@ def get_identifier_by_user_id():
         if hasattr(g, 'current_user') and g.current_user:
             return f"user:{g.current_user.id}"
     except:
+        pass
+    return request.remote_addr or 'unknown'
+
+
+def get_identifier_from_auth_token():
+    """Extract user ID from Authorization bearer token if present.
+
+    Falls back to IP address if token absent or invalid.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return request.remote_addr or 'unknown'
+    try:
+        token = auth_header.split(' ')[1]
+        payload = jwt.decode(token, Config.SECRET_KEY, algorithms=['HS256'])
+        user_id = payload.get('user_id')
+        if user_id:
+            return f"user:{user_id}"
+    except Exception:
         pass
     return request.remote_addr or 'unknown'

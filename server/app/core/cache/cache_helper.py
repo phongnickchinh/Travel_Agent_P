@@ -7,7 +7,7 @@ import json
 import logging
 import functools
 from typing import Any, Callable, Optional, Union
-from app.core.redis_client import get_redis
+from app.core.clients.redis_client import get_redis
 from config import Config
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,10 @@
-from . import celery, mail
+"""
+Email Tasks Module
+==================
+
+Celery tasks for sending emails asynchronously.
+"""
+from .. import celery, mail
 from flask_mail import Message
 from flask import render_template, current_app as app
 import logging

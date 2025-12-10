@@ -19,7 +19,7 @@ from pymongo import GEOSPHERE, TEXT, DESCENDING
 import logging
 from datetime import datetime
 
-from ...core.mongodb_client import get_mongodb_client
+from ...core.clients.mongodb_client import get_mongodb_client
 from ...model.mongo.poi import POI, POISearchRequest, CategoryEnum, PriceLevelEnum
 from ...utils.poi_dedupe import (
     generate_dedupe_key,

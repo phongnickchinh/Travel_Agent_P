@@ -7,7 +7,7 @@ Uses TTL for automatic cleanup - no cron job needed.
 import logging
 from typing import Optional
 from datetime import datetime, timedelta, timezone
-from app.core.redis_client import get_redis
+from app.core.clients.redis_client import get_redis
 from config import Config
 
 logger = logging.getLogger(__name__)

@@ -9,10 +9,10 @@ import requests
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from .base_provider import BaseProvider
-from ..utils.cost_meter import track_google_places_cost
-from ..utils.retry_backoff import retry_with_backoff
-from ..utils.circuit_breaker import CircuitBreakers
+from ..base_provider import BaseProvider
+from ...utils.cost_meter import track_google_places_cost
+from ...utils.retry_backoff import retry_with_backoff
+from ...utils.circuit_breaker import CircuitBreakers
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import logging
 
 from . import auth_api
 from ...service.auth_service import AuthService
-from ...email import send_email
+from ...tasks.email_tasks import send_email
 from ...middleware import (
     JWT_required,
     get_json_or_error,
@@ -15,7 +15,7 @@ from ...utils.response_helpers import (
     build_success_response
 )
 from ...core.di_container import DIContainer
-from ...rate_limiter import rate_limit, get_identifier_by_email
+from ...core.rate_limiter import rate_limit, get_identifier_by_email
 from config import Config
 
 
@@ -33,13 +33,10 @@ class AuthController:
         auth_api.add_url_rule("/refresh-token", "refresh_token", self.refresh_token, methods=["POST"])
         auth_api.add_url_rule("/logout", "logout", self._wrap_jwt_required(self.logout), methods=["POST"])
         auth_api.add_url_rule("/register", "register", self.register, methods=["POST"])
-        auth_api.add_url_rule("/send-verification-code", "send_verification_code", 
-                             self.send_verification_code, methods=["POST"])
+        auth_api.add_url_rule("/send-verification-code", "send_verification_code", self.send_verification_code, methods=["POST"])
         auth_api.add_url_rule("/verify-email", "verify_email", self.verify_email, methods=["POST"])
-        auth_api.add_url_rule("/request-reset-password", "request_reset_password", 
-                             self.request_reset_password, methods=["POST"])
-        auth_api.add_url_rule("/validate-reset-code", "validate_reset_code", 
-                             self.validate_reset_code, methods=["POST"])
+        auth_api.add_url_rule("/request-reset-password", "request_reset_password", self.request_reset_password, methods=["POST"])
+        auth_api.add_url_rule("/validate-reset-code", "validate_reset_code", self.validate_reset_code, methods=["POST"])
         auth_api.add_url_rule("/reset-password", "reset_password", self.reset_password, methods=["POST"])
     
     def _wrap_jwt_required(self, f):

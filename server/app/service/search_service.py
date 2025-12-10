@@ -19,7 +19,7 @@ from typing import List, Dict, Optional, Any
 from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..repo.mongo.interfaces import POIRepositoryInterface
 from ..model.mongo.poi import POISearchRequest
-from ..core.elasticsearch_client import ElasticsearchClient
+from ..core.clients.elasticsearch_client import ElasticsearchClient
 
 logger = logging.getLogger(__name__)
 

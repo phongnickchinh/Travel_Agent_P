@@ -8,7 +8,7 @@ import logging
 from typing import List, Optional
 
 from .base_provider import BaseProvider
-from .google_places_provider import GooglePlacesProvider
+from .places.google_places_provider import GooglePlacesProvider
 
 logger = logging.getLogger(__name__)
 

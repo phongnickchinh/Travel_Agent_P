@@ -1,5 +1,11 @@
+"""
+Dependency Injection Setup
+===========================
 
-from ..core.di_container import DIContainer
+Registers all dependencies (repositories, services) in the DI container.
+"""
+
+from .di_container import DIContainer
 
 _is_initialized = False
 
@@ -17,7 +23,7 @@ def setup_dependencies():
     from ..repo.postgre.interfaces.cost_usage_interface import CostUsageInterface
 
     # Import MongoDB interfaces
-    from ..repo.mongo.interfaces import POIRepositoryInterface
+    from ..repo.mongo.interfaces import POIRepositoryInterface, PlanRepositoryInterface
     
     # Import Elasticsearch interfaces
     from ..repo.es.interfaces import ESPOIRepositoryInterface
@@ -30,6 +36,7 @@ def setup_dependencies():
     
     # Import MongoDB repository implementations
     from ..repo.mongo.poi_repository import POIRepository
+    from ..repo.mongo.plan_repository import PlanRepository
     
     # Import Elasticsearch repository implementations
     from ..repo.es.es_poi_repository import ESPOIRepository
@@ -44,6 +51,7 @@ def setup_dependencies():
     from ..service.cost_usage_service import CostUsageService
     from ..service.places_service import PlacesService
     from ..service.search_service import SearchService
+    from ..service.planner_service import PlannerService  # Week 4
     
     container = DIContainer.get_instance()
     
@@ -56,6 +64,7 @@ def setup_dependencies():
     
     # Register MongoDB repository implementations
     container.register(POIRepositoryInterface.__name__, POIRepository())
+    container.register(PlanRepositoryInterface.__name__, PlanRepository())
     
     # Register Elasticsearch repository implementations
     container.register(ESPOIRepositoryInterface.__name__, ESPOIRepository())
@@ -95,12 +104,18 @@ def setup_dependencies():
         es_repo = container.resolve(ESPOIRepositoryInterface.__name__)
         return SearchService(poi_repo, es_repo)
     
+    def create_planner_service(container):
+        plan_repo = container.resolve(PlanRepositoryInterface.__name__)
+        cost_usage_service = container.resolve(CostUsageService.__name__)
+        return PlannerService(plan_repo, cost_usage_service)
+    
     container.register(AuthService.__name__, create_auth_service)
     container.register(UserService.__name__, create_user_service)
     container.register(EditService.__name__, create_edit_service)
     container.register(CostUsageService.__name__, create_cost_usage_service)
     container.register(PlacesService.__name__, create_places_service)
     container.register(SearchService.__name__, create_search_service)
+    container.register(PlannerService.__name__, create_planner_service)  # Week 4
 
     _is_initialized = True
     return container

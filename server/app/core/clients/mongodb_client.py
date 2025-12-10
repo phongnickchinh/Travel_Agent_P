@@ -327,6 +327,20 @@ class MongoDBClient:
             
             logger.info("[MONGODB] All indexes created successfully!")
             
+            # Plan Collection Indexes (Week 4)
+            # NOTE: Some modules use collection name "plan" or "plans"; create indexes for both
+            try:
+                for name in ("plan", "plans"):
+                    plan_collection = db[name]
+                    plan_collection.create_index("plan_id", unique=True, name=f"idx_{name}_plan_id")
+                    plan_collection.create_index("user_id", name=f"idx_{name}_user_id")
+                    plan_collection.create_index([("user_id", 1), ("created_at", -1)], name=f"idx_{name}_user_created")
+                    plan_collection.create_index("status", name=f"idx_{name}_status")
+                    plan_collection.create_index("destination", name=f"idx_{name}_destination")
+                    logger.info(f"[MONGODB] Created indexes for plan collection: {name}")
+            except Exception as e:
+                logger.warning(f"[MONGODB] Failed to create plan collection indexes: {e}")
+            
         except Exception as e:
             logger.error(f"[MONGODB] Failed to create indexes: {e}")
             raise

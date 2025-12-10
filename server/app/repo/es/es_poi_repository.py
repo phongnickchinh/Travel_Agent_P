@@ -11,7 +11,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 from elasticsearch.exceptions import NotFoundError, RequestError
 
-from ...core.elasticsearch_client import ElasticsearchClient
+from ...core.clients.elasticsearch_client import ElasticsearchClient
 from ...repo.es.interfaces import ESPOIRepositoryInterface
 from config import Config
 

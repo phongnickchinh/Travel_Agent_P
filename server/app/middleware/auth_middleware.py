@@ -11,7 +11,7 @@ from flask import request, jsonify
 from config import secret_key
 from ..core.di_container import DIContainer
 from ..repo.postgre.interfaces.user_repository_interface import UserInterface
-from ..cache.redis_blacklist import RedisBlacklist
+from ..core.cache.redis_blacklist import RedisBlacklist
 
 logger = logging.getLogger(__name__)
 

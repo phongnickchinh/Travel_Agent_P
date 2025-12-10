@@ -20,8 +20,8 @@ def initialize_elasticsearch():
     Returns:
         bool: True if initialization successful, False otherwise
     """
-    from .elasticsearch_client import ElasticsearchClient
-    from .mongodb_client import get_mongodb_client
+    from .clients.elasticsearch_client import ElasticsearchClient
+    from .clients.mongodb_client import get_mongodb_client
     from ..repo.es.es_poi_repository import ESPOIRepository
     
     try:
@@ -69,7 +69,7 @@ def _sync_pois_from_mongodb(es_repo):
     Args:
         es_repo: ESPOIRepository instance
     """
-    from .mongodb_client import get_mongodb_client
+    from .clients.mongodb_client import get_mongodb_client
     
     try:
         mongodb_client = get_mongodb_client()

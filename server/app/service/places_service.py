@@ -22,7 +22,7 @@ from ..repo.mongo.interfaces import POIRepositoryInterface
 from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..model.mongo.poi import POI, POISearchRequest
 from ..utils.poi_dedupe import generate_dedupe_key, are_pois_duplicate
-from ..core.elasticsearch_client import ElasticsearchClient
+from ..core.clients.elasticsearch_client import ElasticsearchClient
 
 logger = logging.getLogger(__name__)
 

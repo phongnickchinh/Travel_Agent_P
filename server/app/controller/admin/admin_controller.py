@@ -26,7 +26,7 @@ from ...utils.response_helpers import (
     build_success_response
 )
 from ...core.di_container import DIContainer
-from ...rate_limiter import rate_limit, get_identifier_by_email
+from ...core.rate_limiter import rate_limit, get_identifier_by_email
 from config import Config
 
 logger = logging.getLogger(__name__)

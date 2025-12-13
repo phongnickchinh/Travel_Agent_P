@@ -118,6 +118,29 @@ export default function Dashboard() {
           </ul>
         </div>
 
+        {/* Quick Actions */}
+        <div className="info-card quick-actions-card">
+          <h3>🚀 Bắt đầu ngay</h3>
+          <div className="quick-actions-grid">
+            <button 
+              className="quick-action-btn primary"
+              onClick={() => navigate('/create-plan')}
+            >
+              <span className="qa-icon">✨</span>
+              <span className="qa-text">Tạo Kế Hoạch Du Lịch</span>
+              <span className="qa-desc">Để AI lên lịch trình cho bạn</span>
+            </button>
+            <button 
+              className="quick-action-btn secondary"
+              onClick={() => navigate('/search-demo')}
+            >
+              <span className="qa-icon">🔍</span>
+              <span className="qa-text">Tìm Địa Điểm</span>
+              <span className="qa-desc">Khám phá POI xung quanh</span>
+            </button>
+          </div>
+        </div>
+
         <div className="actions">
           <button className="btn btn-primary" onClick={handleGoHome}>
             Go to Home

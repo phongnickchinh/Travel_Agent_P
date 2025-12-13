@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "🚀 Starting Graduation Card Server..."
-
+pip install -r requirements.txt
 # Start Celery worker in the background
 echo "📋 Starting Celery worker..."
 celery -A celery_worker.celery worker --loglevel=info &

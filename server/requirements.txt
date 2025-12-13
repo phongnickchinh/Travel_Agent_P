@@ -73,8 +73,8 @@ python-Levenshtein
 geopy
 
 # Validation
-pydantic
-typing_extensions==4.13.2
+pydantic==2.12.5
+typing_extensions==4.15.0
 tzdata==2025.2
 tzlocal==5.3.1
 uritemplate==4.1.1

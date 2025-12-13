@@ -14,7 +14,6 @@ click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
 colorama==0.4.6
-cryptography==45.0.3
 firebase-admin==6.8.0
 Flask==3.1.1
 Flask-APScheduler==1.13.1
@@ -25,7 +24,6 @@ Flask-SQLAlchemy==3.1.1
 google-api-core==2.24.2
 google-api-python-client==2.170.0
 google-auth==2.40.2
-google-auth-httplib2==0.2.0
 google-cloud-core==2.4.3
 google-cloud-firestore==2.20.2
 google-cloud-storage==3.1.0
@@ -36,7 +34,6 @@ greenlet==3.2.2
 grpcio==1.71.0
 grpcio-status==1.71.0
 gunicorn==23.0.0
-httplib2==0.22.0
 idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.6
@@ -74,8 +71,6 @@ geopy
 
 # Validation
 pydantic==2.5.3
-jsonschema==4.20.0
-tomli==2.2.1
 typing_extensions==4.13.2
 tzdata==2025.2
 tzlocal==5.3.1

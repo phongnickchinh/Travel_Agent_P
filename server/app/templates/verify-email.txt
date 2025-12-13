@@ -1,13 +1,14 @@
+Verify Your Email Address
+
 Dear {{ user.name }},
 
-We’re thrilled to welcome you to Travel Agent P – your ultimate travel companion!
-To complete your registration and get started, please use the verification code below:
+We're excited to have you on board! To complete your registration and start planning your trips effortlessly, please use the verification code below:
 
 Verification Code: {{ code }}
 
-This code is valid for the next 10 minutes. Enter it in the Travel Agent P app to activate your account and unlock features like personalized travel itineraries, real-time flight updates, and much more!
+This code is valid for the next 10 minutes. Enter it in the Travel Agent P app to activate your account and unlock personalized travel itineraries, real-time flight updates, and more!
 
-If you did not request this code, please ignore this email or reach out to our support team for assistance.
+If you did not request this code, please ignore this email or contact our support team for assistance.
 
 Warm regards,
 P Team

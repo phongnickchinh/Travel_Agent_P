@@ -23,6 +23,7 @@ export function getDeviceId() {
  * Login with email and password
  */
 export async function loginApi(credentials) {
+  console.log(import.meta.env.VITE_APP_NAME);
   const res = await api.post('/login', credentials);
   // res.data = { user: {...}, access_token, refresh_token }
   return res.data;

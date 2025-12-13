@@ -10,6 +10,22 @@ load_dotenv(dotenv_path=env_path)
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "secret_key")
     CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
+    
+    # Celery Worker Pool: Windows uses 'solo' (no multiprocessing),
+    # Linux/Mac use 'prefork' for better performance
+    CELERY_WORKER_POOL = os.environ.get("CELERY_WORKER_POOL")
+    if not CELERY_WORKER_POOL:
+        CELERY_WORKER_POOL = "solo" if os.name == "nt" else "prefork"
+    
+    # Celery Result Backend & Worker Timeout Settings
+    # NOTE: These are INDEPENDENT from cache TTL and do NOT affect Redis cache expiration
+    # They only control how long Celery waits for task results from Redis
+    CELERY_RESULT_EXPIRES = int(os.environ.get("CELERY_RESULT_EXPIRES", 3600))  # 1 hour
+    CELERY_SOCKET_CONNECT_TIMEOUT = int(os.environ.get("CELERY_SOCKET_CONNECT_TIMEOUT", 10))  # 10 seconds
+    CELERY_SOCKET_TIMEOUT = int(os.environ.get("CELERY_SOCKET_TIMEOUT", 30))  # 30 seconds (for long tasks)
+    CELERY_SOCKET_MAX_RETRIES = int(os.environ.get("CELERY_SOCKET_MAX_RETRIES", 5))
+    CELERY_PREFETCH_MULTIPLIER = int(os.environ.get("CELERY_PREFETCH_MULTIPLIER", 1))
+    CELERY_MAX_TASKS_PER_CHILD = int(os.environ.get("CELERY_MAX_TASKS_PER_CHILD", 100))
 
     POSTGRES_USERNAME = os.environ.get("POSTGRES_USER")
     POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
@@ -60,6 +76,11 @@ class Config:
     RATE_LIMIT_REGISTER_WINDOW = int(os.environ.get("RATE_LIMIT_REGISTER_WINDOW", 3600))  # 1 hour
     RATE_LIMIT_RESET_PASSWORD = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD", 3))
     RATE_LIMIT_RESET_PASSWORD_WINDOW = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD_WINDOW", 3600))
+    # Plan creation rate limit (default: 5 plans per hour)
+    RATE_LIMIT_PLAN_CREATION = int(os.environ.get("RATE_LIMIT_PLAN_CREATION", 5))
+    RATE_LIMIT_PLAN_CREATION_WINDOW = int(os.environ.get("RATE_LIMIT_PLAN_CREATION_WINDOW", 3600))
+    # Generic rate limit key prefix
+    RATE_LIMIT_KEY_PREFIX = os.environ.get("RATE_LIMIT_KEY_PREFIX", "travel_agent:rate_limit")
     
     # Cache Configuration
     CACHE_ENABLED = os.environ.get("CACHE_ENABLED", "True").lower() == "true"
@@ -72,6 +93,23 @@ class Config:
     ELASTICSEARCH_CONFIG_FILE_PATH = os.environ.get("ELASTICSEARCH_CONFIG_FILE_PATH", "repo/es/mappings/poi_index_mapping.json")
     ELASTICSEARCH_TIMEOUT = int(os.environ.get("ELASTICSEARCH_TIMEOUT", 30))
     ELASTICSEARCH_MAX_RETRIES = int(os.environ.get("ELASTICSEARCH_MAX_RETRIES", 3))
+    
+    # HuggingFace + LangChain Configuration (Week 4)
+    HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY")
+    HUGGINGFACE_MODEL = os.environ.get("HUGGINGFACE_MODEL", "meta-llama/Llama-3.2-3B-Instruct")
+    LANGCHAIN_MAX_RETRIES = int(os.environ.get("LANGCHAIN_MAX_RETRIES", 3))
+    LANGCHAIN_TIMEOUT = int(os.environ.get("LANGCHAIN_TIMEOUT", 120))
+    
+    # Groq API Configuration (FREE for development)
+    # Get free API key at: https://console.groq.com
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
+    
+    # LLM Provider Selection: "groq" (free/fast), "huggingface", "openai"
+    LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "groq")
+    
+    # Mock POI Configuration
+    MOCK_POI_ENABLED = os.environ.get("MOCK_POI_ENABLED", "True").lower() == "true"
 
 
 secret_key = Config.SECRET_KEY

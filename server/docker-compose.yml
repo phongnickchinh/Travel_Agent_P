@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   # Elasticsearch for full-text search and autocomplete
   elasticsearch:
@@ -49,6 +51,40 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Web app (Flask) removed for now; running only Celery worker/beat with Redis
+
+  # Celery worker - runs background tasks (uses project mounted from host)
+  worker:
+    image: python:3.11-slim
+    container_name: travel_agent_worker
+    restart: on-failure
+    volumes:
+      - ..:/app
+    working_dir: /app/server
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - travel_agent_network
+    command: sh -c "celery -A celery_worker.celery worker --loglevel=info --concurrency=1"
+
+  # Optional: Celery beat scheduler (periodic tasks)
+  beat:
+    image: python:3.11-slim
+    container_name: travel_agent_beat
+    restart: on-failure
+    volumes:
+      - ..:/app
+    working_dir: /app/server
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - travel_agent_network
+    command: sh -c "celery -A celery_worker.celery beat --loglevel=info"
 
 volumes:
   es_data:

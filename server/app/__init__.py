@@ -96,7 +96,32 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
-    celery.conf.update(app.config)
+    
+    # Configure Celery with proper timeout and connection settings for long-running tasks (e.g., LLM generation)
+    # NOTE: These settings (socket_timeout, socket_connect_timeout) are for Celery result backend communication
+    # They are INDEPENDENT from Redis cache TTL (CACHE_DEFAULT_TTL) and do NOT affect cache expiration
+    celery.conf.update(
+        app.config,
+        # Task result configuration
+        result_expires=Config.CELERY_RESULT_EXPIRES,
+        task_track_started=True,
+        task_acks_late=True,  # Task ack after execution, not before
+        # Redis result backend connection settings (handle long-running tasks like LLM generation)
+        result_backend_transport_options={
+            'retry_on_timeout': True,
+            'socket_connect_timeout': Config.CELERY_SOCKET_CONNECT_TIMEOUT,
+            'socket_timeout': Config.CELERY_SOCKET_TIMEOUT,
+            'max_retries': Config.CELERY_SOCKET_MAX_RETRIES,
+        },
+        # Broker connection resilience
+        broker_pool_limit=0,  # Unlimited connection pool
+        broker_connection_retry=True,
+        broker_connection_retry_on_startup=True,
+        broker_connection_max_retries=None,  # Infinite retries
+        # Worker settings
+        worker_prefetch_multiplier=Config.CELERY_PREFETCH_MULTIPLIER,
+        worker_max_tasks_per_child=Config.CELERY_MAX_TASKS_PER_CHILD,
+    )
     
     # Auto migrate upgrade on server restart
     with app.app_context():

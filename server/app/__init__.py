@@ -100,19 +100,39 @@ def create_app(config_class=Config):
     # Configure Celery with proper timeout and connection settings for long-running tasks (e.g., LLM generation)
     # NOTE: These settings (socket_timeout, socket_connect_timeout) are for Celery result backend communication
     # They are INDEPENDENT from Redis cache TTL (CACHE_DEFAULT_TTL) and do NOT affect cache expiration
+    
+    # Broker transport options for TLS (rediss://) support
+    broker_transport_opts = {
+        'retry_on_timeout': True,
+        'socket_connect_timeout': Config.CELERY_SOCKET_CONNECT_TIMEOUT,
+        'socket_timeout': Config.CELERY_SOCKET_TIMEOUT,
+        'max_retries': Config.CELERY_SOCKET_MAX_RETRIES,
+    }
+    
+    # Result backend transport options (same as broker for consistency)
+    result_backend_transport_opts = {
+        'retry_on_timeout': True,
+        'socket_connect_timeout': Config.CELERY_SOCKET_CONNECT_TIMEOUT,
+        'socket_timeout': Config.CELERY_SOCKET_TIMEOUT,
+        'max_retries': Config.CELERY_SOCKET_MAX_RETRIES,
+    }
+    
+    # Add SSL cert requirements for rediss:// URLs (both broker and result backend)
+    if Config.CELERY_BROKER_URL and Config.CELERY_BROKER_URL.startswith('rediss://'):
+        import ssl
+        broker_transport_opts['ssl_cert_reqs'] = ssl.CERT_NONE  # Accept self-signed certs
+        result_backend_transport_opts['ssl_cert_reqs'] = ssl.CERT_NONE
+    
     celery.conf.update(
         app.config,
         # Task result configuration
         result_expires=Config.CELERY_RESULT_EXPIRES,
         task_track_started=True,
         task_acks_late=True,  # Task ack after execution, not before
+        # Broker transport options (for TLS support)
+        broker_transport_options=broker_transport_opts,
         # Redis result backend connection settings (handle long-running tasks like LLM generation)
-        result_backend_transport_options={
-            'retry_on_timeout': True,
-            'socket_connect_timeout': Config.CELERY_SOCKET_CONNECT_TIMEOUT,
-            'socket_timeout': Config.CELERY_SOCKET_TIMEOUT,
-            'max_retries': Config.CELERY_SOCKET_MAX_RETRIES,
-        },
+        result_backend_transport_options=result_backend_transport_opts,
         # Broker connection resilience
         broker_pool_limit=0,  # Unlimited connection pool
         broker_connection_retry=True,

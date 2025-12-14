@@ -41,6 +41,18 @@ class Config:
             )
         else:
             pass
+    
+    # Fix Railway/Render postgres:// URLs (need postgresql+psycopg2://)
+    if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgres://"):
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace("postgres://", "postgresql+psycopg2://", 1)
+    
+    # Add SSL mode for production databases (Railway, Render, etc.)
+    if SQLALCHEMY_DATABASE_URI and ("railway" in SQLALCHEMY_DATABASE_URI or "render" in SQLALCHEMY_DATABASE_URI):
+        if "?" not in SQLALCHEMY_DATABASE_URI:
+            SQLALCHEMY_DATABASE_URI += "?sslmode=require"
+        elif "sslmode" not in SQLALCHEMY_DATABASE_URI:
+            SQLALCHEMY_DATABASE_URI += "&sslmode=require"
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     MAIL_SERVER = "smtp.gmail.com"

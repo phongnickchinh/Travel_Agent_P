@@ -63,6 +63,8 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
     
     # Redis Configuration
+    # Support both REDIS_URL (full connection string) and individual components
+    REDIS_URL = os.environ.get("REDIS_URL")
     REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
     REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
     REDIS_DB = int(os.environ.get("REDIS_DB", 0))

@@ -31,21 +31,40 @@ class RedisClient:
         """
         if cls._instance is None:
             try:
-                cls._instance = redis.Redis(
-                    host=Config.REDIS_HOST,
-                    port=Config.REDIS_PORT,
-                    db=Config.REDIS_DB,
-                    password=Config.REDIS_PASSWORD if hasattr(Config, 'REDIS_PASSWORD') else None,
-                    decode_responses=True,  # Auto decode bytes to strings
-                    socket_connect_timeout=5,
-                    socket_keepalive=True,
-                    health_check_interval=30
-                )
+                # Prioritize REDIS_URL if provided (for managed services like Render/Upstash)
+                if hasattr(Config, 'REDIS_URL') and Config.REDIS_URL:
+                    # Support both redis:// and rediss:// (TLS)
+                    connection_kwargs = {
+                        'decode_responses': True,
+                        'socket_connect_timeout': 10,
+                        'socket_keepalive': True,
+                        'health_check_interval': 30
+                    }
+                    
+                    # Add SSL support for rediss:// URLs
+                    if Config.REDIS_URL.startswith('rediss://'):
+                        connection_kwargs['ssl_cert_reqs'] = None  # Disable cert verification for managed Redis
+                    
+                    cls._instance = redis.from_url(Config.REDIS_URL, **connection_kwargs)
+                    logger.info(f"[REDIS] Connecting via REDIS_URL (TLS: {Config.REDIS_URL.startswith('rediss://')})")
+                else:
+                    # Fallback to individual connection parameters
+                    cls._instance = redis.Redis(
+                        host=Config.REDIS_HOST,
+                        port=Config.REDIS_PORT,
+                        db=Config.REDIS_DB,
+                        password=Config.REDIS_PASSWORD if hasattr(Config, 'REDIS_PASSWORD') else None,
+                        decode_responses=True,
+                        socket_connect_timeout=5,
+                        socket_keepalive=True,
+                        health_check_interval=30
+                    )
+                    logger.info(f"[REDIS] Connecting to {Config.REDIS_HOST}:{Config.REDIS_PORT}")
                 
                 # Test connection
                 cls._instance.ping()
                 cls._initialized = True
-                logger.info(f"[REDIS] Connected: {Config.REDIS_HOST}:{Config.REDIS_PORT}")
+                logger.info(f"[REDIS] Connected successfully")
                 
             except redis.ConnectionError as e:
                 logger.error(f"[REDIS] Connection failed: {str(e)}")

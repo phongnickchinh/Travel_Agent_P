@@ -1,11 +1,16 @@
 /**
- * Search API Service - Elasticsearch Autocomplete
+ * Search API Service - Hybrid Autocomplete (ES + MongoDB + Google)
  * 
  * Cost Optimization Strategy:
  * 1. Debouncing: 300ms delay to reduce API calls by 80-90%
  * 2. Client-side caching: Cache results for 1 hour
  * 3. Minimum query length: 2 characters
  * 4. Local storage backup: Reuse recent searches
+ * 5. Session tokens: Google Places billing optimization
+ * 
+ * Migration Note (2025-01):
+ * - OLD: Multi-index autocomplete (/search/autocomplete) - REMOVED
+ * - NEW: Hybrid V2 autocomplete (/v2/autocomplete) with ES + MongoDB + Google
  * 
  * Expected Savings:
  * - Without optimization: 10 keystrokes = 10 API calls
@@ -68,101 +73,11 @@ class SearchAPI {
     });
   }
 
-  /**
-   * Autocomplete search with debouncing and caching
-   * 
-   * @param {string} query - Search query (min 2 chars)
-   * @param {object} options - Optional parameters
-   * @param {number} options.limit - Max results (default: 10)
-   * @param {object} options.location - User location {lat, lng}
-   * @param {number} options.radius - Search radius in km (default: 20)
-   * @returns {Promise<Array>} - POI suggestions
-   */
-  async autocomplete(query, options = {}) {
-    // Validation
-    if (!query || query.trim().length < 2) {
-      return [];
-    }
-
-    const cleanQuery = query.trim();
-    
-    // Check cache first (client-side optimization)
-    const cached = this.getCached(cleanQuery);
-    if (cached) {
-      console.log('[CACHE HIT] Autocomplete:', cleanQuery);
-      return cached;
-    }
-
-    // Build query parameters
-    const params = {
-      q: cleanQuery,
-      limit: options.limit || 10,
-    };
-
-    // Add location if provided (for geo-distance sorting)
-    if (options.location) {
-      params.lat = options.location.lat;
-      params.lng = options.location.lng;
-      params.radius = options.radius || 20;
-    }
-
-    try {
-      // API call to backend Elasticsearch
-      const response = await api.get('/search/autocomplete', { params });
-      
-      const data = response.data;
-      const results = data.suggestions || [];
-      
-      // Cache results
-      this.setCached(cleanQuery, results);
-      
-      // Save to recent searches
-      this.addRecentSearch(cleanQuery, results.length > 0);
-      
-      console.log('[API CALL] Autocomplete:', cleanQuery, `(${data.count || 0} results)`);
-      
-      return results;
-      
-    } catch (error) {
-      console.error('[ERROR] Autocomplete failed:', error);
-      
-      // Fallback to recent searches
-      return this.getRecentSearches()
-        .filter(s => s.query.toLowerCase().includes(cleanQuery.toLowerCase()))
-        .slice(0, 5)
-        .map(s => ({ name: s.query, type: 'recent', _fallback: true }));
-    }
-  }
-
-  /**
-   * Debounced autocomplete - reduces API calls by 80-90%
-   * 
-   * Usage:
-   *   const results = await searchAPI.debouncedAutocomplete('cafe', {...});
-   */
-  debouncedAutocomplete(query, options = {}) {
-    return new Promise((resolve) => {
-      // If there is no debounce delay (NONE or 0), call the autocomplete directly
-      if (!this.debounceDelay || this.debounceDelay <= 0) {
-        this.autocomplete(query, options).then(resolve).catch((err) => {
-          console.error('[ERROR] Debounced autocomplete direct call failed:', err);
-          resolve([]);
-        });
-        return;
-      }
-
-      // Clear previous timer
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-
-      // Set new timer
-      this.debounceTimer = setTimeout(async () => {
-        const results = await this.autocomplete(query, options);
-        resolve(results);
-      }, this.debounceDelay);
-    });
-  }
+  // ============================================
+  // NOTE: Old autocomplete() method REMOVED
+  // Use autocompleteV2() instead (hybrid ES + MongoDB + Google)
+  // Migration date: 2025-01
+  // ============================================
 
   /**
    * Full search with filters (ES lexical + geo)
@@ -298,6 +213,205 @@ class SearchAPI {
    */
   getDebounceDelay() {
     return this.debounceDelay;
+  }
+
+  // ============================================
+  // V2 HYBRID AUTOCOMPLETE API (ES + MongoDB + Google)
+  // ============================================
+
+  /**
+   * Session token for Google Places API billing optimization.
+   * Reuse same token for autocomplete requests, reset after place selection.
+   */
+  _sessionToken = null;
+
+  /**
+   * Get or create session token for autocomplete session.
+   * @returns {string} UUID session token
+   */
+  getSessionToken() {
+    if (!this._sessionToken) {
+      this._sessionToken = crypto.randomUUID();
+    }
+    return this._sessionToken;
+  }
+
+  /**
+   * Reset session token after place selection (for billing optimization).
+   */
+  resetSessionToken() {
+    this._sessionToken = null;
+  }
+
+  /**
+   * V2 Hybrid Autocomplete - Uses ES + MongoDB + Google fallback
+   * 
+   * @param {string} query - Search query (min 2 chars)
+   * @param {object} options - Optional parameters
+   * @param {number} options.limit - Max results (default: 5)
+   * @param {number} options.lat - Latitude for location bias
+   * @param {number} options.lng - Longitude for location bias
+   * @param {string[]} options.types - Filter by place types
+   * @param {boolean} options.useSessionToken - Auto-manage session token (default: true)
+   * @returns {Promise<object>} - {suggestions, total, sources, query_time_ms}
+   */
+  async autocompleteV2(query, options = {}) {
+    // Validation
+    if (!query || query.trim().length < 2) {
+      return { suggestions: [], total: 0, sources: {} };
+    }
+
+    const cleanQuery = query.trim();
+    
+    // Check cache first (same cache as v1)
+    const cacheKey = `v2:${cleanQuery}`;
+    const cached = this.getCached(cacheKey);
+    if (cached) {
+      console.log('[CACHE HIT] AutocompleteV2:', cleanQuery);
+      return cached;
+    }
+
+    // Build query parameters
+    const params = new URLSearchParams({
+      q: cleanQuery,
+      limit: options.limit || 5,
+    });
+
+    // Add location for geo-biasing
+    if (options.lat && options.lng) {
+      params.append('lat', options.lat);
+      params.append('lng', options.lng);
+    }
+
+    // Add types filter
+    if (options.types && Array.isArray(options.types)) {
+      params.append('types', options.types.join(','));
+    }
+
+    // Add session token (for Google Places billing optimization)
+    if (options.useSessionToken !== false) {
+      params.append('session_token', this.getSessionToken());
+    }
+
+    try {
+      // API call to v2 hybrid endpoint
+      const response = await api.get(`/v2/autocomplete?${params}`);
+      const data = response.data;
+      
+      // Cache results
+      this.setCached(cacheKey, data);
+      
+      // Save to recent searches
+      this.addRecentSearch(cleanQuery, data.total > 0);
+      
+      console.log(
+        '[API CALL] AutocompleteV2:', cleanQuery,
+        `(${data.total || 0} results)`,
+        'Sources:', data.sources || {}
+      );
+      
+      return data;
+      
+    } catch (error) {
+      console.error('[ERROR] AutocompleteV2 failed:', error);
+      
+      // Fallback to recent searches if API fails
+      console.log('[FALLBACK] Using recent searches...');
+      const recentResults = this.getRecentSearches()
+        .filter(s => s.query.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 5)
+        .map(s => ({ name: s.query, type: 'recent', source_type: 'recent', _fallback: true }));
+      return {
+        suggestions: recentResults,
+        total: recentResults.length,
+        sources: { fallback_recent: recentResults.length },
+        query_time_ms: 0
+      };
+    }
+  }
+
+  /**
+   * Debounced V2 Autocomplete - reduces API calls
+   * 
+   * Note: This is the primary autocomplete method.
+   * For backward compatibility, debouncedAutocomplete() is an alias to this.
+   */
+  debouncedAutocompleteV2(query, options = {}) {
+    return new Promise((resolve) => {
+      // If no debounce delay, call directly
+      if (!this.debounceDelay || this.debounceDelay <= 0) {
+        this.autocompleteV2(query, options).then(resolve).catch((err) => {
+          console.error('[ERROR] DebouncedAutocompleteV2 failed:', err);
+          resolve({ suggestions: [], total: 0, sources: {} });
+        });
+        return;
+      }
+
+      // Clear previous timer
+      if (this.debounceTimer) {
+        clearTimeout(this.debounceTimer);
+      }
+
+      // Set new timer
+      this.debounceTimer = setTimeout(async () => {
+        const results = await this.autocompleteV2(query, options);
+        resolve(results);
+      }, this.debounceDelay);
+    });
+  }
+
+  /**
+   * Backward compatibility alias - points to V2
+   */
+  debouncedAutocomplete(query, options = {}) {
+    return this.debouncedAutocompleteV2(query, options);
+  }
+
+  /**
+   * Backward compatibility alias - points to V2
+   */
+  autocomplete(query, options = {}) {
+    return this.autocompleteV2(query, options);
+  }
+
+  /**
+   * Resolve pending place - Get full details for a pending autocomplete suggestion
+   * 
+   * @param {string} placeId - Google Place ID
+   * @param {string} sessionToken - Session token (optional, uses internal if not provided)
+   * @returns {Promise<object>} - {place: {...}, status: "resolved"}
+   */
+  async resolvePlace(placeId, sessionToken = null) {
+    try {
+      const token = sessionToken || this.getSessionToken();
+      
+      const response = await api.post(`/v2/autocomplete/resolve/${placeId}`, {
+        session_token: token
+      });
+      
+      // Reset session token after successful resolution
+      this.resetSessionToken();
+      
+      console.log('[API CALL] ResolvePlace:', placeId, '✓');
+      return response.data;
+      
+    } catch (error) {
+      console.error('[ERROR] ResolvePlace failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get autocomplete cache statistics (for monitoring)
+   */
+  async getAutocompleteStats() {
+    try {
+      const response = await api.get('/v2/autocomplete/stats');
+      return response.data;
+    } catch (error) {
+      console.error('[ERROR] GetAutocompleteStats failed:', error);
+      return null;
+    }
   }
 }
 

@@ -8,6 +8,11 @@
  * - Loading states
  * - Keyboard navigation (↑↓ arrows, Enter, Esc)
  * - Responsive design
+ * - Hybrid V2 API: ES + MongoDB + Google Places
+ * 
+ * Migration Note (2025-01):
+ * - OLD: Multi-index v1 API - REMOVED
+ * - NEW: Hybrid v2 API exclusively
  * 
  * Cost Impact:
  * - User types "restaurant" (10 keystrokes)
@@ -33,6 +38,7 @@ const SearchAutocomplete = ({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [showRecent, setShowRecent] = useState(false);
+  const [resolvingId, setResolvingId] = useState(null);  // Track pending resolution
   
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -67,13 +73,37 @@ const SearchAutocomplete = ({
     }
 
     try {
-      // Use debounced autocomplete (300ms delay)
-      const suggestions = await searchAPI.debouncedAutocomplete(value, {
+      // Use V2 Hybrid API (ES + MongoDB + Google)
+      const response = await searchAPI.debouncedAutocompleteV2(value, {
         limit: maxResults,
-        location: location
+        lat: location?.lat,
+        lng: location?.lng
       });
+      
+      // Debug: Log response
+      console.log('[DEBUG] AutocompleteV2 response:', response);
+      
+      const suggestions = response.suggestions || [];
 
-      setResults(suggestions);
+      // Debug: Log suggestions to check structure
+      console.log('[DEBUG] Autocomplete suggestions:', suggestions);
+      
+      // Ensure suggestions is an array and flatten nested objects
+      const validResults = Array.isArray(suggestions) 
+        ? suggestions.map(item => {
+            // If item.name is an object (nested incorrectly), flatten it
+            if (item.name && typeof item.name === 'object' && item.name.name) {
+              return {
+                ...item.name,  // Spread nested properties (name, poi_id, address, rating, types)
+                source_type: item.source_type  // Keep source_type from parent
+              };
+            }
+            // Otherwise return as-is
+            return item;
+          })
+        : [];
+      
+      setResults(validResults);
       setShowRecent(false);
       setIsLoading(false);
 
@@ -82,13 +112,45 @@ const SearchAutocomplete = ({
       setResults([]);
       setIsLoading(false);
     }
-  }, [location, minLength, maxResults]);
+  }, [location, effectiveMinLength, maxResults]);
 
   /**
    * Handle result selection
+   * Handle pending items that need resolution
    */
-  const handleSelect = useCallback((result) => {
-    setQuery(result.name || result.query || '');
+  const handleSelect = useCallback(async (result) => {
+    // If item is pending, resolve it first
+    if (result.status === 'pending' && result.place_id) {
+      try {
+        setResolvingId(result.place_id);
+        console.log('[RESOLVE] Resolving pending place:', result.place_id);
+        
+        const resolved = await searchAPI.resolvePlace(result.place_id);
+        
+        setResolvingId(null);
+        setQuery(resolved.place?.main_text || resolved.place?.name || result.main_text || '');
+        setIsOpen(false);
+        setResults([]);
+        setShowRecent(false);
+        
+        if (onSelect) {
+          // Return resolved place with full details
+          onSelect({
+            ...result,
+            ...resolved.place,
+            _resolved: true
+          });
+        }
+        return;
+      } catch (error) {
+        console.error('[ERROR] Failed to resolve place:', error);
+        setResolvingId(null);
+        // Continue with unresolved data
+      }
+    }
+    
+    // Normal selection (cached result)
+    setQuery(result.name || result.main_text || result.query || '');
     setIsOpen(false);
     setResults([]);
     setShowRecent(false);
@@ -313,31 +375,61 @@ const SearchAutocomplete = ({
           <ul className="results-list">
             {results.map((result, index) => (
               <li
-                key={result.poi_id || result.query || index}
-                className={`result-item ${selectedIndex === index ? 'selected' : ''}`}
+                key={result.id || result.poi_id || result.query || index}
+                className={`result-item ${selectedIndex === index ? 'selected' : ''} ${result.source_type || ''}`}
                 onClick={() => handleSelect(result)}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
                 {/* Icon */}
                 <span className="result-icon">
-                  {getTypeIcon(showRecent ? 'recent' : result.primary_type || result.types?.[0])}
+                  {getTypeIcon(
+                    showRecent ? 'recent' : (
+                      result.type || 
+                      result.primary_type || 
+                      (Array.isArray(result.types) ? result.types[0] : result.types)
+                    ), 
+                    result.source_type
+                  )}
                 </span>
 
                 {/* Content */}
                 <div className="result-content">
                   <div className="result-name">
-                    {result.name || result.query}
+                    {result.name || result.main_text || result.query}
+                    {result.source_type && (
+                      <span className="source-badge">
+                        {result.source_type === 'admin' ? 'Khu vực' : 
+                         result.source_type === 'region' ? 'Vùng' : 
+                         result.source_type === 'es' ? 'ES' :
+                         result.source_type === 'google' ? 'Google' : 'POI'}
+                      </span>
+                    )}
+                    {/* Pending status badge */}
+                    {result.status === 'pending' && resolvingId !== result.place_id && (
+                      <span className="pending-badge" title="Cần tải thêm chi tiết">⏳</span>
+                    )}
+                    {/* Resolving spinner */}
+                    {resolvingId === result.place_id && (
+                      <span className="resolving-spinner" title="Đang tải...">🔄</span>
+                    )}
                   </div>
                   
-                  {result.address && (
+                  {/* Secondary text */}
+                  {result.secondary_text && (
                     <div className="result-address">
-                      {result.address}
+                      {result.secondary_text}
+                    </div>
+                  )}
+                  
+                  {result.address && !result.secondary_text && (
+                    <div className="result-address">
+                      {typeof result.address === 'string' ? result.address : result.address?.formatted_address || ''}
                     </div>
                   )}
 
-                  {result.primary_type && !showRecent && (
+                  {(result.type || result.primary_type) && !showRecent && (
                     <div className="result-type">
-                      {result.primary_type}
+                      {result.type || result.primary_type}
                     </div>
                   )}
                 </div>
@@ -372,7 +464,7 @@ const SearchAutocomplete = ({
       )}
 
       {/* Inline Styles */}
-      <style jsx>{`
+      <style>{`
         .search-autocomplete-container {
           position: relative;
           width: 100%;
@@ -521,6 +613,59 @@ const SearchAutocomplete = ({
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .source-badge {
+          display: inline-block;
+          font-size: 10px;
+          font-weight: 500;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: #e0f2fe;
+          color: #0369a1;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* V2: Pending badge for items needing resolution */
+        .pending-badge {
+          font-size: 12px;
+          opacity: 0.7;
+        }
+
+        /* V2: Resolving spinner */
+        .resolving-spinner {
+          font-size: 14px;
+          animation: spin 1s linear infinite;
+        }
+
+        .result-item.admin .source-badge {
+          background: #fef3c7;
+          color: #92400e;
+        }
+
+        .result-item.region .source-badge {
+          background: #dbeafe;
+          color: #1e40af;
+        }
+
+        .result-item.poi .source-badge,
+        .result-item.es .source-badge {
+          background: #dcfce7;
+          color: #166534;
+        }
+
+        .result-item.google .source-badge {
+          background: #fef3c7;
+          color: #b45309;
+        }
+
+        .result-item.mongodb .source-badge {
+          background: #e0e7ff;
+          color: #4338ca;
         }
 
         .result-address,

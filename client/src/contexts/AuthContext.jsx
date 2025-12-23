@@ -11,7 +11,7 @@ useEffect(() => {
   // Sử dụng một hàm async bên trong useEffect
   const checkUserAuthentication = async () => {
     const accessToken = localStorage.getItem('access_token');
-    console.log('Access Token:', accessToken);
+    // console.log('Access Token:', accessToken);
 
     if (accessToken) {
       console.log('Checking user authentication...');

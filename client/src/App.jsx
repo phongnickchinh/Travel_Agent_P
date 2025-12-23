@@ -8,6 +8,7 @@ import ResetPassword from './pages/user/ResetPassword';
 
 // Search Autocomplete Demo Pages (Week 3 Deliverable)
 import SearchDemo from './components/SearchDemo';
+import PlaceAutocompleteDemo from './pages/PlaceAutocompleteDemo';
 import SearchExamples from './pages/SearchExamples';
 
 import './App.css';
@@ -32,6 +33,7 @@ function App() {
         <Route path="/create-plan" element={<ProtectedRoute><CreatePlan /></ProtectedRoute>} />
         <Route path="/search-demo" element={<ProtectedRoute><SearchDemo /></ProtectedRoute>} />
   <Route path="/search-examples" element={<ProtectedRoute><SearchExamples /></ProtectedRoute>} />
+        <Route path="/places-demo" element={<PlaceAutocompleteDemo />} />
         {/* <Route path="/user/:username" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} /> */}
 
         {/* Thêm các route yêu cầu auth khác ở đây */}

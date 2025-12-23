@@ -18,27 +18,27 @@ const SearchDemo = () => {
   /**
    * Get user's geolocation
    */
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          console.log('[INFO] User location obtained:', position.coords);
-        },
-        (error) => {
-          console.warn('[WARNING] Geolocation denied:', error);
-          // Default to Da Nang, Vietnam
-          setUserLocation({ lat: 16.0544, lng: 108.2428 });
-        }
-      );
-    } else {
-      // Default location
-      setUserLocation({ lat: 16.0544, lng: 108.2428 });
-    }
-  }, []);
+  // useEffect(() => {
+  //   if (navigator.geolocation) {
+  //     navigator.geolocation.getCurrentPosition(
+  //       (position) => {
+  //         setUserLocation({
+  //           lat: position.coords.latitude,
+  //           lng: position.coords.longitude
+  //         });
+  //         console.log('[INFO] User location obtained:', position.coords);
+  //       },
+  //       (error) => {
+  //         console.warn('[WARNING] Geolocation denied:', error);
+  //         // Default to Da Nang, Vietnam
+  //         setUserLocation({ lat: 16.0544, lng: 108.2428 });
+  //       }
+  //     );
+  //   } else {
+  //     // Default location
+  //     setUserLocation({ lat: 16.0544, lng: 108.2428 });
+  //   }
+  // }, []);
 
   /**
    * Update cache stats periodically
@@ -112,7 +112,7 @@ const SearchDemo = () => {
             <SearchAutocomplete
               placeholder="Tìm nhà hàng, khách sạn, địa điểm du lịch..."
               onSelect={handlePOISelect}
-              location={userLocation}
+              // location={userLocation}
               autoFocus={true}
               maxResults={10}
             />

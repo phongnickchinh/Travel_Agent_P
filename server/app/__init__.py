@@ -183,6 +183,11 @@ def create_app(config_class=Config):
     search_api = search_api_init()
     app.register_blueprint(search_api)
     
+    # Register Autocomplete v2 blueprint (Hybrid ES + Google)
+    from .controller.autocomplete import init_app as autocomplete_api_init
+    autocomplete_api = autocomplete_api_init()
+    app.register_blueprint(autocomplete_api)
+    
     # Register Plan blueprint (Week 4)
     from .controller.plan import init_app as plan_api_init
     plan_api = plan_api_init()

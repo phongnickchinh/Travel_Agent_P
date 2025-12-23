@@ -1,0 +1,119 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "filter": {
+        "autocomplete_filter": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20
+        },
+        "word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "preserve_original": true
+        }
+      },
+      "analyzer": {
+        "autocomplete_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "word_delimiter_graph",
+            "autocomplete_filter"
+          ]
+        },
+        "autocomplete_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "asciifolding",
+            "word_delimiter_graph"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "_meta": {
+      "description": "Autocomplete cache index based on Google Places API Autocomplete response",
+      "version": "1.0",
+      "created": "2025-12-22"
+    },
+    "properties": {
+      "place_id": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      
+      "description": {
+        "type": "text",
+        "analyzer": "autocomplete_index",
+        "search_analyzer": "autocomplete_search"
+      },
+      
+      "main_text": {
+        "type": "text",
+        "analyzer": "autocomplete_index",
+        "search_analyzer": "autocomplete_search",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      
+      "main_text_unaccented": {
+        "type": "text",
+        "analyzer": "autocomplete_index",
+        "search_analyzer": "autocomplete_search"
+      },
+      
+      "secondary_text": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      
+      "terms": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      
+      "types": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      
+      "location": {
+        "type": "geo_point"
+      },
+      
+      "status": {
+        "type": "keyword",
+        "doc_values": true
+      },
+      
+      "click_count": {
+        "type": "integer",
+        "doc_values": true
+      },
+      
+      "created_at": {
+        "type": "date"
+      },
+      
+      "updated_at": {
+        "type": "date"
+      }
+    }
+  }
+}

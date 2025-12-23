@@ -31,3 +31,19 @@ class DIContainer:
             return implementation()
         
         return implementation
+    
+    # ============================================
+    # Helper methods for common services
+    # ============================================
+    
+    def get_autocomplete_service(self):
+        """Get AutocompleteService instance."""
+        return self.resolve("AutocompleteService")
+    
+    def get_search_service(self):
+        """Get SearchService instance."""
+        return self.resolve("SearchService")
+    
+    def get_places_service(self):
+        """Get PlacesService instance."""
+        return self.resolve("PlacesService")

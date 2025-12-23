@@ -4,13 +4,15 @@ Search Service - Elasticsearch Search Wrapper
 
 Purpose:
 - High-level API for Elasticsearch POI search
-- Autocomplete with edge n-gram
 - Geo-distance search
 - Full-text search with filters
 - Graceful fallback to MongoDB
 
+Note: Autocomplete functionality moved to AutocompleteService (2025-01 migration)
+
 Author: Travel Agent P Team
 Date: November 27, 2025
+Updated: January 2025 - Removed multi-index autocomplete (use AutocompleteService)
 """
 
 import logging
@@ -29,12 +31,13 @@ class SearchService:
     Search Service - Elasticsearch Wrapper with MongoDB Fallback
     
     Features:
-    - Autocomplete search (edge n-gram) - 5-15ms latency
     - Geo-distance search (within radius) - 20-50ms latency
     - Full-text search with fuzzy matching
     - Multi-filter support (type, rating, price)
     - Sorting (relevance, distance, rating, popularity)
     - Graceful degradation (ES down → MongoDB)
+    
+    Note: Autocomplete moved to AutocompleteService (2025-01 migration)
     
     Architecture:
         User Query
@@ -45,9 +48,6 @@ class SearchService:
     
     Example:
         service = SearchService()
-        
-        # Autocomplete
-        suggestions = service.autocomplete("rest")
         
         # Geo search
         results = service.search(
@@ -76,7 +76,10 @@ class SearchService:
         
         Args:
             poi_repo: MongoDB POI repository (required, used as fallback)
-            es_repo: Elasticsearch repository (optional)
+            es_repo: Elasticsearch POI repository (optional)
+        
+        Note: Multi-index autocomplete (es_admin_repo, es_region_repo, region_service)
+              was removed in 2025-01 migration. Use AutocompleteService instead.
         """
         self.es_enabled = es_repo is not None and ElasticsearchClient.is_healthy()
         self.es_repo = es_repo if self.es_enabled else None
@@ -182,38 +185,12 @@ class SearchService:
             offset=offset
         )
     
-    def autocomplete(self, prefix: str, limit: int = 10) -> List[str]:
-        """
-        Autocomplete POI names (edge n-gram).
-        
-        Use case: Search box autocomplete
-        
-        Args:
-            prefix: Search prefix (e.g., "rest", "ca")
-            limit: Max suggestions (default: 10)
-        
-        Returns:
-            List of POI name suggestions
-        
-        Example:
-            >>> suggestions = service.autocomplete("rest")
-            >>> print(suggestions)
-            ['Restaurant ABC', 'Restoran XYZ', 'Rest & Relax Cafe']
-        """
-        logger.info(f"[SEARCH] Autocomplete: prefix='{prefix}', limit={limit}")
-        
-        # Try Elasticsearch first (edge n-gram analyzer)
-        if self.es_enabled and self.es_repo:
-            try:
-                suggestions = self.es_repo.autocomplete(prefix, size=limit)
-                logger.info(f"[INFO] Elasticsearch autocomplete: {len(suggestions)} suggestions")
-                return suggestions
-            
-            except Exception as e:
-                logger.error(f"[ERROR] Elasticsearch autocomplete failed: {e}, falling back to MongoDB")
-        
-        # Fallback to MongoDB text search
-        return self._autocomplete_mongodb(prefix, limit)
+    # ============================================
+    # NOTE: Old multi-index autocomplete methods REMOVED
+    # Use AutocompleteService (autocomplete_service.py) instead
+    # Hybrid architecture: ES autocomplete_cache + MongoDB + Google Places
+    # Migration date: 2025-01
+    # ============================================
     
     def get_nearby(
         self,
@@ -441,22 +418,3 @@ class SearchService:
                 "page": page,
                 "limit": limit
             }
-    
-    def _autocomplete_mongodb(self, prefix: str, limit: int) -> List[str]:
-        """MongoDB fallback autocomplete (text search)."""
-        try:
-            search_req = POISearchRequest(
-                q=prefix,
-                page=1,
-                limit=limit
-            )
-            
-            result = self.mongo_repo.search(search_req)
-            suggestions = [poi.get('name', '') for poi in result.get('results', [])]
-            
-            logger.info(f"[INFO] MongoDB autocomplete: {len(suggestions)} suggestions")
-            return suggestions
-        
-        except Exception as e:
-            logger.error(f"[ERROR] MongoDB autocomplete failed: {e}")
-            return []

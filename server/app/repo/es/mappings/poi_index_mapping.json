@@ -103,6 +103,8 @@
           "tokenizer": "standard",
           "filter": [
             "lowercase",
+            "asciifolding",
+            "word_delimiter_graph",
             "autocomplete_filter"
           ]
         },
@@ -110,7 +112,9 @@
           "type": "custom",
           "tokenizer": "standard",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding",
+            "word_delimiter_graph"
           ]
         }
       },
@@ -119,6 +123,10 @@
           "type": "edge_ngram",
           "min_gram": 2,
           "max_gram": 20
+        },
+        "word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "preserve_original": true
         }
       }
     }

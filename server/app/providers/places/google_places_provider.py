@@ -39,6 +39,8 @@ class GooglePlacesProvider(BaseProvider):
         "places.displayName",
         "places.location",
         "places.photos",
+        "places.types",
+        "places.primaryType",
     ]
     
     # All available fields for maximum data extraction

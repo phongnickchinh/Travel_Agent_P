@@ -31,17 +31,18 @@ class SearchController:
     
     Endpoints:
     - GET /api/search - Full-text + geo + filter search
-    - GET /api/search/autocomplete - Fast autocomplete suggestions
     - GET /api/search/nearby - Get nearby POIs
     - GET /api/search/type/{type} - Browse by category
     - GET /api/search/popular - Get popular POIs
+    
+    NOTE: Autocomplete moved to /v2/autocomplete (autocomplete_controller.py)
     
     Example Requests:
         # Full search
         GET /api/search?q=cafe&lat=16.0544&lng=108.2428&radius=5&min_rating=4.0
         
-        # Autocomplete
-        GET /api/search/autocomplete?q=rest
+        # Autocomplete (NEW V2)
+        GET /v2/autocomplete?q=rest
         
         # Nearby
         GET /api/search/nearby?lat=16.0544&lng=108.2428&radius=2
@@ -62,7 +63,7 @@ class SearchController:
     def _register_routes(self):
         """Register all routes with Flask Blueprint."""
         search_bp.add_url_rule("", "search", self.search, methods=["GET"])
-        search_bp.add_url_rule("/autocomplete", "autocomplete", self.autocomplete, methods=["GET"])
+        # REMOVED: /autocomplete route - Use /v2/autocomplete instead
         search_bp.add_url_rule("/nearby", "nearby", self.get_nearby, methods=["GET"])
         search_bp.add_url_rule("/type/<poi_type>", "by_type", self.get_by_type, methods=["GET"])
         search_bp.add_url_rule("/popular", "popular", self.get_popular, methods=["GET"])
@@ -237,81 +238,9 @@ class SearchController:
                 500
             )
     
-    def autocomplete(self):
-        """
-        Fast autocomplete suggestions (edge n-gram).
-        
-        Query Parameters:
-            q (required): Search prefix (e.g., "rest", "ca")
-            limit (optional): Max suggestions (default: 10, max: 20)
-        
-        Response Success (200):
-            {
-                "resultMessage": {"en": "...", "vn": "..."},
-                "resultCode": "AUTOCOMPLETE_SUCCESS",
-                "suggestions": ["Restaurant ABC", "Restoran XYZ", ...],
-                "count": 8
-            }
-        
-        Examples:
-            # Get autocomplete suggestions
-            GET /api/search/autocomplete?q=rest
-            
-            # Limit suggestions
-            GET /api/search/autocomplete?q=ca&limit=5
-        """
-        try:
-            prefix = request.args.get('q', '').strip()
-            limit = request.args.get('limit', default=10, type=int)
-            
-            # Validate parameters
-            if not prefix:
-                return build_error_response(
-                    "Query parameter 'q' is required",
-                    "Tham số 'q' là bắt buộc",
-                    "MISSING_QUERY",
-                    400
-                )
-            
-            if len(prefix) < 2:
-                return build_error_response(
-                    "Query must be at least 2 characters",
-                    "Truy vấn phải có ít nhất 2 ký tự",
-                    "QUERY_TOO_SHORT",
-                    400
-                )
-            
-            if not (1 <= limit <= 20):
-                return build_error_response(
-                    "Limit must be between 1 and 20",
-                    "Giới hạn phải từ 1 đến 20",
-                    "INVALID_LIMIT",
-                    400
-                )
-            
-            # Call service
-            logger.info(f"[SEARCH] Autocomplete: prefix='{prefix}', limit={limit}")
-            
-            suggestions = self.search_service.autocomplete(prefix, limit=limit)
-            return build_success_response(
-                f"Found {len(suggestions)} suggestions",
-                f"Tìm thấy {len(suggestions)} gợi ý",
-                "AUTOCOMPLETE_SUCCESS",
-                data={
-                    "suggestions": suggestions,
-                    "count": len(suggestions)
-                },
-                status_code=200
-            )
-        
-        except Exception as e:
-            logger.error(f"[ERROR] Autocomplete failed: {e}", exc_info=True)
-            return build_error_response(
-                "An error occurred while getting suggestions",
-                "Đã xảy ra lỗi khi lấy gợi ý",
-                "AUTOCOMPLETE_ERROR",
-                500
-            )
+    # NOTE: autocomplete() method REMOVED
+    # Use /v2/autocomplete endpoint instead (autocomplete_controller.py)
+    # Migration date: 2025-01
     
     def get_nearby(self):
         """

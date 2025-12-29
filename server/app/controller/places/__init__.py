@@ -1,6 +1,5 @@
 """
-Places Controller Package
-Flask Blueprint for POI/Places endpoints
+This service only access by admin, not by user
 """
 
 from flask import Blueprint

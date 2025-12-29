@@ -237,11 +237,7 @@ class SearchController:
                 "SEARCH_ERROR",
                 500
             )
-    
-    # NOTE: autocomplete() method REMOVED
-    # Use /v2/autocomplete endpoint instead (autocomplete_controller.py)
-    # Migration date: 2025-01
-    
+
     def get_nearby(self):
         """
         Get POIs near a location (no text query).

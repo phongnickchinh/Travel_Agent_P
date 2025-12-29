@@ -48,7 +48,7 @@ class CostUsageService:
         user_id: Optional[str] = None,
         plan_id: Optional[str] = None,
         request_id: Optional[str] = None,
-        extra_metadata: Optional[Dict] = None,
+        metadata: Optional[Dict] = None,
         error_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -72,7 +72,7 @@ class CostUsageService:
                 user_id=user_id,
                 plan_id=plan_id,
                 request_id=request_id,
-                extra_metadata=extra_metadata,
+                extra_metadata=metadata,
                 error_message=error_message,
                 commit=True
             )

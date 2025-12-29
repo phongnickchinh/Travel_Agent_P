@@ -17,6 +17,7 @@ useEffect(() => {
       console.log('Checking user authentication...');
       try {
         const userInfo = await getProfileApi();
+        console.log('User info from API:', userInfo);
         setUser(userInfo);
       } catch (error) {
         console.error('Failed to get user profile:', error);
@@ -38,7 +39,9 @@ useEffect(() => {
 
   // Đăng nhập
   const login = async (credentials) => {
-    const data = await loginApi(credentials);
+    const response = await loginApi(credentials);
+    // Backend returns: { data: { user, access_token, refresh_token } } or { user, access_token, refresh_token }
+    const data = response.data || response;
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
     setUser(data.user);
@@ -54,12 +57,13 @@ useEffect(() => {
 
   // Đăng nhập bằng Google
   const googleLogin = async (idToken) => {
-    const data = await googleLoginApi(idToken);
-    const responseData = data.data || data;
-    localStorage.setItem('access_token', responseData.access_token);
-    localStorage.setItem('refresh_token', responseData.refresh_token);
-    setUser(responseData.user);
-    return responseData.user;
+    const response = await googleLoginApi(idToken);
+    // Backend returns: { data: { user, access_token, refresh_token } } or { user, access_token, refresh_token }
+    const data = response.data || response;
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    setUser(data.user);
+    return data.user;
   };
 
   // Đăng xuất

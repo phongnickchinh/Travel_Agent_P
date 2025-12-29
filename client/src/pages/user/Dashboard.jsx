@@ -1,198 +1,225 @@
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import './Dashboard.css';
+import DashboardHeader from '../../components/ui/DashboardHeader';
+import DashboardSidebar from '../../components/ui/DashboardSidebar';
+import PlanCard from '../../components/ui/PlanCard';
+import planAPI from '../../services/planApi';
 
+/**
+ * Dashboard Component
+ * 
+ * Main dashboard view with plan grid and pagination
+ */
 export default function Dashboard() {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [plans, setPlans] = useState([]);
+  const [recentPlans, setRecentPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [tokenInfo, setTokenInfo] = useState({
-    deviceId: '',
-    accessToken: '',
-    refreshToken: ''
-  });
+  const PLANS_PER_PAGE = 8;
 
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  useEffect(() => {
-    // Check if user is logged in
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
-      navigate('/login');
-      return;
-    }
-
-    // Load token info
-    setTokenInfo({
-      deviceId: localStorage.getItem('deviceId') || 'N/A',
-      accessToken: accessToken ? accessToken.substring(0, 30) + '...' : 'N/A',
-      refreshToken: localStorage.getItem('refresh_token')?.substring(0, 30) + '...' || 'N/A'
-    });
-  }, [navigate]);
-
-  const handleLogoutClick = () => {
-    setShowLogoutModal(true);
-  };
-
-  const handleLogoutConfirm = async () => {
-    setIsLoggingOut(true);
+  // Fetch plans
+  const fetchPlans = async (pageNum = 1, append = false) => {
     try {
-      await logout();
-      navigate('/login');
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const result = await planAPI.getPlans({
+        page: pageNum,
+        limit: PLANS_PER_PAGE,
+      });
+
+      if (result.success && result.data) {
+        const newPlans = result.data.plans || [];
+        const totalPlans = result.data.total || 0;
+
+        if (append) {
+          setPlans((prev) => [...prev, ...newPlans]);
+        } else {
+          setPlans(newPlans);
+        }
+
+        setTotal(totalPlans);
+        setHasMore(newPlans.length === PLANS_PER_PAGE);
+      } else {
+        console.error('Failed to fetch plans:', result.error);
+      }
     } catch (error) {
-      console.error('Logout error:', error);
-      // Still redirect even if API call fails
-      navigate('/login');
+      console.error('Error fetching plans:', error);
     } finally {
-      setIsLoggingOut(false);
-      setShowLogoutModal(false);
+      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  const handleLogoutCancel = () => {
-    setShowLogoutModal(false);
+  // Fetch recent plans (for sidebar)
+  const fetchRecentPlans = async () => {
+    try {
+      const result = await planAPI.getPlans({
+        page: 1,
+        limit: 4,
+      });
+
+      if (result.success && result.data) {
+        // Sort by created_at descending (most recent first)
+        const sorted = (result.data.plans || []).sort((a, b) => {
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+        setRecentPlans(sorted);
+      }
+    } catch (error) {
+      console.error('Error fetching recent plans:', error);
+    }
   };
 
-  const handleGoHome = () => {
-    if (user && user.username) {
-      navigate(`/dashboard/${user.username}`);
-    } else {
-      navigate('/');
-    }
+  // Initial load
+  useEffect(() => {
+    fetchPlans(1);
+    fetchRecentPlans();
+  }, []);
+
+  // Load more handler
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchPlans(nextPage, true);
+  };
+
+  // Delete plan handler (called after successful delete in PlanCard)
+  const handlePlanDeleted = (planId) => {
+    // Remove from list
+    setPlans((prev) => prev.filter((p) => p.plan_id !== planId));
+    setTotal((prev) => prev - 1);
+    
+    // Refresh recent plans
+    fetchRecentPlans();
+  };
+
+  // Navigate to create plan
+  const handleNewPlan = () => {
+    navigate('/dashboard/create-plan');
+  };
+
+  // Navigate to plan detail
+  const handlePlanClick = (planId) => {
+    navigate(`/dashboard/plan/${planId}`);
   };
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-card">
-        <div className="welcome-header">
-          <div className="success-icon">✓</div>
-          <h1>Welcome to Travel Agent P! 🎉</h1>
-          <p>Your account has been successfully verified</p>
-        </div>
+    <div className="flex h-screen w-full bg-gray-50">
+      {/* Sidebar */}
+      <DashboardSidebar
+        recentPlans={recentPlans}
+        onPlanClick={handlePlanClick}
+      />
 
-        <div className="info-card">
-          <h3>📋 Account Information</h3>
-          {user && (
-            <>
-              <div className="info-item">
-                <span className="info-label">Username:</span>
-                <span className="info-value">{user.username || 'N/A'}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Email:</span>
-                <span className="info-value">{user.email || 'N/A'}</span>
-              </div>
-              <div className="info-item">
-                <span className="info-label">Name:</span>
-                <span className="info-value">{user.name || 'N/A'}</span>
-              </div>
-            </>
-          )}
-          <div className="info-item">
-            <span className="info-label">Device ID:</span>
-            <span className="info-value">{tokenInfo.deviceId}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Access Token:</span>
-            <span className="info-value token-value">{tokenInfo.accessToken}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">Refresh Token:</span>
-            <span className="info-value token-value">{tokenInfo.refreshToken}</span>
-          </div>
-          <div className="info-item">
-            <span className="info-label">User Info:</span>
-            <span className="info-value token-value">{JSON.stringify(user)}</span>
-          </div>
-        </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Header */}
+        <DashboardHeader
+          onNewPlan={handleNewPlan}
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
 
-        <div className="info-card">
-          <h3>✅ What's Next?</h3>
-          <ul className="next-steps-list">
-            <li>Your account is ready to use</li>
-            <li>Access token is stored securely</li>
-            <li>You can now make authenticated API calls</li>
-            <li>Token will auto-refresh when needed</li>
-          </ul>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="info-card quick-actions-card">
-          <h3>🚀 Bắt đầu ngay</h3>
-          <div className="quick-actions-grid">
-            <button 
-              className="quick-action-btn primary"
-              onClick={() => navigate('/create-plan')}
-            >
-              <span className="qa-icon">✨</span>
-              <span className="qa-text">Tạo Kế Hoạch Du Lịch</span>
-              <span className="qa-desc">Để AI lên lịch trình cho bạn</span>
-            </button>
-            <button 
-              className="quick-action-btn secondary"
-              onClick={() => navigate('/search-demo')}
-            >
-              <span className="qa-icon">🔍</span>
-              <span className="qa-text">Tìm Địa Điểm</span>
-              <span className="qa-desc">Khám phá POI xung quanh</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="actions">
-          <button className="btn btn-primary" onClick={handleGoHome}>
-            Go to Home
-          </button>
-          <button className="btn btn-danger" onClick={handleLogoutClick}>
-            Logout
-          </button>
-        </div>
-      </div>
-
-      {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div className="modal-overlay" onClick={handleLogoutCancel}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-icon">⚠️</div>
-              <h2>Confirm Logout</h2>
-            </div>
-            
-            <div className="modal-body">
-              <p>Are you sure you want to logout?</p>
-              <p className="modal-subtitle">
-                You'll need to login again to access your account.
+        {/* Content Area */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="h-full px-8 py-6">
+            {/* Page Header */}
+            <div className="mb-8">
+              <h1 className="font-poppins font-bold text-3xl text-gray-900 mb-1 text-justify">
+                Travel Plan List
+              </h1>
+              <p className="text-gray-500 text-sm text-justify">
+                Your travel itineraries
               </p>
             </div>
-            
-            <div className="modal-footer">
-              <button 
-                className="btn btn-secondary-modal" 
-                onClick={handleLogoutCancel}
-                disabled={isLoggingOut}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-danger-modal" 
-                onClick={handleLogoutConfirm}
-                disabled={isLoggingOut}
-              >
-                {isLoggingOut ? (
-                  <>
-                    <span className="spinner-small"></span>
-                    Logging out...
-                  </>
-                ) : (
-                  'Yes, Logout'
+
+            {/* Loading State */}
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              </div>
+            ) : plans.length === 0 ? (
+              /* Empty State */
+              <div className="text-center py-20">
+                <p className="text-gray-500 text-lg mb-4">
+                  Bạn chưa có kế hoạch nào
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleNewPlan}
+                  className="px-8 py-3 bg-black text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  Tạo kế hoạch đầu tiên
+                </motion.button>
+              </div>
+            ) : (
+              <>  
+                {/* Plans Grid - 3 columns for larger cards */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-8"
+                >
+                  <AnimatePresence>
+                    {plans.map((plan, index) => (
+                      <motion.div
+                        key={plan.plan_id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ delay: index * 0.05 }}
+                      >
+                        <PlanCard
+                          plan={plan}
+                          onDelete={handlePlanDeleted}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Load More Button */}
+                {hasMore && (
+                  <div className="text-center py-8">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="px-8 py-3 bg-white border border-gray-300 text-gray-700 rounded-full font-medium shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
+                    >
+                      {loadingMore ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Loading...
+                        </span>
+                      ) : (
+                        'Load more'
+                      )}
+                    </motion.button>
+                    <p className="text-sm text-gray-500 mt-3">
+                      Showing {plans.length} of {total}
+                    </p>
+                  </div>
                 )}
-              </button>
-            </div>
+              </>
+            )}
           </div>
-        </div>
-      )}
+        </main>
+      </div>
     </div>
   );
 }

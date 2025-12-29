@@ -1,14 +1,14 @@
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
+import TailwindTest from './pages/TailwindTest';
 import CreatePlan from './pages/user/CreatePlan';
-import DashboardWelcome from './pages/user/Dashboard';
-import Login from './pages/user/Login';
-import Register from './pages/user/Register';
-import ResetPassword from './pages/user/ResetPassword';
+import CreatePlanNew from './pages/user/CreatePlanNew';
+import Dashboard from './pages/user/Dashboard';
+import PlanDetail from './pages/user/PlanDetail';
+import Welcome from './pages/Welcome';
 
 // Search Autocomplete Demo Pages (Week 3 Deliverable)
 import SearchDemo from './components/SearchDemo';
-import PlaceAutocompleteDemo from './pages/PlaceAutocompleteDemo';
 import SearchExamples from './pages/SearchExamples';
 
 import './App.css';
@@ -20,21 +20,23 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Guest/public routes */}
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Guest/public routes rendered via welcome page + modal popups */}
+        <Route path="/" element={<Welcome />} />
+        <Route path="/login" element={<Welcome />} />
+        <Route path="/register" element={<Welcome />} />
+        <Route path="/reset-password" element={<Welcome />} />
+        <Route path="/tailwind-test" element={<TailwindTest />} />
 
+        {/* Dashboard routes */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/create-plan" element={<ProtectedRoute><CreatePlanNew /></ProtectedRoute>} />
+        <Route path="/dashboard/plan/:planId" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
 
-
-        {/* Authenticated routes */}
-        <Route path="/dashboard/:username" element={<ProtectedRoute><DashboardWelcome /></ProtectedRoute>} />
+        {/* Legacy routes */}
+        <Route path="/dashboard/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/create-plan" element={<ProtectedRoute><CreatePlan /></ProtectedRoute>} />
         <Route path="/search-demo" element={<ProtectedRoute><SearchDemo /></ProtectedRoute>} />
-  <Route path="/search-examples" element={<ProtectedRoute><SearchExamples /></ProtectedRoute>} />
-        <Route path="/places-demo" element={<PlaceAutocompleteDemo />} />
-        {/* <Route path="/user/:username" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>} /> */}
+        <Route path="/search-examples" element={<ProtectedRoute><SearchExamples /></ProtectedRoute>} />
 
         {/* Thêm các route yêu cầu auth khác ở đây */}
       </Routes>

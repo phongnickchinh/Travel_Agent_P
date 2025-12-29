@@ -1,0 +1,151 @@
+import { motion } from 'framer-motion';
+import { Calendar, MapPin, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import planAPI from '../../services/planApi';
+
+/**
+ * PlanCard Component
+ * 
+ * Minimalist travel plan card with destination thumbnail
+ * Displays plan title, destination, dates, and status
+ */
+export default function PlanCard({ plan, onDelete }) {
+  const navigate = useNavigate();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleClick = () => {
+    navigate(`/dashboard/plan/${plan.plan_id}`);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (isDeleting) return;
+    
+    if (!window.confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
+
+    setIsDeleting(true);
+    planAPI.deletePlan(plan.plan_id)
+      .then((res) => {
+        if (!res?.success) {
+          throw new Error(res?.error || 'Delete failed');
+        }
+        if (onDelete) {
+          onDelete(plan.plan_id);
+        }
+      })
+      .catch((err) => {
+        console.error('Delete plan error:', err);
+        window.alert('Không thể xoá kế hoạch, vui lòng thử lại.');
+      })
+      .finally(() => setIsDeleting(false));
+  };
+
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'Not set';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  };
+
+  // Get status color
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'bg-gray-400',
+      processing: 'bg-yellow-500',
+      completed: 'bg-green-500',
+      failed: 'bg-red-500'
+    };
+    return colors[status] || 'bg-gray-400';
+  };
+
+  return (
+    <motion.div
+      whileHover={{ y: -6 }}
+      transition={{ duration: 0.2 }}
+      className="group relative bg-white rounded-2xl shadow-md hover:shadow-2xl overflow-hidden cursor-pointer"
+      onClick={handleClick}
+    >
+      {/* Thumbnail Image - Aspect ratio 4:3 horizontal rectangle */}
+      <div className="relative aspect-[4/3] bg-gray-200 overflow-hidden">
+        {plan.thumbnail_url ? (
+          <img
+            src={plan.thumbnail_url}
+            alt={plan.destination}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <MapPin className="w-16 h-16" />
+          </div>
+        )}
+        
+        {/* Delete Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-red-50 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60"
+          aria-label="Delete plan"
+        >
+          <Trash2 className="w-4 h-4 text-gray-700 hover:text-red-600" />
+        </motion.button>
+
+        {/* Status Badge */}
+        <div className="absolute top-3 left-3">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(plan.status)}`}>
+            {plan.status}
+          </span>
+        </div>
+
+        {/* Gradient Overlay on Hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+
+      {/* Card Content */}
+      <div className="p-4">
+        {/* Title */}
+        <h3 className="font-poppins font-bold text-lg text-gray-900 mb-3 line-clamp-1 text-justify">
+          {plan.title || plan.destination}
+        </h3>
+
+        {/* Bottom Row: Info + Button */}
+        <div className="flex items-center justify-between gap-3">
+          {/* Destination & Dates */}
+          <div className="flex-1 space-y-2">
+            {/* Destination & Duration */}
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <MapPin className="w-4 h-4" />
+              <span className="line-clamp-1">{plan.destination}</span>
+              <span>•</span>
+              <span>{plan.num_days} ngày</span>
+            </div>
+
+            {/* Dates */}
+            {plan.start_date && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="w-4 h-4" />
+                <span>
+                  {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* View Button */}
+          <motion.button
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={(e) => { e.stopPropagation(); handleClick(); }}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-[#2E571C] hover:border-[#2E571C] hover:text-white transition font-bold text-lg self-center"
+            aria-label="View plan"
+          >
+            &gt;
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

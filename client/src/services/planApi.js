@@ -20,10 +20,13 @@ class PlanAPI {
   async createPlan(planData) {
     try {
       const response = await api.post('/plan/', planData);
+      console.log('Create plan response:', response);
+      
+      // Backend returns data directly in response.data (not nested in data.data)
       return {
         success: true,
-        data: response.data.data,
-        message: response.data.message
+        data: response.data,  // Changed from response.data.data
+        message: response.data.resultMessage
       };
     } catch (error) {
       console.error('[ERROR] Create plan failed:', error);
@@ -47,9 +50,16 @@ class PlanAPI {
   async getPlans(params = {}) {
     try {
       const response = await api.get('/plan/', { params });
+      // Backend returns plans directly in response.data (not nested in data.data)
+      // Format: { resultMessage, resultCode, plans, total, page, limit }
       return {
         success: true,
-        data: response.data.data
+        data: {
+          plans: response.data.plans || [],
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20
+        }
       };
     } catch (error) {
       console.error('[ERROR] Get plans failed:', error);
@@ -66,12 +76,12 @@ class PlanAPI {
    * @param {string} planId - Plan ID
    * @returns {Promise<Object>} - Plan details
    */
-  async getPlan(planId) {
+  async getPlanById(planId) {
     try {
       const response = await api.get(`/plan/${planId}`);
       return {
         success: true,
-        data: response.data.data.plan
+        data: response.data.plan || response.data.data?.plan || response.data
       };
     } catch (error) {
       console.error('[ERROR] Get plan failed:', error);
@@ -80,6 +90,16 @@ class PlanAPI {
         error: error.response?.data?.message || error.message
       };
     }
+  }
+
+  /**
+   * Get plan details by ID (legacy alias)
+   * 
+   * @param {string} planId - Plan ID
+   * @returns {Promise<Object>} - Plan details
+   */
+  async getPlan(planId) {
+    return this.getPlanById(planId);
   }
 
   /**

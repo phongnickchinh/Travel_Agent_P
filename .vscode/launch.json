@@ -59,6 +59,19 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+
+        {
+            "name": "NPM: npm run dev (client)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/client",
+            "runtimeExecutable": "npm.cmd",
+            "runtimeArgs": ["run", "dev"],
+            "console": "integratedTerminal",
+            "env": {
+                "BROWSER": "none"
+            }
         }
     ],
     "compounds": [
@@ -71,10 +84,11 @@
             ]
         },
         {
-            "name": "Flask + Celery Worker Only",
+            "name": "Flask + Celery Worker + NPM Client",
             "configurations": [
                 "Python Debugger: Flask",
-                "Python Debugger: Celery Worker"
+                "Python Debugger: Celery Worker",
+                "NPM: npm run dev (client)"
             ]
         }
     ]

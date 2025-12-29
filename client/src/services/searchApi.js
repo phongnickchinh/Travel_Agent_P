@@ -73,12 +73,6 @@ class SearchAPI {
     });
   }
 
-  // ============================================
-  // NOTE: Old autocomplete() method REMOVED
-  // Use autocompleteV2() instead (hybrid ES + MongoDB + Google)
-  // Migration date: 2025-01
-  // ============================================
-
   /**
    * Full search with filters (ES lexical + geo)
    */
@@ -296,21 +290,32 @@ class SearchAPI {
     try {
       // API call to v2 hybrid endpoint
       const response = await api.get(`/v2/autocomplete?${params}`);
-      const data = response.data;
+      
+      // Normalize response structure
+      // Backend returns: { resultCode, data: { suggestions, total, sources, query_time_ms } }
+      // We want to return just the data part for easier consumption
+      const apiData = response.data?.data || response.data || {};
+
+      const normalizedData = {
+        suggestions: apiData.suggestions || [],
+        total: apiData.total || 0,
+        sources: apiData.sources || {},
+        query_time_ms: apiData.query_time_ms || 0
+      };
       
       // Cache results
-      this.setCached(cacheKey, data);
+      this.setCached(cacheKey, normalizedData);
       
       // Save to recent searches
-      this.addRecentSearch(cleanQuery, data.total > 0);
+      this.addRecentSearch(cleanQuery, normalizedData.total > 0);
       
       console.log(
         '[API CALL] AutocompleteV2:', cleanQuery,
-        `(${data.total || 0} results)`,
-        'Sources:', data.sources || {}
+        `(${normalizedData.total || 0} results)`,
+        'Sources:', normalizedData.sources || {}
       );
       
-      return data;
+      return normalizedData;
       
     } catch (error) {
       console.error('[ERROR] AutocompleteV2 failed:', error);

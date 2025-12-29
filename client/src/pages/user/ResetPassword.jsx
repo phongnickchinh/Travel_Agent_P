@@ -10,7 +10,7 @@ import {
 } from '../../services/authApi';
 import './ResetPassword.css';
 
-export default function ResetPassword() {
+export default function ResetPassword({ isModal = false }) {
   const navigate = useNavigate();
 
   // Form state
@@ -215,9 +215,12 @@ export default function ResetPassword() {
     }
   };
 
+  const containerClass = isModal ? 'w-full' : 'reset-password-container';
+  const cardClass = isModal ? 'reset-card shadow-2xl max-h-[90vh] overflow-y-auto' : 'reset-card';
+
   return (
-    <div className="reset-password-container">
-      <div className="reset-card">
+    <div className={containerClass}>
+      <div className={cardClass}>
         <div className="reset-header">
           <div className="icon">🔐</div>
           <h1>Reset Password</h1>

@@ -159,7 +159,9 @@ export async function getProfileApi() {
     if (!res.data) {
       throw new Error('User data is empty');
     }
-    return res.data; // user info
+    // Backend returns: { resultCode, resultMessage, user }
+    // Extract user object from response
+    return res.data.user || res.data; // Return user object
   } catch (error) {
     console.error('Error getting profile:', error);
     throw error;

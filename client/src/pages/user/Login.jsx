@@ -21,7 +21,7 @@ const loadGoogleScript = () => {
   });
 };
 
-export default function Login() {
+export default function Login({ isModal = false }) {
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -140,9 +140,12 @@ export default function Login() {
     }
   };
 
+  const containerClass = isModal ? 'w-full' : 'login-container';
+  const cardClass = isModal ? 'login-card shadow-2xl max-h-[90vh] overflow-y-auto' : 'login-card';
+
   return (
-    <div className="login-container">
-      <div className="login-card">
+    <div className={containerClass}>
+      <div className={cardClass}>
         <div className="login-header">
           <h1>🌍 Travel Agent P</h1>
           <p>Welcome back! Please login to continue</p>

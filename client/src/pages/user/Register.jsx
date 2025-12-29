@@ -16,7 +16,7 @@ import {
 } from '../../services/authApi';
 import './Register.css';
 
-export default function Register() {
+export default function Register({ isModal = false }) {
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -243,9 +243,12 @@ export default function Register() {
     }
   };
 
+  const containerClass = isModal ? 'w-full' : 'register-container';
+  const cardClass = isModal ? 'register-card shadow-2xl max-h-[90vh] overflow-y-auto' : 'register-card';
+
   return (
-    <div className="register-container">
-      <div className="register-card">
+    <div className={containerClass}>
+      <div className={cardClass}>
         <div className="register-header">
           <h1>🌍 Travel Agent P</h1>
           <p>Create your account to get started</p>

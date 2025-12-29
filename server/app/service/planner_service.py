@@ -325,22 +325,44 @@ class PlannerService:
         results = []
         
         # Default queries if no interests
-        # Use Google Places API (New) valid includedTypes
+        # Use Google Places API (New) valid includedTypes from Table A
         # Ref: https://developers.google.com/maps/documentation/places/web-service/place-types
         if not interests:
-            interests = ['museum', 'restaurant', 'lodging', 'park', 'tourist_attraction']
+            interests = ['tourist_attraction', 'restaurant', 'museum', 'park', 'beach']
         
-        # Map common category names to valid Google Place Types
+        # Map user-friendly interest IDs to valid Google Place Types (Table A)
+        # Frontend uses these IDs, backend maps to Google types
         type_mapping = {
+            # Direct Google types (no mapping needed)
             'tourist_attraction': 'tourist_attraction',
-            'hotel': 'lodging',
+            'restaurant': 'restaurant',
+            'cafe': 'cafe',
+            'museum': 'museum',
+            'park': 'park',
+            'beach': 'beach',
+            'night_club': 'night_club',
+            'bar': 'bar',
+            'shopping_mall': 'shopping_mall',
+            'spa': 'spa',
+            'historical_landmark': 'historical_landmark',
+            'amusement_park': 'amusement_park',
+            'zoo': 'zoo',
+            'aquarium': 'aquarium',
+            # User-friendly aliases -> Google types
+            'culture': 'museum',
             'food': 'restaurant',
             'dining': 'restaurant',
             'nature': 'park',
-            'beach': 'beach',
+            'nightlife': 'night_club',
             'shopping': 'shopping_mall',
-            'culture': 'museum',
-            'historical': 'historical_landmark',
+            'relaxation': 'spa',
+            'history': 'historical_landmark',
+            'adventure': 'amusement_park',
+            'family': 'amusement_park',
+            'photography': 'tourist_attraction',
+            'romantic': 'restaurant',
+            'hotel': 'lodging',
+            'lodging': 'lodging',
         }
         
         # Convert interests to valid Google types

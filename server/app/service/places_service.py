@@ -303,6 +303,201 @@ class PlacesService:
             logger.error(f"[ERROR] Provider details fetch failed for {poi_id}: {e}")
             return poi
     
+    def get_pois_for_planner(
+        self,
+        destination: str,
+        location: Dict[str, float],
+        interests: List[str] = None,
+        min_results: int = 30,
+        radius_km: float = 15.0
+    ) -> List[Dict[str, Any]]:
+        """
+        Get POIs for planner prompt - core logic for plan generation.
+        
+        Flow:
+        1. Search MongoDB by keyword (destination + interests) 
+        2. Search nearby POIs from MongoDB
+        3. If not enough, fetch from provider (Google Places)
+        4. Dedupe results
+        5. Return up to min_results POIs
+        
+        Args:
+            destination: Destination city (e.g., "Da Nang")
+            location: {"latitude": float, "longitude": float} - center point
+            interests: User interests (e.g., ["beach", "food", "culture"])
+            min_results: Minimum POIs to return (default: 30)
+            radius_km: Search radius in km (default: 15)
+            
+        Returns:
+            List of POI dicts (up to min_results)
+            
+        Example:
+            >>> pois = places_service.get_pois_for_planner(
+            ...     destination="Da Nang",
+            ...     location={"latitude": 16.0544, "longitude": 108.2428},
+            ...     interests=["beach", "culture", "food"],
+            ...     min_results=30
+            ... )
+        """
+        logger.info(
+            f"[PLANNER] Fetching POIs for planner: destination={destination}, "
+            f"interests={interests}, min_results={min_results}"
+        )
+        
+        all_pois = []
+        seen_dedupe_keys = set()
+        interests = interests or []
+        
+        # --- Step 1: Search by destination keyword in MongoDB ---
+        try:
+            destination_pois = self._search_cache(
+                query=destination,
+                location=location,
+                radius_km=radius_km,
+                max_results=min_results
+            )
+            for poi in destination_pois:
+                dedupe_key = poi.get('dedupe_key') or poi.get('poi_id')
+                if dedupe_key and dedupe_key not in seen_dedupe_keys:
+                    all_pois.append(poi)
+                    seen_dedupe_keys.add(dedupe_key)
+            logger.info(f"[PLANNER] Step 1 - Destination search: found {len(destination_pois)} POIs")
+        except Exception as e:
+            logger.error(f"[PLANNER] Destination search failed: {e}")
+        
+        # --- Step 2: Search by each interest keyword in MongoDB ---
+        for interest in interests[:5]:  # Limit to 5 interests
+            if len(all_pois) >= min_results:
+                break
+            try:
+                interest_pois = self._search_cache(
+                    query=interest,
+                    location=location,
+                    radius_km=radius_km,
+                    max_results=min_results - len(all_pois)
+                )
+                for poi in interest_pois:
+                    dedupe_key = poi.get('dedupe_key') or poi.get('poi_id')
+                    if dedupe_key and dedupe_key not in seen_dedupe_keys:
+                        all_pois.append(poi)
+                        seen_dedupe_keys.add(dedupe_key)
+                logger.info(f"[PLANNER] Step 2 - Interest '{interest}': found {len(interest_pois)} POIs")
+            except Exception as e:
+                logger.warning(f"[PLANNER] Interest search '{interest}' failed: {e}")
+        
+        # --- Step 3: Get nearby POIs from MongoDB (geo search) ---
+        if len(all_pois) < min_results:
+            try:
+                nearby_pois = self.poi_repo.get_nearby(
+                    lat=location.get('latitude', 0),
+                    lng=location.get('longitude', 0),
+                    radius_km=radius_km,
+                    limit=min_results - len(all_pois)
+                )
+                for poi in nearby_pois:
+                    dedupe_key = poi.get('dedupe_key') or poi.get('poi_id')
+                    if dedupe_key and dedupe_key not in seen_dedupe_keys:
+                        all_pois.append(poi)
+                        seen_dedupe_keys.add(dedupe_key)
+                logger.info(f"[PLANNER] Step 3 - Nearby search: found {len(nearby_pois)} POIs")
+            except Exception as e:
+                logger.warning(f"[PLANNER] Nearby search failed: {e}")
+        
+        # --- Step 4: If still not enough, fetch from provider ---
+        if len(all_pois) < min_results:
+            logger.info(f"[PLANNER] Step 4 - Fetching from provider (have {len(all_pois)}/{min_results})")
+            
+            # Search for destination + interests from provider
+            search_queries = [destination] + interests[:3]
+            
+            for query in search_queries:
+                if len(all_pois) >= min_results:
+                    break
+                try:
+                    provider_results = self._fetch_from_provider(
+                        query=query,
+                        location=location,
+                        radius_km=radius_km,
+                        max_results=min_results - len(all_pois)
+                    )
+                    
+                    if provider_results:
+                        # Write through cache
+                        cached_pois = self._write_through_cache(provider_results)
+                        
+                        for poi in cached_pois:
+                            dedupe_key = poi.get('dedupe_key') or poi.get('poi_id')
+                            if dedupe_key and dedupe_key not in seen_dedupe_keys:
+                                all_pois.append(poi)
+                                seen_dedupe_keys.add(dedupe_key)
+                        
+                        logger.info(f"[PLANNER] Provider query '{query}': added {len(cached_pois)} POIs")
+                except Exception as e:
+                    logger.warning(f"[PLANNER] Provider fetch '{query}' failed: {e}")
+        
+        # --- Step 5: Limit and return ---
+        final_pois = all_pois[:min_results]
+        logger.info(f"[PLANNER] Final POI count: {len(final_pois)} (requested: {min_results})")
+        
+        return final_pois
+    
+    def format_pois_for_prompt(self, pois: List[Dict[str, Any]], max_pois: int = 30) -> str:
+        """
+        Format POI list for LLM prompt.
+        
+        Args:
+            pois: List of POI dicts
+            max_pois: Maximum POIs to include
+            
+        Returns:
+            Formatted string for LLM prompt
+        """
+        if not pois:
+            return "No POI data available for this destination."
+        
+        lines = ["Available POIs for your itinerary (use poi_id exactly as shown):\n"]
+        
+        for i, poi in enumerate(pois[:max_pois], 1):
+            poi_id = poi.get('poi_id', f'poi_{i}')
+            name = poi.get('name', 'Unknown')
+            name_en = poi.get('name_en', name)
+            categories = poi.get('categories', [])
+            if isinstance(categories, list):
+                cat_str = ', '.join(categories[:3])
+            else:
+                cat_str = str(categories)
+            
+            rating = poi.get('ratings', {}).get('average') or poi.get('rating', 'N/A')
+            price = poi.get('price_level', 'N/A')
+            hours = poi.get('opening_hours') or poi.get('formatted_hours', 'N/A')
+            if isinstance(hours, list):
+                hours = hours[0] if hours else 'N/A'
+            
+            duration = poi.get('estimated_duration_minutes', 60)
+            
+            # Get description
+            desc = poi.get('description', {})
+            if isinstance(desc, dict):
+                short_desc = desc.get('short', '')[:100]
+            else:
+                short_desc = str(desc)[:100] if desc else ''
+            
+            # Get coordinates
+            loc = poi.get('location', {})
+            coords = loc.get('coordinates', [0, 0]) if isinstance(loc, dict) else [0, 0]
+            
+            lines.append(
+                f"{i}. poi_id: \"{poi_id}\"\n"
+                f"   Name: {name_en} ({name})\n"
+                f"   Categories: [{cat_str}]\n"
+                f"   Rating: {rating} | Price: {price}\n"
+                f"   Hours: {hours} | Duration: ~{duration} min\n"
+                f"   Coordinates: [{coords[0]:.4f}, {coords[1]:.4f}]\n"
+                f"   Description: {short_desc}\n"
+            )
+        
+        return '\n'.join(lines)
+    
     def refresh_stale_pois(self, limit: int = 100) -> Dict[str, Any]:
         """
         Background job: Refresh stale POIs from providers.

@@ -6,11 +6,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "flask",
-            "python": "P:/coddd/Travel_Agent_P/server/.venv/Scripts/python.exe",
-            "cwd": "P:/coddd/Travel_Agent_P/server",  // 👈 thêm dòng này
+            "python": "${workspaceFolder}/server/.venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/server",
             "env": {
-                "FLASK_APP": "run.py",               // 👈 bỏ "server\\" vì cwd đã trỏ tới /server
-                "FLASK_DEBUG": "1"
+                "FLASK_APP": "run.py",
+                "FLASK_DEBUG": "1",
+                "CELERY_BROKER_URL": "redis://localhost:6379/0"
             },
             "args": [
                 "run",
@@ -18,7 +19,63 @@
                 "--no-reload"
             ],
             "jinja": true,
-            "autoStartBrowser": false
+            "autoStartBrowser": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Celery Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "python": "${workspaceFolder}/server/.venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/server",
+            // "env": {
+            //     "CELERY_BROKER_URL": "redis://localhost:6379/0"
+            // },
+            "args": [
+                "-A",
+                "celery_worker.celery",
+                "worker",
+                "--loglevel=info"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python Debugger: Celery Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "python": "${workspaceFolder}/server/.venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/server",
+            "env": {
+                "CELERY_BROKER_URL": "redis://localhost:6379/1"
+            },
+            "args": [
+                "-A",
+                "celery_worker.celery",
+                "beat",
+                "--loglevel=info"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Flask + Celery (Worker + Beat)",
+            "configurations": [
+                "Python Debugger: Flask",
+                "Python Debugger: Celery Worker",
+                "Python Debugger: Celery Beat"
+            ]
+        },
+        {
+            "name": "Flask + Celery Worker Only",
+            "configurations": [
+                "Python Debugger: Flask",
+                "Python Debugger: Celery Worker"
+            ]
         }
     ]
 }

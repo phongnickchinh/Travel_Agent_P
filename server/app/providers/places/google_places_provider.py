@@ -697,32 +697,49 @@ class GooglePlacesProvider(BaseProvider):
         }
         price_enum = price_level_map.get(price_level, 'moderate')
         
-        # Map types to categories
-        category_map = {
-            'tourist_attraction': 'landmark',
-            'natural_feature': 'nature',
-            'beach': 'beach',
-            'restaurant': 'restaurant',
-            'cafe': 'cafe',
-            'bar': 'bar',
-            'museum': 'museum',
-            'historical_landmark': 'historical',
-            'church': 'religious',
-            'temple': 'religious',
-            'mosque': 'religious',
-            'park': 'nature',
-            'shopping_mall': 'shopping',
-            'hotel': 'hotel',
-            'lodging': 'hotel'
+        # Use Google Places types directly as categories (no custom mapping)
+        # This ensures consistency with Google Places API Table A types
+        # Ref: https://developers.google.com/maps/documentation/places/web-service/place-types
+        # Filter to keep only relevant travel-related types
+        travel_relevant_types = {
+            # Culture & Entertainment
+            'museum', 'art_gallery', 'performing_arts_theater', 'cultural_landmark',
+            'historical_landmark', 'historical_place', 'monument',
+            # Food & Drink
+            'restaurant', 'cafe', 'bar', 'bakery', 'coffee_shop', 'food_court',
+            'fast_food_restaurant', 'fine_dining_restaurant', 'seafood_restaurant',
+            'vietnamese_restaurant', 'japanese_restaurant', 'korean_restaurant',
+            'chinese_restaurant', 'italian_restaurant', 'french_restaurant',
+            # Nature & Outdoor
+            'park', 'national_park', 'state_park', 'beach', 'garden', 'botanical_garden',
+            'hiking_area', 'nature_preserve', 'zoo', 'aquarium', 'wildlife_park',
+            # Entertainment
+            'amusement_park', 'water_park', 'movie_theater', 'night_club', 'casino',
+            'bowling_alley', 'spa', 'gym', 'fitness_center',
+            # Shopping
+            'shopping_mall', 'market', 'department_store', 'gift_shop',
+            # Lodging
+            'hotel', 'lodging', 'resort_hotel', 'hostel', 'guest_house',
+            # Landmarks
+            'tourist_attraction', 'point_of_interest', 'landmark',
+            # Religious
+            'church', 'temple', 'mosque', 'synagogue', 'hindu_temple',
+            # Transport
+            'airport', 'train_station', 'bus_station',
         }
+        
         categories = []
         for t in types:
-            if t in category_map:
-                cat = category_map[t]
-                if cat not in categories:
-                    categories.append(cat)
+            if t in travel_relevant_types:
+                if t not in categories:
+                    categories.append(t)
+        
+        # Fallback: use primary_type if no travel-relevant types found
         if not categories:
-            categories = ['other']
+            if primary_type and primary_type in travel_relevant_types:
+                categories = [primary_type]
+            else:
+                categories = ['point_of_interest']
         
         # Generate dedupe_key and poi_id
         dedupe_key = generate_dedupe_key(name, latitude, longitude)

@@ -172,7 +172,11 @@ class TravelPlannerChain:
         - Do NOT invent or modify any poi_id.
 
         2. Each day MUST include:
-        - 3 to 5 POIs
+        - POIs per day based on user's pace preference:
+            • If pace = "relaxed": 2-3 POIs per day
+            • If pace = "moderate": 3-4 POIs per day  
+            • If pace = "intensive": 5-6 POIs per day
+            • If pace not specified: default to 3-4 POIs
         - At least:
             • 1 food-related activity for lunch
             • 1 food-related activity for dinner

@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Trash2 } from 'lucide-react';
+import { Calendar, ChevronRight, MapPin, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import planAPI from '../../services/planApi';
+import ConfirmModal from './ConfirmModal';
 
 /**
  * PlanCard Component
@@ -13,32 +14,36 @@ import planAPI from '../../services/planApi';
 export default function PlanCard({ plan, onDelete }) {
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleClick = () => {
     navigate(`/dashboard/plan/${plan.plan_id}`);
   };
 
-  const handleDelete = (e) => {
-    e.stopPropagation();
+  const performDelete = () => {
     if (isDeleting) return;
-    
-    if (!window.confirm('Bạn có chắc muốn xóa kế hoạch này?')) return;
-
     setIsDeleting(true);
     planAPI.deletePlan(plan.plan_id)
       .then((res) => {
         if (!res?.success) {
           throw new Error(res?.error || 'Delete failed');
         }
-        if (onDelete) {
-          onDelete(plan.plan_id);
-        }
+        onDelete?.(plan.plan_id);
       })
       .catch((err) => {
         console.error('Delete plan error:', err);
         window.alert('Không thể xoá kế hoạch, vui lòng thử lại.');
       })
-      .finally(() => setIsDeleting(false));
+      .finally(() => {
+        setIsDeleting(false);
+        setConfirmOpen(false);
+      });
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (isDeleting) return;
+    setConfirmOpen(true);
   };
 
   // Format date for display
@@ -60,10 +65,11 @@ export default function PlanCard({ plan, onDelete }) {
   };
 
   return (
+    <>
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ duration: 0.2 }}
-      className="group relative bg-white rounded-2xl shadow-md hover:shadow-2xl overflow-hidden cursor-pointer"
+      className="group relative bg-white rounded-2xl shadow-md hover:shadow-[0_20px_35px_-10px_rgba(46,87,28,0.45)] overflow-hidden cursor-pointer"
       onClick={handleClick}
     >
       {/* Thumbnail Image - Aspect ratio 4:3 horizontal rectangle */}
@@ -85,9 +91,9 @@ export default function PlanCard({ plan, onDelete }) {
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={handleDelete}
+          onClick={handleDeleteClick}
           disabled={isDeleting}
-          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-red-50 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60"
+          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-red-50 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-10"
           aria-label="Delete plan"
         >
           <Trash2 className="w-4 h-4 text-gray-700 hover:text-red-600" />
@@ -101,7 +107,7 @@ export default function PlanCard({ plan, onDelete }) {
         </div>
 
         {/* Gradient Overlay on Hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Card Content */}
@@ -142,10 +148,21 @@ export default function PlanCard({ plan, onDelete }) {
             className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-[#2E571C] hover:border-[#2E571C] hover:text-white transition font-bold text-lg self-center"
             aria-label="View plan"
           >
-            &gt;
+            <ChevronRight className="w-6 h-6" />
           </motion.button>
         </div>
       </div>
     </motion.div>
+    <ConfirmModal
+      open={confirmOpen}
+      title="Chuyển và thùng rác"
+      message="Bạn có muốn chuyển plan này vào thùng rác?"
+      confirmLabel="Xoá"
+      cancelLabel="Huỷ"
+      onConfirm={performDelete}
+      onCancel={() => !isDeleting && setConfirmOpen(false)}
+      loading={isDeleting}
+    />
+    </>
   );
 }

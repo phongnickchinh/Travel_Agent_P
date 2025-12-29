@@ -323,6 +323,7 @@ class GooglePlacesProvider(BaseProvider):
             response.raise_for_status()
             
             place = response.json()
+            logger.info(f"Place details response: {place}")
             
             logger.info(f"Retrieved details for place: {place.get('displayName', {}).get('text', 'Unknown')}")
             
@@ -584,15 +585,18 @@ class GooglePlacesProvider(BaseProvider):
         """
         Transform Google Places API response to standardized POI schema
         
-        Maps Google Places fields to app/model/poi.py Pydantic models
+        Maps Google Places fields to app/model/mongo/poi.py Pydantic models
+        Captures ALL available data for rich AI context in LangChain.
         
         Args:
             raw_data: Raw place data from Google API
             
         Returns:
-            Standardized POI dictionary matching POI model schema
+            Standardized POI dictionary matching POI model schema with full Google data
         """
-        # Extract basic info
+        # =========================================================================
+        # BASIC INFO
+        # =========================================================================
         place_id = raw_data.get('id', '')
         display_name = raw_data.get('displayName', {})
         name = display_name.get('text', '') if isinstance(display_name, dict) else str(display_name)
@@ -604,10 +608,15 @@ class GooglePlacesProvider(BaseProvider):
         
         # Address
         formatted_address = raw_data.get('formattedAddress', '')
+        short_formatted_address = raw_data.get('shortFormattedAddress', '')
+        adr_format_address = raw_data.get('adrFormatAddress', '')
         
         # Types
         types = raw_data.get('types', [])
         primary_type = raw_data.get('primaryType', '')
+        primary_type_display_name = raw_data.get('primaryTypeDisplayName', {})
+        if isinstance(primary_type_display_name, dict):
+            primary_type_display_name = primary_type_display_name.get('text', '')
         
         # Rating
         rating = raw_data.get('rating', 0.0)
@@ -616,138 +625,408 @@ class GooglePlacesProvider(BaseProvider):
         # Price level
         price_level = raw_data.get('priceLevel', '')
         
-        # Contact
-        phone = raw_data.get('nationalPhoneNumber') or raw_data.get('internationalPhoneNumber', '')
-        website = raw_data.get('websiteUri', '')
-        
-        # Photos
-        photos_data = raw_data.get('photos', [])
-        photos = []
-        for photo in photos_data[:5]:  # Max 5 photos
-            if isinstance(photo, dict):
-                photos.append({
-                    'reference': photo.get('name', ''),
-                    'width': photo.get('widthPx', 0),
-                    'height': photo.get('heightPx', 0)
-                })
-        
-        # Reviews
-        reviews_data = raw_data.get('reviews', [])
-        reviews = []
-        for review in reviews_data[:5]:  # Max 5 reviews
-            if isinstance(review, dict):
-                reviews.append({
-                    'author': review.get('authorAttribution', {}).get('displayName', 'Anonymous'),
-                    'rating': review.get('rating', 0),
-                    'text': review.get('text', {}).get('text', ''),
-                    'time': review.get('publishTime', '')
-                })
-        
-        # Opening hours
-        opening_hours = raw_data.get('regularOpeningHours', {})
-        
         # Business status
         business_status = raw_data.get('businessStatus', 'OPERATIONAL')
         
-        # Editorial summary (description)
+        # UTC offset
+        utc_offset_minutes = raw_data.get('utcOffsetMinutes')
+        
+        # =========================================================================
+        # CONTACT INFO
+        # =========================================================================
+        national_phone = raw_data.get('nationalPhoneNumber', '')
+        international_phone = raw_data.get('internationalPhoneNumber', '')
+        website = raw_data.get('websiteUri', '')
+        google_maps_uri = raw_data.get('googleMapsUri', '')
+        
+        # =========================================================================
+        # PHOTOS - Full capture with attributions
+        # =========================================================================
+        photos_data = raw_data.get('photos', [])
+        photos = []
+        for i, photo in enumerate(photos_data[:10]):  # Max 10 photos for detail
+            if isinstance(photo, dict):
+                author_attributions = []
+                for attr in photo.get('authorAttributions', []):
+                    author_attributions.append({
+                        'displayName': attr.get('displayName', ''),
+                        'uri': attr.get('uri', ''),
+                        'photoUri': attr.get('photoUri', '')
+                    })
+                photos.append({
+                    'url': photo.get('name', ''),  # Photo reference
+                    'photo_reference': photo.get('name', ''),
+                    'width': photo.get('widthPx', 0),
+                    'height': photo.get('heightPx', 0),
+                    'is_primary': i == 0,
+                    'author_attributions': author_attributions
+                })
+        
+        # =========================================================================
+        # REVIEWS - Full capture with all details
+        # =========================================================================
+        reviews_data = raw_data.get('reviews', [])
+        reviews = []
+        for review in reviews_data[:10]:  # Max 10 reviews
+            if isinstance(review, dict):
+                author_attr = review.get('authorAttribution', {})
+                original_text = review.get('originalText', {})
+                text_obj = review.get('text', {})
+                
+                reviews.append({
+                    'author_name': author_attr.get('displayName', 'Anonymous'),
+                    'author_photo_url': author_attr.get('photoUri', ''),
+                    'author_uri': author_attr.get('uri', ''),
+                    'rating': review.get('rating', 0),
+                    'text': text_obj.get('text', '') if isinstance(text_obj, dict) else str(text_obj),
+                    'language': text_obj.get('languageCode', '') if isinstance(text_obj, dict) else '',
+                    'publish_time': review.get('publishTime', ''),
+                    'relative_publish_time': review.get('relativePublishTimeDescription', '')
+                })
+        
+        # =========================================================================
+        # OPENING HOURS - Full capture with periods
+        # =========================================================================
+        regular_hours = raw_data.get('regularOpeningHours', {})
+        current_hours = raw_data.get('currentOpeningHours', {})
+        secondary_hours = raw_data.get('regularSecondaryOpeningHours', [])
+        current_secondary_hours = raw_data.get('currentSecondaryOpeningHours', [])
+        
+        weekday_descriptions = regular_hours.get('weekdayDescriptions', []) if regular_hours else []
+        periods = regular_hours.get('periods', []) if regular_hours else []
+        open_now = current_hours.get('openNow') if current_hours else None
+        
+        opening_hours_data = {
+            'weekday_descriptions': weekday_descriptions,
+            'periods': periods,
+            'open_now': open_now,
+            'is_24_hours': len(periods) == 1 and periods[0].get('open', {}).get('hour') == 0 if periods else False,
+            'secondary_hours': secondary_hours
+        }
+        
+        # Map weekday descriptions to individual days
+        day_mapping = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        for i, desc in enumerate(weekday_descriptions[:7]):
+            if i < len(day_mapping):
+                opening_hours_data[day_mapping[i]] = desc
+        
+        # =========================================================================
+        # EDITORIAL SUMMARY (Description)
+        # =========================================================================
         editorial_summary = raw_data.get('editorialSummary', {})
         description = editorial_summary.get('text', '') if isinstance(editorial_summary, dict) else ''
         
-        # Amenities (dining options for restaurants)
-        amenities = {}
-        if 'servesBeer' in raw_data:
-            amenities['serves_beer'] = raw_data['servesBeer']
-        if 'servesBreakfast' in raw_data:
-            amenities['serves_breakfast'] = raw_data['servesBreakfast']
-        if 'servesLunch' in raw_data:
-            amenities['serves_lunch'] = raw_data['servesLunch']
-        if 'servesDinner' in raw_data:
-            amenities['serves_dinner'] = raw_data['servesDinner']
-        if 'servesVegetarianFood' in raw_data:
-            amenities['vegetarian_options'] = raw_data['servesVegetarianFood']
-        if 'takeout' in raw_data:
-            amenities['takeout'] = raw_data['takeout']
-        if 'delivery' in raw_data:
-            amenities['delivery'] = raw_data['delivery']
-        if 'dineIn' in raw_data:
-            amenities['dine_in'] = raw_data['dineIn']
-        if 'reservable' in raw_data:
-            amenities['reservable'] = raw_data['reservable']
-        if 'goodForChildren' in raw_data:
-            amenities['good_for_children'] = raw_data['goodForChildren']
-        if 'goodForGroups' in raw_data:
-            amenities['good_for_groups'] = raw_data['goodForGroups']
+        # =========================================================================
+        # DINING OPTIONS (for restaurants/cafes)
+        # =========================================================================
+        dining_options = {}
+        dining_fields = [
+            ('servesBreakfast', 'serves_breakfast'),
+            ('servesBrunch', 'serves_brunch'),
+            ('servesLunch', 'serves_lunch'),
+            ('servesDinner', 'serves_dinner'),
+            ('servesDessert', 'serves_dessert'),
+            ('servesCoffee', 'serves_coffee'),
+            ('servesBeer', 'serves_beer'),
+            ('servesWine', 'serves_wine'),
+            ('servesCocktails', 'serves_cocktails'),
+            ('servesVegetarianFood', 'serves_vegetarian_food'),
+        ]
+        for google_field, local_field in dining_fields:
+            if google_field in raw_data:
+                dining_options[local_field] = raw_data[google_field]
         
-        # Build standardized POI
-        from app.utils.poi_dedupe import normalize_poi_name, generate_dedupe_key
+        # =========================================================================
+        # SERVICE OPTIONS
+        # =========================================================================
+        service_options = {}
+        service_fields = [
+            ('dineIn', 'dine_in'),
+            ('takeout', 'takeout'),
+            ('delivery', 'delivery'),
+            ('curbsidePickup', 'curbside_pickup'),
+            ('reservable', 'reservable'),
+            ('outdoorSeating', 'outdoor_seating'),
+            ('liveMusic', 'live_music'),
+            ('menuForChildren', 'menu_for_children'),
+            ('goodForChildren', 'good_for_children'),
+            ('goodForGroups', 'good_for_groups'),
+            ('goodForWatchingSports', 'good_for_watching_sports'),
+            ('allowsDogs', 'allows_dogs'),
+            ('restroom', 'restroom'),
+        ]
+        for google_field, local_field in service_fields:
+            if google_field in raw_data:
+                service_options[local_field] = raw_data[google_field]
+        
+        # =========================================================================
+        # PAYMENT OPTIONS
+        # =========================================================================
+        payment_raw = raw_data.get('paymentOptions', {})
+        payment_options = {}
+        if payment_raw:
+            payment_options = {
+                'accepts_credit_cards': payment_raw.get('acceptsCreditCards'),
+                'accepts_debit_cards': payment_raw.get('acceptsDebitCards'),
+                'accepts_cash_only': payment_raw.get('acceptsCashOnly'),
+                'accepts_nfc': payment_raw.get('acceptsNfc'),
+            }
+        
+        # =========================================================================
+        # PARKING OPTIONS
+        # =========================================================================
+        parking_raw = raw_data.get('parkingOptions', {})
+        parking_options = {}
+        if parking_raw:
+            parking_options = {
+                'free_parking_lot': parking_raw.get('freeParkingLot'),
+                'paid_parking_lot': parking_raw.get('paidParkingLot'),
+                'free_street_parking': parking_raw.get('freeStreetParking'),
+                'paid_street_parking': parking_raw.get('paidStreetParking'),
+                'valet_parking': parking_raw.get('valetParking'),
+                'free_garage_parking': parking_raw.get('freeGarageParking'),
+                'paid_garage_parking': parking_raw.get('paidGarageParking'),
+            }
+        
+        # =========================================================================
+        # ACCESSIBILITY OPTIONS
+        # =========================================================================
+        accessibility_raw = raw_data.get('accessibilityOptions', {})
+        accessibility_options = {}
+        if accessibility_raw:
+            accessibility_options = {
+                'wheelchair_accessible_parking': accessibility_raw.get('wheelchairAccessibleParking'),
+                'wheelchair_accessible_entrance': accessibility_raw.get('wheelchairAccessibleEntrance'),
+                'wheelchair_accessible_restroom': accessibility_raw.get('wheelchairAccessibleRestroom'),
+                'wheelchair_accessible_seating': accessibility_raw.get('wheelchairAccessibleSeating'),
+            }
+        
+        # =========================================================================
+        # VIEWPORT (for maps)
+        # =========================================================================
+        viewport_raw = raw_data.get('viewport', {})
+        viewport = None
+        if viewport_raw:
+            viewport = {
+                'northeast': {
+                    'latitude': viewport_raw.get('high', {}).get('latitude'),
+                    'longitude': viewport_raw.get('high', {}).get('longitude'),
+                },
+                'southwest': {
+                    'latitude': viewport_raw.get('low', {}).get('latitude'),
+                    'longitude': viewport_raw.get('low', {}).get('longitude'),
+                }
+            }
+        
+        # =========================================================================
+        # ADDRESS COMPONENTS
+        # =========================================================================
+        address_components = []
+        for component in raw_data.get('addressComponents', []):
+            address_components.append({
+                'long_name': component.get('longText', ''),
+                'short_name': component.get('shortText', ''),
+                'types': component.get('types', [])
+            })
         
         # Extract country from address components
         country = "Vietnam"  # Default
-        for component in raw_data.get('addressComponents', []):
+        city = None
+        district = None
+        for component in address_components:
             if 'country' in component.get('types', []):
-                country = component.get('longText', country)
-                break
+                country = component.get('long_name', country)
+            if 'locality' in component.get('types', []):
+                city = component.get('long_name')
+            if 'administrative_area_level_2' in component.get('types', []):
+                district = component.get('long_name')
         
-        # Map Google place types to internal CategoryEnum list (centralized mapping)
+        # =========================================================================
+        # FUEL & EV OPTIONS (for gas stations)
+        # =========================================================================
+        fuel_options = raw_data.get('fuelOptions', {})
+        ev_charge_options = raw_data.get('evChargeOptions', {})
+        
+        # =========================================================================
+        # BUILD AMENITIES LIST (for backward compatibility)
+        # =========================================================================
+        amenities = []
+        if dining_options:
+            for key, value in dining_options.items():
+                if value:
+                    amenities.append(key)
+        if service_options:
+            for key, value in service_options.items():
+                if value:
+                    amenities.append(key)
+        
+        # =========================================================================
+        # PRICE LEVEL MAPPING
+        # =========================================================================
         price_level_map = {
             'PRICE_LEVEL_FREE': 'free',
             'PRICE_LEVEL_INEXPENSIVE': 'cheap',
             'PRICE_LEVEL_MODERATE': 'moderate',
             'PRICE_LEVEL_EXPENSIVE': 'expensive',
-            'PRICE_LEVEL_VERY_EXPENSIVE': 'expensive'
+            'PRICE_LEVEL_VERY_EXPENSIVE': 'very_expensive'
         }
         price_enum = price_level_map.get(price_level, 'moderate')
-
+        
+        # =========================================================================
+        # CATEGORY MAPPING
+        # =========================================================================
         categories = map_google_types_to_categories(types, primary_type)
         
-        # Generate dedupe_key and poi_id
+        # =========================================================================
+        # GENERATE DEDUPE KEY & POI ID
+        # =========================================================================
+        from app.utils.poi_dedupe import normalize_poi_name, generate_dedupe_key
+        
         dedupe_key = generate_dedupe_key(name, latitude, longitude)
         poi_id = f"poi_{dedupe_key}"
         
+        # =========================================================================
+        # BUILD STANDARDIZED POI WITH FULL GOOGLE DATA
+        # =========================================================================
         poi = {
+            # === Core Identifiers ===
             'poi_id': poi_id,
             'dedupe_key': dedupe_key,
+            
+            # === Basic Info ===
             'name': name,
             'name_unaccented': normalize_poi_name(name),
-            'categories': categories,  # Required
+            'categories': categories,
+            
+            # === Location ===
             'location': {
                 'type': 'Point',
                 'coordinates': [longitude, latitude]
             },
+            
+            # === Address ===
             'address': {
                 'full_address': formatted_address,
-                'country': country  # Required
+                'short_address': short_formatted_address,
+                'country': country,
+                'city': city,
+                'district': district,
             },
+            
+            # === Description ===
             'description': {
-                'short': description[:200] if description else f"{name} - {primary_type}",  # Required, max 200 chars
+                'short': description[:200] if description else f"{name} - {primary_type_display_name or primary_type}",
                 'long': description if description else None
             },
+            
+            # === Ratings ===
             'ratings': {
-                'average': rating if rating > 0 else 0.0,  # Required
+                'average': rating if rating > 0 else 0.0,
                 'count': user_rating_count
             },
+            
+            # === Pricing ===
             'pricing': {
-                'level': price_enum,  # Required
+                'level': price_enum,
                 'currency': 'VND'
             },
+            
+            # === Contact ===
             'contact': {
-                'phone': phone,
-                'website': website
+                'phone': national_phone,
+                'international_phone': international_phone,
+                'website': website,
+                'google_maps_uri': google_maps_uri
             },
-            'images': [{'url': photo.get('reference', ''), 'is_primary': i == 0} for i, photo in enumerate(photos)],
-            'amenities': list(amenities.keys()),
+            
+            # === Opening Hours ===
+            'opening_hours': opening_hours_data,
+            
+            # === Images ===
+            'images': photos,
+            
+            # === Amenities (flat list for backward compatibility) ===
+            'amenities': amenities,
+            
+            # === Metadata ===
             'metadata': {
                 'created_at': datetime.utcnow(),
                 'updated_at': datetime.utcnow(),
                 'popularity_score': min(user_rating_count / 10, 100) if user_rating_count else 0
             },
-            # Extra fields for reference
+            
+            # === Provider Reference ===
             'provider': {
                 'name': 'google_places',
-                'id': place_id
+                'place_id': place_id,
+                'google_maps_uri': google_maps_uri
             },
-            'google_maps_uri': raw_data.get('googleMapsUri', ''),
-            'raw_data': raw_data  # Keep original data for debugging
+            
+            # =========================================================================
+            # GOOGLE EXTENDED DATA - ALL DATA FOR AI CONTEXT
+            # =========================================================================
+            'google_data': {
+                # === Core Google IDs ===
+                'google_place_id': place_id,
+                'google_maps_uri': google_maps_uri,
+                
+                # === Type Information ===
+                'google_types': types,
+                'primary_type': primary_type,
+                'primary_type_display_name': primary_type_display_name,
+                
+                # === Business Info ===
+                'business_status': business_status,
+                'utc_offset_minutes': utc_offset_minutes,
+                
+                # === Viewport ===
+                'viewport': viewport,
+                
+                # === Address Components ===
+                'address_components': address_components,
+                'adr_format_address': adr_format_address,
+                'short_formatted_address': short_formatted_address,
+                
+                # === Reviews (FULL DATA) ===
+                'reviews': reviews,
+                
+                # === Editorial ===
+                'editorial_summary': description,
+                
+                # === Dining Options ===
+                'dining_options': dining_options if dining_options else None,
+                
+                # === Service Options ===
+                'service_options': service_options if service_options else None,
+                
+                # === Payment Options ===
+                'payment_options': payment_options if payment_options else None,
+                
+                # === Parking Options ===
+                'parking_options': parking_options if parking_options else None,
+                
+                # === Accessibility ===
+                'accessibility_options': accessibility_options if accessibility_options else None,
+                
+                # === Fuel/EV ===
+                'fuel_options': fuel_options if fuel_options else None,
+                'ev_charge_options': ev_charge_options if ev_charge_options else None,
+                
+                # === Current Opening Hours (real-time) ===
+                'current_opening_hours': current_hours if current_hours else None,
+                'current_secondary_opening_hours': current_secondary_hours if current_secondary_hours else None,
+                
+                # === AI-Relevant Signals ===
+                'allows_dogs': raw_data.get('allowsDogs'),
+                'good_for_children': raw_data.get('goodForChildren'),
+                'good_for_groups': raw_data.get('goodForGroups'),
+                'good_for_watching_sports': raw_data.get('goodForWatchingSports'),
+                
+                # === RAW DATA for future-proofing ===
+                'raw_google_response': raw_data
+            }
         }
+        
+        logger.debug(f"[TRANSFORM] POI '{name}' transformed with {len(reviews)} reviews, {len(photos)} photos")
         
         return poi

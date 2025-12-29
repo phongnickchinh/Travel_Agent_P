@@ -13,12 +13,12 @@
 import { GoogleMap, InfoWindow, Marker, Polyline, useJsApiLoader } from '@react-google-maps/api';
 import { motion } from 'framer-motion';
 import {
-    ArrowLeft,
-    Calendar,
-    Clock,
-    Loader2,
-    MapPin,
-    Share2
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Loader2,
+  MapPin,
+  Share2
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -102,6 +102,35 @@ export default function PlanDetail() {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poiName)}`;
   };
 
+  // Normalize activity fields to keep POI name/description aligned
+  const extractActivityData = (activity) => {
+    if (!activity || typeof activity === 'string') {
+      return { isString: true };
+    }
+
+    const poi = activity.poi || {};
+    const rawLocation = activity.location || poi.location;
+    const location = rawLocation && (rawLocation.latitude || rawLocation.lat)
+      ? {
+          latitude: rawLocation.latitude ?? rawLocation.lat,
+          longitude: rawLocation.longitude ?? rawLocation.lng,
+        }
+      : null;
+
+    return {
+      isString: false,
+      poiName: activity.poi_name || poi.name || 'Địa điểm',
+      description: activity.description || poi.description || activity.activity || '',
+      time: activity.time || activity.start_time || null,
+      duration: activity.duration || activity.duration_minutes || null,
+      estimatedCost: activity.estimated_cost || poi.estimated_cost || null,
+      location,
+      address: activity.address || poi.address || null,
+      rating: activity.rating || poi.rating || null,
+      category: activity.category || poi.category || null,
+    };
+  };
+
   // Extract ALL POIs with coordinates from entire itinerary (continuous numbering)
   const allPOIs = useMemo(() => {
     if (!plan?.itinerary) return [];
@@ -114,19 +143,17 @@ export default function PlanDetail() {
       
       activities.forEach((activity) => {
         globalIndex++;
-        
-        // Skip string activities
-        if (typeof activity === 'string') return;
-        // Skip activities without location
-        if (!activity.location?.latitude || !activity.location?.longitude) return;
+        const data = extractActivityData(activity);
+        if (data.isString) return;
+        if (!data.location?.latitude || !data.location?.longitude) return;
         
         pois.push({
           id: globalIndex,
           dayIndex: dayIndex + 1,
-          name: activity.poi_name || 'Địa điểm',
-          lat: activity.location.latitude,
-          lng: activity.location.longitude,
-          time: activity.time || null
+          name: data.poiName,
+          lat: data.location.latitude,
+          lng: data.location.longitude,
+          time: data.time || null
         });
       });
     });
@@ -288,7 +315,7 @@ export default function PlanDetail() {
                   className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
                 >
                   {/* Day Header */}
-                  <div className="bg-gray-900 text-white px-6 py-4">
+                  <div className="bg-brand-primary text-white px-6 py-4">
                     <h2 className="font-poppins font-bold text-lg">
                       Ngày {dayIndex + 1}
                       {day.date && (
@@ -307,16 +334,19 @@ export default function PlanDetail() {
                     {day.activities?.length > 0 ? (
                       day.activities.map((activity, actIndex) => {
                         const globalIndex = startIndex + actIndex + 1;
-                        const isString = typeof activity === 'string';
-                        const activityText = isString ? activity : (activity.activity || activity.description || '');
-                        const poiName = isString ? null : activity.poi_name;
-                        const time = isString ? null : activity.time;
-                        const duration = isString ? null : activity.duration;
-                        const estimatedCost = isString ? null : activity.estimated_cost;
-                        const location = isString ? null : activity.location;
-                        const address = isString ? null : activity.address;
-                        const rating = isString ? null : activity.rating;
-                        const category = isString ? null : activity.category;
+                        const extracted = extractActivityData(activity);
+                        const isString = extracted.isString;
+                        const {
+                          poiName,
+                          description,
+                          time,
+                          duration,
+                          estimatedCost,
+                          location,
+                          address,
+                          rating,
+                          category,
+                        } = extracted;
                         const hasLocation = location?.latitude && location?.longitude;
 
                         return (
@@ -332,9 +362,9 @@ export default function PlanDetail() {
                                 whileHover={{ scale: 1.1 }}
                                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
                                   hoveredPOI === globalIndex
-                                    ? 'bg-blue-600 text-white shadow-lg scale-110'
+                                    ? 'bg-brand-secondary text-white shadow-lg scale-110'
                                     : hasLocation
-                                      ? 'bg-gray-900 text-white cursor-pointer hover:bg-gray-700'
+                                      ? 'bg-brand-primary text-white cursor-pointer hover:bg-brand-secondary'
                                       : 'bg-gray-300 text-gray-600'
                                 }`}
                               >
@@ -350,7 +380,7 @@ export default function PlanDetail() {
                               whileHover={{ y: -2, boxShadow: '0 8px 25px -5px rgba(0,0,0,0.1)' }}
                               className={`flex-1 bg-white rounded-xl border p-4 transition-all ${
                                 hoveredPOI === globalIndex
-                                  ? 'border-blue-500 shadow-md ring-2 ring-blue-100'
+                                  ? 'border-brand-primary shadow-md ring-2 ring-brand-primary/15'
                                   : 'border-gray-200 hover:shadow-md'
                               }`}
                             >
@@ -369,7 +399,7 @@ export default function PlanDetail() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="font-bold text-lg text-gray-900 hover:text-blue-600 transition-colors inline-flex items-center gap-1 mb-2"
+                                  className="font-bold text-lg text-gray-900 hover:text-brand-secondary transition-colors inline-flex items-center gap-1 mb-2"
                                 >
                                   {poiName}
                                   <MapPin className="w-4 h-4" />
@@ -378,7 +408,7 @@ export default function PlanDetail() {
 
                               {/* Activity Description */}
                               <p className={`text-gray-700 ${poiName ? 'text-sm' : 'text-base font-medium'} mb-2`}>
-                                {activityText}
+                                {description}
                               </p>
 
                               {/* Additional Info */}
@@ -477,7 +507,7 @@ export default function PlanDetail() {
                   icon={{
                     path: window.google?.maps?.SymbolPath?.CIRCLE,
                     scale: 14,
-                    fillColor: hoveredPOI === poi.id ? '#2563eb' : '#1f2937',
+                    fillColor: hoveredPOI === poi.id ? '#547023' : '#2E571C',
                     fillOpacity: 1,
                     strokeColor: 'white',
                     strokeWeight: 2,
@@ -514,12 +544,12 @@ export default function PlanDetail() {
               )}
 
               {/* Polyline connecting ALL POIs */}
-              {polylinePath.length > 1 && (
+                  {polylinePath.length > 1 && (
                 <Polyline
                   path={polylinePath}
                   options={{
-                    strokeColor: '#1f2937',
-                    strokeOpacity: 0.6,
+                    strokeColor: '#2E571C',
+                    strokeOpacity: 0.65,
                     strokeWeight: 3,
                     geodesic: true,
                   }}

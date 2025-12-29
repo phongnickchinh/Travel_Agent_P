@@ -12,6 +12,12 @@ export default {
         dm: ['DM Sans', 'sans-serif'],
       },
       colors: {
+        brand: {
+          primary: '#2E571C',
+          secondary: '#547023',
+          muted: '#E8F1E4',
+          dark: '#1F3A12',
+        },
         accent: {
           primary: '#000000',
           success: '#10B981',

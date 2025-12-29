@@ -85,10 +85,14 @@ def create_app(config_class=Config):
         print(f"[INIT] WARNING: MongoDB initialization failed: {str(e)}")
         print("[INIT] WARNING: POI and Itinerary features will not be available")
     
-    # Initialize Elasticsearch and sync POIs from MongoDB
+    # Initialize Elasticsearch and sync data from MongoDB
     from .core.es_initializer import initialize_elasticsearch
     try:
-        initialize_elasticsearch()
+        es_success = initialize_elasticsearch()
+        if es_success:
+            print("[INIT] Elasticsearch initialized and synced successfully")
+        else:
+            print("[INIT] WARNING: Elasticsearch initialization incomplete")
     except Exception as es_error:
         print(f"[INIT] WARNING: Elasticsearch initialization failed: {str(es_error)}")
     

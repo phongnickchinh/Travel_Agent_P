@@ -6,9 +6,11 @@ Purpose:
 - Background task for LLM-based itinerary generation
 - Asynchronous plan processing
 - Error handling and status updates
+- Uses repositories and providers directly (clean architecture)
 
 Author: Travel Agent P Team
 Date: Week 4 - HuggingFace + LangChain Integration
+Updated: December 24, 2025 - Refactored for clean architecture
 """
 
 import logging
@@ -23,17 +25,46 @@ def get_celery_app():
 
 
 def get_planner_service():
-    """Create PlannerService instance with proper DI."""
-    from app.repo.mongo.plan_repository import PlanRepository
-    from app.repo.postgre.implementations.cost_usage_repository import CostUsageRepository
-    from app.service.planner_service import PlannerService
-    from app.service.cost_usage_service import CostUsageService
+    """
+    Create PlannerService instance with proper DI.
     
+    Architecture (Clean - no service-to-service imports):
+    - PlanRepository: Plan CRUD
+    - POIRepository: POI search in MongoDB
+    - PlaceDetailRepository: Destination caching
+    - GooglePlacesProvider: External API calls
+    - CostUsageService: Cost tracking (optional)
+    """
+    from ..repo.mongo.plan_repository import PlanRepository
+    from ..repo.mongo.poi_repository import POIRepository
+    from ..repo.mongo.place_detail_repository import PlaceDetailRepository
+    from ..repo.postgre.implementations.cost_usage_repository import CostUsageRepository
+    from ..service.planner_service import PlannerService
+    from ..service.cost_usage_service import CostUsageService
+    from ..providers.places.google_places_provider import GooglePlacesProvider
+    
+    # Initialize repositories
     plan_repo = PlanRepository()
+    poi_repo = POIRepository()
+    place_detail_repo = PlaceDetailRepository()
     cost_usage_repo = CostUsageRepository()
+    
+    # Initialize provider
+    google_provider = GooglePlacesProvider()
+    
+    # Initialize cost service
     cost_usage_service = CostUsageService(cost_usage_repo)
     
-    return PlannerService(plan_repo, cost_usage_service)
+    logger.info("[CELERY] PlannerService initialized with clean architecture")
+    
+    # Create PlannerService with repositories and provider (no service imports)
+    return PlannerService(
+        plan_repository=plan_repo,
+        poi_repository=poi_repo,
+        place_detail_repository=place_detail_repo,
+        google_places_provider=google_provider,
+        cost_usage_service=cost_usage_service
+    )
 
 
 # Get celery instance

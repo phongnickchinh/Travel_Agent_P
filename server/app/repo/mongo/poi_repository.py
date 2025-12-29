@@ -203,6 +203,37 @@ class POIRepository(POIRepositoryInterface):
             logger.error(f"[ERROR] Failed to get POI {poi_id}: {e}")
             return None
     
+    def get_by_ids(self, poi_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Get multiple POIs by their IDs.
+        
+        Args:
+            poi_ids: List of POI identifiers
+            
+        Returns:
+            Dict mapping poi_id to POI document
+            
+        Example:
+            pois = poi_repo.get_by_ids(["poi_abc", "poi_xyz"])
+            for poi_id, poi in pois.items():
+                print(f"{poi_id}: {poi['name']}")
+        """
+        if self.collection is None or not poi_ids:
+            return {}
+        
+        try:
+            cursor = self.collection.find({"poi_id": {"$in": poi_ids}})
+            result = {}
+            for poi in cursor:
+                result[poi['poi_id']] = poi
+            
+            logger.debug(f"[DEBUG] Fetched {len(result)}/{len(poi_ids)} POIs by IDs")
+            return result
+        
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get POIs by IDs: {e}")
+            return {}
+
     def update(self, poi_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Update POI by ID.

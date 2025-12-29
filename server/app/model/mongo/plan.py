@@ -150,8 +150,25 @@ class Plan(BaseModel):
         None, max_length=200, description="User-defined plan title"
     )
     
+    # Thumbnail for dashboard display
+    thumbnail_url: Optional[str] = Field(
+        None, 
+        description="Thumbnail image URL (from destination photo, uploaded to Firebase)"
+    )
+    
+    # Trip destination (NEW: place_id based)
+    destination_place_id: Optional[str] = Field(None, description="Google Place ID for destination")
+    destination: str = Field(..., min_length=2, max_length=100, description="City or region name")
+    destination_types: List[str] = Field(
+        default_factory=list, 
+        description="Place types (e.g., ['locality', 'political'])"
+    )
+    destination_location: Optional[Dict[str, float]] = Field(
+        None, 
+        description="Destination coordinates {'latitude': float, 'longitude': float}"
+    )
+    
     # Trip parameters
-    destination: str = Field(..., min_length=2, max_length=100, description="City or region")
     num_days: int = Field(..., ge=1, le=30, description="Trip duration (1-30 days)")
     start_date: Optional[str] = Field(None, description="Trip start date (YYYY-MM-DD)")
     end_date: Optional[str] = Field(None, description="Trip end date (auto-calculated)")
@@ -180,6 +197,11 @@ class Plan(BaseModel):
     # Sharing & visibility
     is_public: bool = Field(default=False, description="Allow public sharing")
     share_token: Optional[str] = Field(None, description="Token for shared link access")
+    
+    # Soft delete (trash functionality)
+    is_deleted: bool = Field(default=False, description="Soft delete flag (moved to trash)")
+    deleted_at: Optional[datetime] = Field(None, description="Timestamp when moved to trash")
+    is_permanently_deleted: bool = Field(default=False, description="Permanent delete flag (cannot be restored)")
     
     # Versioning for regeneration
     version: int = Field(default=1, description="Plan version (increments on regenerate)")
@@ -266,17 +288,37 @@ class Plan(BaseModel):
 class PlanCreateRequest(BaseModel):
     """Request payload for creating a plan."""
     title: Optional[str] = Field(None, max_length=200, description="Plan title")
-    destination: str = Field(..., min_length=2, max_length=100)
+    
+    # NEW: Destination via place_id (from autocomplete selection)
+    destination_place_id: str = Field(..., description="Google Place ID from autocomplete")
+    destination_name: str = Field(..., min_length=2, max_length=100, description="Display name for destination")
+    destination_types: List[str] = Field(
+        default_factory=list, 
+        description="Place types from autocomplete (e.g., ['locality', 'political'])"
+    )
+    
+    # Legacy field for backward compatibility (optional now)
+    destination: Optional[str] = Field(None, description="DEPRECATED: Use destination_name")
+    
     num_days: int = Field(..., ge=1, le=30)
     start_date: Optional[str] = Field(None, description="YYYY-MM-DD")
     origin: Optional[Origin] = Field(None, description="Starting point")
     preferences: Dict[str, Any] = Field(default_factory=dict)
     
+    @model_validator(mode='after')
+    def sync_destination_fields(self):
+        """Sync destination with destination_name for backward compatibility."""
+        if not self.destination and self.destination_name:
+            self.destination = self.destination_name
+        return self
+    
     class Config:
         json_schema_extra = {
             "example": {
                 "title": "Da Nang Beach Vacation",
-                "destination": "Da Nang",
+                "destination_place_id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+                "destination_name": "Da Nang",
+                "destination_types": ["locality", "political"],
                 "num_days": 3,
                 "start_date": "2025-06-01",
                 "origin": {

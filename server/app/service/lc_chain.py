@@ -67,7 +67,7 @@ def create_llm_instance(provider: str = None, temperature: float = 0.7):
             api_key=Config.GROQ_API_KEY,
             model=Config.GROQ_MODEL or "llama-3.1-70b-versatile",
             temperature=temperature,
-            max_tokens=1024,
+            max_tokens=4096,  # Increased for full itinerary generation (4-7 days)
         )
         return llm, "groq", Config.GROQ_MODEL or "llama-3.1-70b-versatile"
     
@@ -82,7 +82,7 @@ def create_llm_instance(provider: str = None, temperature: float = 0.7):
             huggingfacehub_api_token=Config.HUGGINGFACE_API_KEY,
             task="text-generation",
             model_kwargs={
-                "max_new_tokens": 1024,
+                "max_new_tokens": 4096,  # Increased for full itinerary generation (4-7 days)
                 "temperature": temperature,
                 "top_p": 0.9,
                 "do_sample": True,
@@ -147,44 +147,116 @@ class TravelPlannerChain:
         """
         # Prompt template
         prompt_template = PromptTemplate(
-            input_variables=["destination", "num_days", "preferences", "start_date", "poi_context"],
-            template="""You are a professional travel planner AI. Create a {num_days}-day itinerary for {destination}.
+        input_variables=["destination", "num_days", "preferences", "start_date", "poi_context"],
+        template="""
+        You are a senior professional travel planner AI with 10+ years of experience designing detailed, realistic itineraries.
 
-Start date: {start_date}
+        Your task is to create a HIGH-QUALITY, DETAILED, and WELL-STRUCTURED {num_days}-day travel itinerary for {destination}.
 
-User preferences:
-{preferences}
+        Start date: {start_date}
 
-{poi_context}
+        User preferences:
+        {preferences}
 
-IMPORTANT INSTRUCTIONS:
-1. Select POIs from the list above (use poi_id exactly as shown)
-2. Create a balanced itinerary with 3-5 POIs per day
-3. Consider POI duration, opening hours, and location
-4. Group nearby POIs together for efficiency
-5. Mix different categories (beach, culture, food, etc.)
-6. consider about opening hours and estimated visit times to sort the POIs in a day
-7. poi_context always have food related activities, even the user's preferences do not mention about food, always include food related activities at least in lunch and dinner in each day
-8. Return ONLY valid JSON array, no additional text
+        Below is the list of available POIs. You MUST only select POIs from this list:
+        {poi_context}
+        
+        Return language: Vietnamese
 
-Output format (JSON array):
-[
-  {{
-    "day": 1,
-    "date": "2025-06-01",
-    "poi_ids": ["poi_my_khe_beach", "poi_linh_ung_pagoda", "poi_dragon_bridge"],
-    "location": [16.0544, 108.2022],
-    "activities": ["Morning swim at My Khe Beach", "Visit Linh Ung Pagoda", "Watch Dragon Bridge fire show at night"],
-    "opening_hours": ["06:00-18:00", "07:00-17:00", "09:00-22:00"],
-    "estimated_times": ["09:00-11:00", "12:00-14:00", "20:00-21:00"],
-    "estimated_cost_vnd": 500000,
-    "notes": "Start with beach relaxation, end with spectacular fire show"
-  }},
-  ...
-]
+        ========================
+        CRITICAL INSTRUCTIONS
+        ========================
 
+        1. You MUST select POIs strictly from the provided list.
+        - Use "poi_id" EXACTLY as shown.
+        - Do NOT invent or modify any poi_id.
 
-Generate the {num_days}-day itinerary now (JSON only):"""
+        2. Each day MUST include:
+        - 3 to 5 POIs
+        - At least:
+            • 1 food-related activity for lunch
+            • 1 food-related activity for dinner
+
+        3. Time planning rules:
+        - Sort POIs in logical visiting order within the day.
+        - Respect opening hours.
+        - Avoid overlapping estimated visit times.
+        - Travel pace should feel realistic and comfortable.
+
+        4. Content quality rules:
+        - Activities MUST be descriptive and natural (minimum 25 words per activity).
+        - POI names in activities MUST be wrapped in double quotes ("") for map processing.
+            Example: Buổi sáng, ghé thăm "Bãi biển Mỹ Khê" để tắm biển và thư giãn.
+        - Notes MUST summarize the day’s theme, travel flow, and experience (minimum 25–40 words).
+        - Avoid repetitive phrasing across days.
+
+        5. Balance rules:
+        - Mix categories such as nature, culture, food, sightseeing, relaxation.
+        - CRITICAL: Each day should focus on a specific geographic area.
+
+        6. GEOGRAPHIC OPTIMIZATION (CRITICAL):
+        - Each POI has coordinates in format @(latitude, longitude).
+        - Calculate approximate distance: 0.01 degree ≈ 1.1 km.
+        - POIs within 0.02 degrees (~2km) of each other should be visited on the SAME DAY.
+        - Order POIs within a day to minimize total travel distance (TSP-like optimization).
+        - Avoid zig-zag routes: if POI A and C are close, don't put POI B (far away) between them.
+        - Example: If POIs at (16.05, 108.20), (16.06, 108.21), (16.10, 108.30) - the first two are close (~1.5km), third is far (~12km). Group first two together.
+
+        7. Data consistency:
+        - opening_hours and estimated_times MUST align with each POI.
+        - location should represent the central area of the day.
+
+        ========================
+        OUTPUT FORMAT (STRICT)
+        ========================
+
+        Return ONLY a VALID JSON ARRAY.
+        - No markdown
+        - No explanation
+        - No comments
+        - No extra text before or after JSON
+
+        Before returning the final answer:
+        - Internally validate that the output is valid JSON
+        - Ensure the array length equals {num_days}
+
+        JSON schema example:
+        [
+        {{
+            "day": 1,
+            "date": "YYYY-MM-DD",
+            "poi_ids": ["poi_id_1", "poi_id_2", "poi_id_3"],
+            "location": [latitude, longitude],
+            "activities": [
+            "Buổi sáng, tham quan \"Tên POI 1\" để khám phá và trải nghiệm (12-20 từ).",
+            "Dùng bữa trưa tại \"Tên POI 2\" với các món đặc sản địa phương hấp dẫn.",
+            "Chiều tối, thư giãn tại \"Tên POI 3\" ngắm hoàng hôn tuyệt đẹp."
+            ],
+            "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "estimated_cost_vnd": 500000,
+            "notes": "Tóm tắt trải nghiệm ngày 1 với dòng chảy tự nhiên và mạch lạc (25-40 từ)..."
+        }},
+        {{
+            "day": 2,
+            "date": "YYYY-MM-DD",
+            "poi_ids": ["poi_id_4", "poi_id_5", "poi_id_6"],
+            "location": [latitude, longitude],
+            "activities": [
+            "Sáng sớm ghé \"Tên POI 4\" để tham quan và chụp ảnh...",
+            "Trưa thưởng thức ẩm thực tại \"Tên POI 5\"...",
+            "Chiều khám phá \"Tên POI 6\" với nhiều hoạt động thú vị..."
+            ],
+            "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "estimated_cost_vnd": 600000,
+            "notes": "Tóm tắt ngày 2 với trải nghiệm phong phú và đa dạng..."
+        }}
+        ]
+
+        CRITICAL: Ensure valid JSON syntax with proper commas, brackets, and quotes.
+        Generate the {num_days}-day itinerary now (JSON array only, no extra text):
+        """
         )
         
         # Output parser (extract JSON from text)
@@ -200,7 +272,7 @@ Generate the {num_days}-day itinerary now (JSON only):"""
         
         return chain
     
-    def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, input_data: Dict[str, Any], poi_context: str = None) -> Dict[str, Any]:
         """
         Generate travel itinerary.
         
@@ -210,6 +282,8 @@ Generate the {num_days}-day itinerary now (JSON only):"""
                 - num_days: int
                 - preferences: dict
                 - start_date: str (YYYY-MM-DD)
+            poi_context: Pre-formatted POI context string (from PlacesService)
+                         If None, falls back to mock data
                 
         Returns:
             Dict with keys:
@@ -233,8 +307,12 @@ Generate the {num_days}-day itinerary now (JSON only):"""
             # Format preferences
             pref_text = self._format_preferences(preferences)
             
-            # Get POI context
-            poi_context = get_mock_poi_summary()
+            # Use provided POI context or fall back to mock data
+            if poi_context:
+                logger.info(f"[INFO] Using real POI context ({len(poi_context)} chars)")
+            else:
+                logger.warning("[WARN] No POI context provided, using mock data")
+                poi_context = get_mock_poi_summary()
             
             # Prepare chain input
             chain_input = {
@@ -250,13 +328,30 @@ Generate the {num_days}-day itinerary now (JSON only):"""
             # Run chain
             llm_output = self.chain.invoke(chain_input)
             
-            logger.info(f"[INFO] LLM response received: {len(llm_output) if isinstance(llm_output, str) else 'AIMessage'}")
+            # Log response details for debugging
+            if isinstance(llm_output, str):
+                output_len = len(llm_output)
+                logger.info(f"[INFO] LLM response received: {output_len} chars")
+            elif hasattr(llm_output, 'content'):
+                output_len = len(llm_output.content) if llm_output.content else 0
+                logger.info(f"[INFO] LLM response received: {output_len} chars (AIMessage)")
+            else:
+                output_len = 0
+                logger.warning(f"[WARN] LLM response type unexpected: {type(llm_output)}")
             
             # Extract text from response (handle both str and AIMessage)
             if hasattr(llm_output, 'content'):
                 llm_text = llm_output.content
             else:
                 llm_text = str(llm_output)
+            
+            # Debug: log first 500 chars of response if empty or too short
+            if not llm_text or len(llm_text) < 50:
+                logger.error(f"[ERROR] LLM returned empty/short response: '{llm_text}'")
+                if hasattr(llm_output, 'response_metadata'):
+                    logger.error(f"[ERROR] Response metadata: {llm_output.response_metadata}")
+            else:
+                logger.debug(f"[DEBUG] LLM response preview: {llm_text[:200]}...")
             
             # Extract usage stats if available (Groq provides this)
             usage = LLMUsageStats(

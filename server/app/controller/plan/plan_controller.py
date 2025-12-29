@@ -35,11 +35,20 @@ class PlanController:
     Controller for travel plan endpoints.
     
     Routes:
-    - POST   /api/plan              Create new plan
-    - GET    /api/plan              List user's plans
-    - GET    /api/plan/<plan_id>    Get plan details
-    - PUT    /api/plan/<plan_id>    Update/regenerate plan
-    - DELETE /api/plan/<plan_id>    Delete plan
+    - POST   /api/plan                           Create new plan
+    - GET    /api/plan                           List user's plans
+    - GET    /api/plan/<plan_id>                 Get plan details
+    - PUT    /api/plan/<plan_id>                 Update/regenerate plan
+    - DELETE /api/plan/<plan_id>                 Soft delete plan (move to trash)
+    
+    Trash Management:
+    - GET    /api/plan/trash                     List deleted plans
+    - POST   /api/plan/<plan_id>/restore         Restore plan from trash
+    - DELETE /api/plan/<plan_id>/permanent-delete Permanently delete plan
+    
+    Plan Sharing:
+    - POST   /api/plan/<plan_id>/share           Toggle public sharing
+    - GET    /api/plan/shared/<share_token>      Get public plan (no auth)
     """
     
     def __init__(self, planner_service: PlannerService):
@@ -57,6 +66,19 @@ class PlanController:
         plan_api.add_url_rule("/<plan_id>","update_plan", self._wrap_jwt_required(self.update_plan), methods=["PUT"])
         
         plan_api.add_url_rule("/<plan_id>", "delete_plan", self._wrap_jwt_required(self.delete_plan), methods=["DELETE"])
+        
+        # Trash management
+        plan_api.add_url_rule("/trash", "list_trash", self._wrap_jwt_required(self.list_trash), methods=["GET"])
+        
+        plan_api.add_url_rule("/<plan_id>/restore", "restore_plan", self._wrap_jwt_required(self.restore_plan), methods=["POST"])
+        
+        plan_api.add_url_rule("/<plan_id>/permanent-delete", "permanent_delete_plan", self._wrap_jwt_required(self.permanent_delete_plan), methods=["DELETE"])
+        
+        # Plan sharing
+        plan_api.add_url_rule("/<plan_id>/share", "toggle_sharing", self._wrap_jwt_required(self.toggle_sharing), methods=["POST"])
+        
+        # Public access (no auth required)
+        plan_api.add_url_rule("/shared/<share_token>", "get_shared_plan", self.get_shared_plan, methods=["GET"])
     
     def _wrap_jwt_required(self, f):
         """Helper to maintain JWT required middleware."""
@@ -66,7 +88,7 @@ class PlanController:
         return wrapper
     
     @rate_limit(
-        max_requests=Config.RATE_LIMIT_PLAN_CREATION,
+        max_requests=10000,
         window_seconds=Config.RATE_LIMIT_PLAN_CREATION_WINDOW,
         identifier_func=get_identifier_from_auth_token,
         key_prefix='plan_creation'
@@ -78,11 +100,13 @@ class PlanController:
         POST /plan
         Body:
         {
-            "destination": "Da Nang",
+            "destination_place_id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+            "destination_name": "Da Nang",
+            "destination_types": ["locality", "political"],
             "num_days": 3,
             "start_date": "2025-06-01",
             "origin": {
-                "location": {"lat":, "lng": },
+                "location": {"lat": 16.0678, "lng": 108.2208},
                 "address": "173 Hoang Hoa Tham, Ngoc Ha, Ha Noi",
                 "transport_mode": "driving"
             },
@@ -103,7 +127,17 @@ class PlanController:
             data = request.get_json() or {}
 
             # Sanitize input to avoid NoSQL injection and large payloads
-            allowed_keys = ["title", "destination", "num_days", "start_date", "origin", "preferences"]
+            allowed_keys = [
+                "title", 
+                "destination_place_id", 
+                "destination_name", 
+                "destination_types",
+                "destination",  # Legacy support
+                "num_days", 
+                "start_date", 
+                "origin", 
+                "preferences"
+            ]
             sanitized_data = sanitize_user_input(data, allowed_keys)
             if contains_mongo_operators(sanitized_data):
                 return build_error_response(
@@ -352,13 +386,13 @@ class PlanController:
     
     def delete_plan(self, user, plan_id: str):
         """
-        Delete plan.
+        Soft delete plan (move to trash).
         
         DELETE /plan/<plan_id>
         
         Response:
         {
-            "message": "Plan deleted successfully."
+            "message": "Plan moved to trash successfully."
         }
         """
         try:
@@ -373,8 +407,8 @@ class PlanController:
                 )
             
             return build_success_response(
-                "Plan deleted successfully.",
-                "Đã xóa kế hoạch thành công.",
+                "Plan moved to trash successfully.",
+                "Đã chuyển kế hoạch vào thùng rác thành công.",
                 "20005"
             )
             
@@ -384,6 +418,260 @@ class PlanController:
                 "Failed to delete plan.",
                 f"Không thể xóa kế hoạch: {str(e)}",
                 "50006",
+                500
+            )
+
+
+    # ============================================
+    # TRASH MANAGEMENT
+    # ============================================
+    
+    def list_trash(self, user):
+        """
+        List user's deleted plans (trash) with pagination.
+        
+        GET /plan/trash?page=1&limit=20
+        
+        Response:
+        {
+            "plans": [...],
+            "total": 5,
+            "page": 1,
+            "limit": 20
+        }
+        """
+        try:
+            # Get query params
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 20))
+            
+            # Get trash plans
+            result = self.planner_service.get_trash_plans(user.id, page, limit)
+            
+            return build_success_response(
+                "Trash plans retrieved successfully.",
+                "Đã lấy danh sách thùng rác thành công.",
+                "20007",
+                result
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to list trash: {e}")
+            return build_error_response(
+                "Failed to retrieve trash plans.",
+                f"Không thể lấy danh sách thùng rác: {str(e)}",
+                "50007",
+                500
+            )
+    
+    def restore_plan(self, user, plan_id: str):
+        """
+        Restore plan from trash.
+        
+        POST /plan/<plan_id>/restore
+        
+        Response:
+        {
+            "message": "Plan restored successfully."
+        }
+        """
+        try:
+            success = self.planner_service.restore_plan(plan_id, user.id)
+            
+            if not success:
+                return build_error_response(
+                    "Plan not found in trash or unauthorized.",
+                    "Không tìm thấy kế hoạch trong thùng rác hoặc không có quyền khôi phục.",
+                    "40403",
+                    404
+                )
+            
+            return build_success_response(
+                "Plan restored successfully.",
+                "Đã khôi phục kế hoạch thành công.",
+                "20008"
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to restore plan {plan_id}: {e}")
+            return build_error_response(
+                "Failed to restore plan.",
+                f"Không thể khôi phục kế hoạch: {str(e)}",
+                "50008",
+                500
+            )
+    
+    def permanent_delete_plan(self, user, plan_id: str):
+        """
+        Permanently delete plan from trash.
+        
+        DELETE /plan/<plan_id>/permanent-delete
+        
+        Response:
+        {
+            "message": "Plan permanently deleted."
+        }
+        """
+        try:
+            success = self.planner_service.permanent_delete_plan(plan_id, user.id)
+            
+            if not success:
+                return build_error_response(
+                    "Plan not found in trash or unauthorized.",
+                    "Không tìm thấy kế hoạch trong thùng rác hoặc không có quyền xóa vĩnh viễn.",
+                    "40404",
+                    404
+                )
+            
+            return build_success_response(
+                "Plan permanently deleted.",
+                "Đã xóa vĩnh viễn kế hoạch.",
+                "20009"
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to permanently delete plan {plan_id}: {e}")
+            return build_error_response(
+                "Failed to permanently delete plan.",
+                f"Không thể xóa vĩnh viễn kế hoạch: {str(e)}",
+                "50009",
+                500
+            )
+    
+    # ============================================
+    # PLAN SHARING
+    # ============================================
+    
+    def toggle_sharing(self, user, plan_id: str):
+        """
+        Toggle plan public sharing.
+        
+        POST /plan/<plan_id>/share
+        Body:
+        {
+            "is_public": true
+        }
+        
+        Response:
+        {
+            "message": "Plan sharing updated.",
+            "plan": {
+                "plan_id": "plan_abc123",
+                "is_public": true,
+                "share_token": "xyz123...",
+                "share_url": "http://localhost:5173/shared/xyz123..."
+            }
+        }
+        """
+        try:
+            data = request.get_json() or {}
+            is_public = data.get('is_public', False)
+            
+            if not isinstance(is_public, bool):
+                return build_error_response(
+                    "Invalid is_public value.",
+                    "Giá trị is_public không hợp lệ.",
+                    "40003",
+                    400
+                )
+            
+            # Toggle sharing
+            updated_plan = self.planner_service.toggle_plan_sharing(plan_id, user.id, is_public)
+            
+            if not updated_plan:
+                return build_error_response(
+                    "Plan not found or unauthorized.",
+                    "Không tìm thấy kế hoạch hoặc không có quyền chia sẻ.",
+                    "40405",
+                    404
+                )
+            
+            # Build share URL if public
+            share_url = None
+            if is_public and updated_plan.get('share_token'):
+                # You can configure this base URL from config
+                share_url = f"http://localhost:5173/shared/{updated_plan['share_token']}"
+            
+            return build_success_response(
+                "Plan sharing updated successfully.",
+                "Đã cập nhật chia sẻ kế hoạch thành công.",
+                "20010",
+                {
+                    "plan_id": updated_plan['plan_id'],
+                    "is_public": updated_plan['is_public'],
+                    "share_token": updated_plan.get('share_token'),
+                    "share_url": share_url
+                }
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to toggle sharing for plan {plan_id}: {e}")
+            return build_error_response(
+                "Failed to update plan sharing.",
+                f"Không thể cập nhật chia sẻ kế hoạch: {str(e)}",
+                "50010",
+                500
+            )
+    
+    def get_shared_plan(self, share_token: str):
+        """
+        Get public plan by share token (no authentication required).
+        
+        GET /plan/shared/<share_token>
+        
+        Response:
+        {
+            "plan": {
+                "plan_id": "plan_abc123",
+                "destination": "Da Nang",
+                "num_days": 3,
+                "itinerary": [...]
+            }
+        }
+        """
+        try:
+            plan = self.planner_service.get_public_plan(share_token)
+            
+            if not plan:
+                return build_error_response(
+                    "Shared plan not found or no longer public.",
+                    "Không tìm thấy kế hoạch chia sẻ hoặc đã không còn công khai.",
+                    "40406",
+                    404
+                )
+            
+            # Remove sensitive fields from response
+            safe_plan = {
+                'plan_id': plan.get('plan_id'),
+                'title': plan.get('title'),
+                'destination': plan.get('destination'),
+                'destination_place_id': plan.get('destination_place_id'),
+                'destination_types': plan.get('destination_types'),
+                'destination_location': plan.get('destination_location'),
+                'num_days': plan.get('num_days'),
+                'start_date': plan.get('start_date'),
+                'end_date': plan.get('end_date'),
+                'preferences': plan.get('preferences'),
+                'itinerary': plan.get('itinerary'),
+                'status': plan.get('status'),
+                'total_pois': plan.get('total_pois'),
+                'created_at': plan.get('created_at'),
+                'updated_at': plan.get('updated_at')
+            }
+            
+            return build_success_response(
+                "Shared plan retrieved successfully.",
+                "Đã lấy kế hoạch chia sẻ thành công.",
+                "20011",
+                {"plan": safe_plan}
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get shared plan {share_token}: {e}")
+            return build_error_response(
+                "Failed to retrieve shared plan.",
+                f"Không thể lấy kế hoạch chia sẻ: {str(e)}",
+                "50011",
                 500
             )
 

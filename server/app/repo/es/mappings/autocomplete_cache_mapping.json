@@ -6,7 +6,7 @@
       "filter": {
         "autocomplete_filter": {
           "type": "edge_ngram",
-          "min_gram": 1,
+          "min_gram": 2,
           "max_gram": 20
         },
         "word_delimiter_graph": {
@@ -78,7 +78,8 @@
         "fields": {
           "keyword": {
             "type": "keyword",
-            "ignore_above": 256
+            "ignore_above": 256,
+            "index": false
           }
         }
       },

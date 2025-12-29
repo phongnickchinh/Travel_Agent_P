@@ -131,7 +131,8 @@ class PlanRepository(PlanRepositoryInterface):
         user_id: str, 
         skip: int = 0, 
         limit: int = 20,
-        status: Optional[PlanStatusEnum] = None
+        status: Optional[PlanStatusEnum] = None,
+        include_deleted: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Get user's plans with pagination.
@@ -141,6 +142,7 @@ class PlanRepository(PlanRepositoryInterface):
             skip: Offset for pagination
             limit: Max results per page
             status: Filter by status (optional)
+            include_deleted: Include soft-deleted plans (default: False)
             
         Returns:
             List of plan documents (newest first)
@@ -150,6 +152,8 @@ class PlanRepository(PlanRepositoryInterface):
         
         try:
             query = {"user_id": user_id}
+            if not include_deleted:
+                query["is_deleted"] = {"$ne": True}
             if status:
                 query["status"] = status.value
             
@@ -275,41 +279,296 @@ class PlanRepository(PlanRepositoryInterface):
             logger.error(f"[ERROR] Failed to update itinerary for plan {plan_id}: {e}")
             return False
     
+    def update(self, plan_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Generic update method for plan fields.
+        
+        Args:
+            plan_id: Plan identifier
+            update_data: Dictionary of fields to update
+            
+        Returns:
+            Updated plan document or None
+        """
+        if self.collection is None:
+            return None
+        
+        try:
+            update_data['updated_at'] = datetime.utcnow()
+            
+            result = self.collection.update_one(
+                {"plan_id": plan_id},
+                {"$set": update_data}
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"[INFO] Updated plan {plan_id} with {len(update_data)} fields")
+                return self.get_by_id(plan_id)
+            else:
+                logger.warning(f"[WARN] No plan updated for {plan_id}")
+                return None
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to update plan {plan_id}: {e}")
+            return None
+    
     def delete(self, plan_id: str) -> bool:
         """
-        Delete plan by plan_id.
+        Soft delete plan (move to trash).
         
         Args:
             plan_id: Plan identifier
             
         Returns:
-            True if deleted successfully
+            True if moved to trash successfully
         """
         if self.collection is None:
             return False
         
         try:
-            result = self.collection.delete_one({"plan_id": plan_id})
-            success = result.deleted_count > 0
+            result = self.collection.update_one(
+                {"plan_id": plan_id},
+                {"$set": {
+                    "is_deleted": True,
+                    "deleted_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                }}
+            )
+            success = result.modified_count > 0
             
             if success:
-                logger.info(f"[INFO] Deleted plan: {plan_id}")
+                logger.info(f"[INFO] Moved plan to trash: {plan_id}")
             else:
-                logger.warning(f"[WARN] No plan deleted for {plan_id}")
+                logger.warning(f"[WARN] No plan moved to trash for {plan_id}")
             
             return success
             
         except Exception as e:
-            logger.error(f"[ERROR] Failed to delete plan {plan_id}: {e}")
+            logger.error(f"[ERROR] Failed to move plan to trash {plan_id}: {e}")
             return False
     
-    def count_by_user(self, user_id: str, status: Optional[PlanStatusEnum] = None) -> int:
+    def restore_from_trash(self, plan_id: str) -> bool:
+        """
+        Restore plan from trash.
+        
+        Args:
+            plan_id: Plan identifier
+            
+        Returns:
+            True if restored successfully
+        """
+        if self.collection is None:
+            return False
+        
+        try:
+            result = self.collection.update_one(
+                {"plan_id": plan_id, "is_deleted": True},
+                {"$set": {
+                    "is_deleted": False,
+                    "deleted_at": None,
+                    "updated_at": datetime.utcnow()
+                }}
+            )
+            success = result.modified_count > 0
+            
+            if success:
+                logger.info(f"[INFO] Restored plan from trash: {plan_id}")
+            else:
+                logger.warning(f"[WARN] No plan restored from trash for {plan_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to restore plan from trash {plan_id}: {e}")
+            return False
+    
+    def permanent_delete(self, plan_id: str) -> bool:
+        """
+        Permanently delete plan (mark as permanently deleted, soft delete).
+        
+        Args:
+            plan_id: Plan identifier
+            
+        Returns:
+            True if permanently deleted successfully
+        """
+        if self.collection is None:
+            return False
+        
+        try:
+            result = self.collection.update_one(
+                {"plan_id": plan_id, "is_deleted": True},
+                {"$set": {
+                    "is_permanently_deleted": True,
+                    "updated_at": datetime.utcnow()
+                }}
+            )
+            success = result.modified_count > 0
+            
+            if success:
+                logger.info(f"[INFO] Permanently deleted plan: {plan_id}")
+            else:
+                logger.warning(f"[WARN] No plan permanently deleted for {plan_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to permanently delete plan {plan_id}: {e}")
+            return False
+    
+    def get_trash_plans(
+        self,
+        user_id: str,
+        skip: int = 0,
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Get user's deleted plans (trash).
+        
+        Args:
+            user_id: User identifier
+            skip: Offset for pagination
+            limit: Max results per page
+            
+        Returns:
+            List of deleted plan documents (newest first)
+        """
+        if self.collection is None:
+            return []
+        
+        try:
+            query = {
+                "user_id": user_id,
+                "is_deleted": True,
+                "is_permanently_deleted": {"$ne": True}
+            }
+            
+            plans = list(
+                self.collection.find(query)
+                .sort("deleted_at", DESCENDING)
+                .skip(skip)
+                .limit(limit)
+            )
+            
+            for plan in plans:
+                plan['_id'] = str(plan['_id'])
+            
+            logger.info(f"[INFO] Found {len(plans)} deleted plans for user {user_id}")
+            return plans
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get trash plans for user {user_id}: {e}")
+            return []
+    
+    def count_trash_plans(self, user_id: str) -> int:
+        """
+        Count user's deleted plans.
+        
+        Args:
+            user_id: User identifier
+            
+        Returns:
+            Total trash plan count
+        """
+        if self.collection is None:
+            return 0
+        
+        try:
+            query = {
+                "user_id": user_id,
+                "is_deleted": True,
+                "is_permanently_deleted": {"$ne": True}
+            }
+            count = self.collection.count_documents(query)
+            return count
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to count trash plans for user {user_id}: {e}")
+            return 0
+    
+    def update_sharing(
+        self,
+        plan_id: str,
+        is_public: bool,
+        share_token: Optional[str] = None
+    ) -> bool:
+        """
+        Update plan sharing settings.
+        
+        Args:
+            plan_id: Plan identifier
+            is_public: Public visibility flag
+            share_token: Share token (generated if making public)
+            
+        Returns:
+            True if updated successfully
+        """
+        if self.collection is None:
+            return False
+        
+        try:
+            update_data = {
+                "is_public": is_public,
+                "updated_at": datetime.utcnow()
+            }
+            
+            if is_public and share_token:
+                update_data["share_token"] = share_token
+            elif not is_public:
+                update_data["share_token"] = None
+            
+            result = self.collection.update_one(
+                {"plan_id": plan_id},
+                {"$set": update_data}
+            )
+            
+            success = result.modified_count > 0
+            if success:
+                status = "public" if is_public else "private"
+                logger.info(f"[INFO] Updated plan {plan_id} sharing to {status}")
+            else:
+                logger.warning(f"[WARN] No plan updated for sharing {plan_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to update sharing for plan {plan_id}: {e}")
+            return False
+    
+    def get_by_share_token(self, share_token: str) -> Optional[Dict[str, Any]]:
+        """
+        Get public plan by share token.
+        
+        Args:
+            share_token: Share token
+            
+        Returns:
+            Plan document or None
+        """
+        if self.collection is None:
+            return None
+        
+        try:
+            plan = self.collection.find_one({
+                "share_token": share_token,
+                "is_public": True,
+                "is_deleted": {"$ne": True}
+            })
+            if plan:
+                plan['_id'] = str(plan['_id'])
+            return plan
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get plan by share token: {e}")
+            return None
+    
+    def count_by_user(self, user_id: str, status: Optional[PlanStatusEnum] = None, include_deleted: bool = False) -> int:
         """
         Count user's plans.
         
         Args:
             user_id: User identifier
             status: Filter by status (optional)
+            include_deleted: Include soft-deleted plans (default: False)
             
         Returns:
             Total plan count
@@ -319,6 +578,8 @@ class PlanRepository(PlanRepositoryInterface):
         
         try:
             query = {"user_id": user_id}
+            if not include_deleted:
+                query["is_deleted"] = {"$ne": True}
             if status:
                 query["status"] = status.value
             

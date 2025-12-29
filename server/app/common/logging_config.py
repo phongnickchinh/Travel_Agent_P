@@ -6,6 +6,7 @@ Configure logging to both console and file with rotation.
 """
 import logging
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -41,11 +42,13 @@ def setup_logging(app):
     )
     
     # File handler with rotation (10MB max, keep 5 backups)
+    # Use delay=True to avoid file locking issues on Windows
     file_handler = RotatingFileHandler(
         'logs/app.log',
         maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=5,
-        encoding='utf-8'
+        encoding='utf-8',
+        delay=True  # Defer file opening until first write (fixes Windows permission errors)
     )
     file_handler.setLevel(log_level)
     file_handler.setFormatter(detailed_formatter)

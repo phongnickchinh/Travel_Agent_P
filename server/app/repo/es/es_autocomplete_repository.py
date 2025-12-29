@@ -56,7 +56,7 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
         repo.index_item(autocomplete_item.to_es_document())
     """
     
-    INDEX_NAME = "autocomplete_cache"
+    INDEX_NAME = "autocomplete"
     MAPPING_FILE = "autocomplete_cache_mapping.json"
     
     def __init__(self, es_client: Optional[Elasticsearch] = None):
@@ -259,7 +259,7 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
         limit: int = 10,
         types: Optional[List[str]] = None,
         location: Optional[Dict[str, float]] = None,
-        min_score: float = 0.5
+        min_score: float = 40.0
     ) -> List[Dict[str, Any]]:
         """
         Autocomplete search with edge n-gram matching.
@@ -282,11 +282,33 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
                     "prefix": {
                         "main_text.keyword": {
                             "value": query,
-                            "boost": 5.0
+                            "boost": 10.0  # Increased from 5.0
                         }
                     }
                 },
-                # Edge n-gram match on main_text
+                # Match phrase prefix for exact phrase matching
+                {
+                    "match_phrase_prefix": {
+                        "main_text": {
+                            "query": query,
+                            "boost": 8.0,  # High boost for phrase prefix
+                            "slop": 0,  # No word distance allowed
+                            "max_expansions": 50
+                        }
+                    }
+                },
+                # Match phrase prefix on unaccented for Vietnamese
+                {
+                    "match_phrase_prefix": {
+                        "main_text_unaccented": {
+                            "query": query,
+                            "boost": 7.0,
+                            "slop": 0,
+                            "max_expansions": 50
+                        }
+                    }
+                },
+                # Edge n-gram match on main_text (lower boost)
                 {
                     "match": {
                         "main_text": {
@@ -304,15 +326,6 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
                         }
                     }
                 },
-                # Match on full description
-                {
-                    "match": {
-                        "description": {
-                            "query": query,
-                            "boost": 1.0
-                        }
-                    }
-                }
             ]
             
             # Build filter clauses
@@ -322,11 +335,11 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
             
             # Build function score query
             functions = [
-                # Popularity boost based on click_count
+                # Popularity boost based on click_count (very small factor for multiply mode)
                 {
                     "field_value_factor": {
                         "field": "click_count",
-                        "factor": 1.2,
+                        "factor": 1.01,  # Very small multiplicative boost (1% per click)
                         "modifier": "log1p",
                         "missing": 1
                     }
@@ -361,9 +374,9 @@ class ESAutocompleteRepository(ESAutocompleteRepositoryInterface):
                                 "filter": filter_clauses if filter_clauses else []
                             }
                         },
-                        "functions": functions,
+                        # "functions": functions,
                         "score_mode": "multiply",
-                        "boost_mode": "multiply"
+                        "boost_mode": "multiply"  # Multiplicative: requires BOTH good text match AND good metadata
                     }
                 },
                 "min_score": min_score,

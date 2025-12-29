@@ -196,7 +196,7 @@ class AutocompleteController:
             
             # Track negative queries (ES miss = potential abuse pattern)
             # Increment counter when ES returns 0 results
-            if result["sources"]["es"] == 0:
+            if result["sources"]["es"] == 0 and result["sources"]["mongodb"] == 0 and result["sources"]["google"] == 0:
                 self._increment_negative_query_count()
             
             return build_success_response(

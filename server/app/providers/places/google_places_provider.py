@@ -216,6 +216,81 @@ class GooglePlacesProvider(BaseProvider):
             logger.error(f"Google Places API request failed: {e}")
             raise
     
+    # =========================================================================
+    # GEOCODING (for locality/political types)
+    # =========================================================================
+    
+    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @track_google_places_cost("geocode")
+    def geocode_by_place_id(self, place_id: str) -> Optional[Dict[str, float]]:
+        """
+        Get precise coordinates from Google Geocoding API using place_id.
+        
+        Use this when Place Details returns a locality/political type
+        which may have imprecise or missing coordinates.
+        
+        Args:
+            place_id: Google Place ID
+            
+        Returns:
+            Dict with 'latitude' and 'longitude', or None if failed
+        """
+        if not self.api_key:
+            raise ValueError("Google Places API key not configured")
+        
+        # Geocoding API URL (legacy API, different from Places New API)
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        
+        params = {
+            "place_id": place_id,
+            "key": self.api_key
+        }
+        
+        logger.info(f"[GEOCODE] Fetching coordinates for place_id: {place_id}")
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            if data.get('status') != 'OK':
+                logger.warning(f"[GEOCODE] API returned status: {data.get('status')}")
+                return None
+            
+            results = data.get('results', [])
+            if not results:
+                logger.warning(f"[GEOCODE] No results for place_id: {place_id}")
+                return None
+            
+            # Get first result's geometry
+            geometry = results[0].get('geometry', {})
+            location = geometry.get('location', {})
+            
+            lat = location.get('lat')
+            lng = location.get('lng')
+            
+            if lat is None or lng is None:
+                logger.warning(f"[GEOCODE] Missing coordinates in response")
+                return None
+            
+            logger.info(f"[GEOCODE] Got coordinates: lat={lat}, lng={lng}")
+            
+            return {
+                'latitude': lat,
+                'longitude': lng
+            }
+            
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"[GEOCODE] HTTP error: {e.response.status_code} - {e.response.text}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[GEOCODE] Request failed: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[GEOCODE] Unexpected error: {e}")
+            return None
+
     @CircuitBreakers.GOOGLE_PLACES
     @retry_with_backoff(max_retries=3, base_delay=1.0)
     @track_google_places_cost("place_details")
@@ -310,6 +385,122 @@ class GooglePlacesProvider(BaseProvider):
             logger.error(f"Google Places Photo API request failed: {e}")
             raise
     
+    @CircuitBreakers.GOOGLE_PLACES
+    @retry_with_backoff(max_retries=2, base_delay=0.5)
+    @track_google_places_cost("photo")
+    def get_photo_url(
+        self,
+        photo_reference: str,
+        max_width: int = 800,
+        max_height: int = 600
+    ) -> Optional[str]:
+        """
+        Get Google Places photo URL directly (without downloading/uploading).
+        
+        Returns a URL that frontend can use to display the image.
+        This URL will trigger a Google Places API call when accessed,
+        but avoids Firebase storage costs.
+        
+        Args:
+            photo_reference: Photo name (format: "places/{place_id}/photos/{photo_id}")
+            max_width: Maximum width in pixels (default: 800)
+            max_height: Maximum height in pixels (default: 600)
+            
+        Returns:
+            Google Places photo URL string or None if failed
+        """
+        if not self.api_key:
+            logger.warning("Google Places API key not configured")
+            return None
+        
+        # Photo reference format: places/{place_id}/photos/{photo_id}
+        # Return URL that includes API key - frontend can use this directly
+        url = f"{self.BASE_URL}/{photo_reference}/media"
+        
+        # Add query parameters
+        photo_url = f"{url}?key={self.api_key}&maxHeightPx={max_height}&maxWidthPx={max_width}"
+        
+        logger.info(f"[PHOTO_URL] Generated URL for {photo_reference}")
+        return photo_url
+    
+    @track_google_places_cost("photo")
+    def fetch_and_upload_photo(
+        self, 
+        photo_reference: str, 
+        firebase_helper,
+        folder: str = "destinations",
+        max_width: int = 800,
+        max_height: int = 600
+    ) -> Optional[str]:
+        """
+        Fetch photo from Google Places API and upload to Firebase Storage.
+        
+        This method fetches the actual photo bytes (not just URL) to avoid
+        repeated API calls which cost $7 per 1000 requests.
+        
+        Args:
+            photo_reference: Photo name (format: "places/{place_id}/photos/{photo_id}")
+            firebase_helper: FirebaseHelper instance for uploading
+            folder: Firebase Storage folder path (default: 'destinations')
+            max_width: Maximum width in pixels (default: 800)
+            max_height: Maximum height in pixels (default: 600)
+            
+        Returns:
+            Firebase public URL string or None if failed
+        """
+        if not self.api_key:
+            logger.warning("Google Places API key not configured")
+            return None
+        
+        # Photo reference format: places/{place_id}/photos/{photo_id}
+        url = f"{self.BASE_URL}/{photo_reference}/media"
+        
+        params = {
+            "key": self.api_key,
+            "maxHeightPx": max_height,
+            "maxWidthPx": max_width,
+            # Do NOT use skipHttpRedirect - we want the actual image bytes
+        }
+        
+        logger.info(f"[PHOTO] Fetching photo bytes from Google: {photo_reference}")
+        
+        try:
+            # Fetch photo bytes
+            response = requests.get(url, params=params, timeout=15)
+            response.raise_for_status()
+            
+            # Extract photo ID from reference for filename
+            # Format: places/ChIJxxxx/photos/AZLasHxxx
+            photo_id = photo_reference.split('/')[-1]
+            filename = f"{folder}/{photo_id}.jpg"
+            
+            # Create a file-like object from bytes
+            from io import BytesIO
+            file_obj = BytesIO(response.content)
+            file_obj.content_type = 'image/jpeg'
+            file_obj.seek(0)  # Reset pointer to beginning
+            
+            # Upload to Firebase
+            logger.info(f"[PHOTO] Uploading to Firebase: {filename}")
+            firebase_url = firebase_helper.upload_image(file_obj, filename)
+            
+            if firebase_url:
+                logger.info(f"[PHOTO] ✓ Uploaded successfully: {firebase_url[:80]}...")
+                return firebase_url
+            else:
+                logger.warning(f"[PHOTO] Firebase upload failed for {photo_reference}")
+                return None
+            
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"[PHOTO] Google API error {e.response.status_code}: {photo_reference}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"[PHOTO] Request failed: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"[PHOTO] Unexpected error: {e}")
+            return None
+    
     def nearby_search(self, location: Dict[str, float], radius: float = 5000, **kwargs) -> List[Dict]:
         """
         Search for places near a location using Nearby Search API
@@ -350,18 +541,29 @@ class GooglePlacesProvider(BaseProvider):
                     "radius": min(radius, 50000)  # Max 50km
                 }
             },
-            "maxResultCount": max_results,
-            "languageCode": language_code
+            "maxResultCount": max_results
         }
         
-        if types:
-            # Nearby Search also only accepts ONE type
-            payload["includedType"] = types[0] if isinstance(types, list) else types
+        # Add language code if provided
+        if language_code:
+            payload["languageCode"] = language_code
         
-        logger.info(f"Google Places Nearby Search: location={location}, radius={radius}m")
+        # Add types if provided
+        if types:
+            # Nearby Search uses includedTypes (plural) with array
+            # Ref: https://developers.google.com/maps/documentation/places/web-service/nearby-search
+            payload["includedTypes"] = types if isinstance(types, list) else [types]
+        
+        logger.info(f"Google Places Nearby Search: location={location}, radius={radius}m, types={types}")
+        logger.debug(f"Request payload: {payload}")
         
         try:
             response = requests.post(url, json=payload, headers=headers, timeout=15)
+            
+            # Log error response body for debugging
+            if response.status_code != 200:
+                logger.error(f"Google API error response: {response.text}")
+            
             response.raise_for_status()
             
             data = response.json()

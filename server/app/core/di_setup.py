@@ -16,40 +16,47 @@ def setup_dependencies():
     if _is_initialized:
         return
     
+    from ..providers import GooglePlacesProvider
     # Import PostgreSQL interfaces
-    from ..repo.postgre.interfaces.user_repository_interface import UserInterface
-    from ..repo.postgre.interfaces.token_repository_interface import TokenInterface
-    from ..repo.postgre.interfaces.role_repository_interface import RoleInterface, UserRoleInterface
-    from ..repo.postgre.interfaces.cost_usage_interface import CostUsageInterface
+    from ..repo.postgre.interfaces import (
+        UserInterface,
+        TokenInterface,
+        RoleInterface,
+        UserRoleInterface,
+        CostUsageInterface
+    )
 
     # Import MongoDB interfaces
-    from ..repo.mongo.interfaces import POIRepositoryInterface, PlanRepositoryInterface
-    
+    from ..repo.mongo.interfaces import (
+        POIRepositoryInterface,
+        PlanRepositoryInterface,
+        PlaceDetailRepositoryInterface,
+        AutocompleteRepositoryInterface
+        )
     # Import Elasticsearch interfaces
     from ..repo.es.interfaces import (
         ESPOIRepositoryInterface,
         ESAutocompleteRepositoryInterface
-    )
+        )
     
-    # Import Autocomplete interfaces
-    from ..repo.mongo.interfaces import AutocompleteRepositoryInterface
-
     # Import PostgreSQL repository implementations
-    from ..repo.postgre.implementations.user_repository import UserRepository
-    from ..repo.postgre.implementations.token_repository import TokenRepository
-    from ..repo.postgre.implementations.role_repository import RoleRepository, UserRoleRepository
-    from ..repo.postgre.implementations.cost_usage_repository import CostUsageRepository
+    from ..repo.postgre.implementations import (
+        UserRepository,
+        TokenRepository,
+        RoleRepository,
+        UserRoleRepository,
+        CostUsageRepository
+    )
     
     # Import MongoDB repository implementations
     from ..repo.mongo.poi_repository import POIRepository
     from ..repo.mongo.plan_repository import PlanRepository
+    from ..repo.mongo.place_detail_repository import PlaceDetailRepository
+    from ..repo.mongo.autocomplete_repository import AutocompleteRepository
     
     # Import Elasticsearch repository implementations
     from ..repo.es.es_poi_repository import ESPOIRepository
     from ..repo.es.es_autocomplete_repository import ESAutocompleteRepository
-    
-    # Import MongoDB Autocomplete repository
-    from ..repo.mongo.autocomplete_repository import AutocompleteRepository
 
     from ..utils.firebase_interface import FirebaseInterface
     from ..utils.firebase_helper import FirebaseHelper
@@ -61,8 +68,8 @@ def setup_dependencies():
     from ..service.cost_usage_service import CostUsageService
     from ..service.places_service import PlacesService
     from ..service.search_service import SearchService
-    from ..service.planner_service import PlannerService  # Week 4
-    from ..service.autocomplete_service import AutocompleteService  # Hybrid Autocomplete v2
+    from ..service.planner_service import PlannerService
+    from ..service.autocomplete_service import AutocompleteService
     
     container = DIContainer.get_instance()
     
@@ -76,13 +83,12 @@ def setup_dependencies():
     # Register MongoDB repository implementations
     container.register(POIRepositoryInterface.__name__, POIRepository())
     container.register(PlanRepositoryInterface.__name__, PlanRepository())
+    container.register(PlaceDetailRepositoryInterface.__name__, PlaceDetailRepository())
+    container.register(AutocompleteRepositoryInterface.__name__, AutocompleteRepository())
     
     # Register Elasticsearch repository implementations
     container.register(ESPOIRepositoryInterface.__name__, ESPOIRepository())
     container.register(ESAutocompleteRepositoryInterface.__name__, ESAutocompleteRepository())
-    
-    # Register MongoDB Autocomplete repository
-    container.register(AutocompleteRepositoryInterface.__name__, AutocompleteRepository())
     
     # Register Firebase helper
     container.register(FirebaseInterface.__name__, FirebaseHelper())
@@ -124,13 +130,21 @@ def setup_dependencies():
     
     def create_planner_service(container):
         plan_repo = container.resolve(PlanRepositoryInterface.__name__)
+        poi_repo = container.resolve(POIRepositoryInterface.__name__)
+        place_detail_repo = container.resolve(PlaceDetailRepositoryInterface.__name__)
         cost_usage_service = container.resolve(CostUsageService.__name__)
-        return PlannerService(plan_repo, cost_usage_service)
+        google_provider = GooglePlacesProvider()
+        
+        return PlannerService(
+            plan_repository=plan_repo,
+            poi_repository=poi_repo,
+            place_detail_repository=place_detail_repo,
+            google_places_provider=google_provider,
+            cost_usage_service=cost_usage_service
+        )
     
     def create_autocomplete_service(container):
         """Create AutocompleteService with ES, MongoDB, and Google provider."""
-        from ..providers.places.google_places_provider import GooglePlacesProvider
-        
         es_repo = container.resolve(ESAutocompleteRepositoryInterface.__name__)
         mongo_repo = container.resolve(AutocompleteRepositoryInterface.__name__)
         google_provider = GooglePlacesProvider()
@@ -147,8 +161,8 @@ def setup_dependencies():
     container.register(CostUsageService.__name__, create_cost_usage_service)
     container.register(PlacesService.__name__, create_places_service)
     container.register(SearchService.__name__, create_search_service)
-    container.register(PlannerService.__name__, create_planner_service)  # Week 4
-    container.register(AutocompleteService.__name__, create_autocomplete_service)  # Hybrid Autocomplete v2
+    container.register(PlannerService.__name__, create_planner_service)
+    container.register(AutocompleteService.__name__, create_autocomplete_service)
 
     _is_initialized = True
     return container

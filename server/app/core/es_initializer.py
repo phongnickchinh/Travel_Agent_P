@@ -1,138 +1,361 @@
 """
 Elasticsearch Initialization Module
-Handles ES index creation and POI synchronization from MongoDB
+====================================
+
+Handles ES connection, index creation, and data synchronization from MongoDB.
+
+Features:
+- Create indexes with correct mappings (POI + Autocomplete)
+- Sync POI data from MongoDB to ES
+- Sync Autocomplete cache from MongoDB to ES
+- Validate mappings for autocomplete support
+
+Architecture:
+    MongoDB ────sync────> Elasticsearch
+      │                      │
+      ├─ poi collection ────> pois index
+      └─ autocomplete_cache ─> autocomplete index
+
+Author: Travel Agent P Team
+Date: December 24, 2025 (Refactored)
 """
 
 import logging
+from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-def initialize_elasticsearch():
+class ESInitializer:
     """
-    Initialize Elasticsearch index and sync POIs from MongoDB
+    Elasticsearch Initializer - handles all ES setup logic.
     
-    - Checks if ES index exists
-    - Creates index with correct mapping if missing
-    - Syncs POIs from MongoDB to ES
-    - Validates mapping for autocomplete support
+    Centralizes:
+    - ES connection check
+    - Index creation
+    - Data sync from MongoDB
     
-    Returns:
-        bool: True if initialization successful, False otherwise
+    Usage:
+        initializer = ESInitializer()
+        initializer.initialize()  # Full initialization
+        initializer.sync_autocomplete()  # Sync only autocomplete
     """
-    from .clients.elasticsearch_client import ElasticsearchClient
-    from .clients.mongodb_client import get_mongodb_client
-    from ..repo.es.es_poi_repository import ESPOIRepository
     
-    try:
-        es_client = ElasticsearchClient.get_instance()
-        if not es_client.ping():
-            print("[INIT] WARNING: Elasticsearch connection failed")
+    def __init__(self):
+        """Initialize with lazy imports to avoid circular dependencies."""
+        self._es_client = None
+        self._poi_repo = None
+        self._autocomplete_repo = None
+        self._mongodb_client = None
+    
+    @property
+    def es_client(self):
+        """Lazy load ES client."""
+        if self._es_client is None:
+            from .clients.elasticsearch_client import ElasticsearchClient
+            self._es_client = ElasticsearchClient.get_instance()
+        return self._es_client
+    
+    @property
+    def mongodb_client(self):
+        """Lazy load MongoDB client."""
+        if self._mongodb_client is None:
+            from .clients.mongodb_client import get_mongodb_client
+            self._mongodb_client = get_mongodb_client()
+        return self._mongodb_client
+    
+    @property
+    def poi_repo(self):
+        """Lazy load POI ES repository."""
+        if self._poi_repo is None:
+            from ..repo.es.es_poi_repository import ESPOIRepository
+            self._poi_repo = ESPOIRepository(self.es_client)
+        return self._poi_repo
+    
+    @property
+    def autocomplete_repo(self):
+        """Lazy load Autocomplete ES repository."""
+        if self._autocomplete_repo is None:
+            from ..repo.es.es_autocomplete_repository import ESAutocompleteRepository
+            self._autocomplete_repo = ESAutocompleteRepository(self.es_client)
+        return self._autocomplete_repo
+    
+    def is_connected(self) -> bool:
+        """Check if ES is connected."""
+        try:
+            return self.es_client.ping()
+        except Exception:
             return False
+    
+    def initialize(self) -> bool:
+        """
+        Full Elasticsearch initialization.
         
-        print("[INIT] Elasticsearch connected successfully")
+        1. Check ES connection
+        2. Create indexes (POI + Autocomplete)
+        3. Sync POI data from MongoDB
+        4. Sync Autocomplete data from MongoDB
+        5. Validate mappings
         
-        es_repo = ESPOIRepository(es_client)
-        
-        # Check if index exists
-        if not es_client.indices.exists(index=es_repo.INDEX_NAME):
-            print(f"[INIT] Elasticsearch index '{es_repo.INDEX_NAME}' not found. Creating...")
-            
-            # Create index with correct mapping
-            if es_repo.create_index():
-                print(f"[INIT] Elasticsearch index '{es_repo.INDEX_NAME}' created successfully")
-                _sync_pois_from_mongodb(es_repo)
-                
-            else:
-                print("[INIT] Failed to create Elasticsearch index")
+        Returns:
+            True if initialization successful
+        """
+        try:
+            # Check connection
+            if not self.is_connected():
+                logger.warning("[ES_INIT] Elasticsearch connection failed")
                 return False
-        else:
-            print(f"[INIT] Elasticsearch index '{es_repo.INDEX_NAME}' already exists")
-            _sync_pois_from_mongodb(es_repo)
             
-            # Verify mapping has edge_ngram for autocomplete
-            _validate_es_mapping(es_client, es_repo.INDEX_NAME)
-        
-        return True
-    
-    except Exception as es_error:
-        print(f"[INIT] WARNING: Elasticsearch initialization failed: {str(es_error)}")
-        print("[INIT] WARNING: Search and autocomplete features will not be available")
-        logger.exception("Elasticsearch initialization error")
-        return False
-
-
-def _sync_pois_from_mongodb(es_repo):
-    """
-    Sync all POIs from MongoDB to Elasticsearch
-    
-    Args:
-        es_repo: ESPOIRepository instance
-    """
-    from .clients.mongodb_client import get_mongodb_client
-    
-    try:
-        mongodb_client = get_mongodb_client()
-        poi_collection = mongodb_client.get_collection('poi')
-        
-        total_pois = poi_collection.count_documents({})
-        print(f"[INIT] Starting POI sync: {total_pois} documents found in MongoDB")
-        
-        if total_pois == 0:
-            print("[INIT] No POIs found in MongoDB to sync")
-            return
-        
-        batch_size = 100
-        batch = []
-        indexed_count = 0
-        failed_count = 0
-        
-        cursor = poi_collection.find().batch_size(batch_size)
-        
-        for poi in cursor:
-            batch.append(poi)
+            logger.info("[ES_INIT] Elasticsearch connected successfully")
             
-            if len(batch) >= batch_size:
-                success, failed = es_repo.bulk_index(batch)
+            # Create/verify POI index
+            poi_created = self._ensure_poi_index()
+            
+            # Create/verify Autocomplete index
+            auto_created = self._ensure_autocomplete_index()
+            
+            # Sync POI data
+            if poi_created:
+                self.sync_pois()
+            
+            # Sync Autocomplete data
+            self.sync_autocomplete()
+            
+            # Validate mappings
+            self._validate_mappings()
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"[ES_INIT] Initialization failed: {e}")
+            logger.exception("ES initialization error")
+            return False
+    
+    def _ensure_poi_index(self) -> bool:
+        """Ensure POI index exists with correct mapping."""
+        try:
+            index_name = self.poi_repo.INDEX_NAME
+            
+            if not self.es_client.indices.exists(index=index_name):
+                logger.info(f"[ES_INIT] Creating POI index: {index_name}")
+                if self.poi_repo.create_index():
+                    logger.info(f"[ES_INIT] POI index '{index_name}' created successfully")
+                    return True
+                else:
+                    logger.error(f"[ES_INIT] Failed to create POI index")
+                    return False
+            else:
+                logger.info(f"[ES_INIT] POI index '{index_name}' already exists")
+                return False
+                
+        except Exception as e:
+            logger.error(f"[ES_INIT] POI index error: {e}")
+            return False
+    
+    def _ensure_autocomplete_index(self) -> bool:
+        """Ensure Autocomplete index exists with correct mapping."""
+        try:
+            index_name = self.autocomplete_repo.INDEX_NAME
+            
+            if not self.es_client.indices.exists(index=index_name):
+                logger.info(f"[ES_INIT] Creating Autocomplete index: {index_name}")
+                if self.autocomplete_repo.create_index():
+                    logger.info(f"[ES_INIT] Autocomplete index '{index_name}' created successfully")
+                    return True
+                else:
+                    logger.error(f"[ES_INIT] Failed to create Autocomplete index")
+                    return False
+            else:
+                logger.info(f"[ES_INIT] Autocomplete index '{index_name}' already exists")
+                return False
+                
+        except Exception as e:
+            logger.error(f"[ES_INIT] Autocomplete index error: {e}")
+            return False
+    
+    def sync_pois(self, batch_size: int = 100) -> Tuple[int, int]:
+        """
+        Sync all POIs from MongoDB to Elasticsearch.
+        
+        Args:
+            batch_size: Number of POIs to index per batch
+            
+        Returns:
+            Tuple of (indexed_count, failed_count)
+        """
+        try:
+            poi_collection = self.mongodb_client.get_collection('poi')
+            if poi_collection is None:
+                logger.warning("[ES_INIT] POI collection not available")
+                return (0, 0)
+            
+            total_pois = poi_collection.count_documents({})
+            logger.info(f"[ES_INIT] Starting POI sync: {total_pois} documents in MongoDB")
+            
+            if total_pois == 0:
+                logger.info("[ES_INIT] No POIs found in MongoDB to sync")
+                return (0, 0)
+            
+            batch = []
+            indexed_count = 0
+            failed_count = 0
+            
+            cursor = poi_collection.find().batch_size(batch_size)
+            
+            for poi in cursor:
+                # Remove MongoDB _id
+                if '_id' in poi:
+                    poi['_id'] = str(poi['_id'])
+                batch.append(poi)
+                
+                if len(batch) >= batch_size:
+                    success, failed = self.poi_repo.bulk_index(batch)
+                    indexed_count += success
+                    failed_count += failed
+                    batch = []
+                    logger.debug(f"[ES_INIT] POI sync progress: {indexed_count}/{total_pois}")
+            
+            # Index remaining POIs
+            if batch:
+                success, failed = self.poi_repo.bulk_index(batch)
                 indexed_count += success
                 failed_count += failed
-                batch = []
-                print(f"[INIT] Synced {indexed_count}/{total_pois} POIs...")
-        
-        # Index remaining POIs
-        if batch:
-            success, failed = es_repo.bulk_index(batch)
-            indexed_count += success
-            failed_count += failed
-        
-        print(f"[INIT] POI sync completed: {indexed_count} indexed, {failed_count} failed")
+            
+            logger.info(f"[ES_INIT] POI sync completed: {indexed_count} indexed, {failed_count} failed")
+            return (indexed_count, failed_count)
+            
+        except Exception as e:
+            logger.error(f"[ES_INIT] POI sync error: {e}")
+            return (0, 0)
     
-    except Exception as sync_error:
-        print(f"[INIT] POI sync failed: {str(sync_error)}")
-        print("[INIT] Elasticsearch index created but empty - sync manually if needed")
-        logger.exception("POI sync error")
+    def sync_autocomplete(self, batch_size: int = 100) -> Tuple[int, int]:
+        """
+        Sync all Autocomplete cache from MongoDB to Elasticsearch.
+        
+        Args:
+            batch_size: Number of items to index per batch
+            
+        Returns:
+            Tuple of (indexed_count, failed_count)
+        """
+        try:
+            autocomplete_collection = self.mongodb_client.get_collection('autocomplete_cache')
+            if autocomplete_collection is None:
+                logger.warning("[ES_INIT] Autocomplete collection not available")
+                return (0, 0)
+            
+            total_items = autocomplete_collection.count_documents({})
+            logger.info(f"[ES_INIT] Starting Autocomplete sync: {total_items} documents in MongoDB")
+            
+            if total_items == 0:
+                logger.info("[ES_INIT] No Autocomplete items found in MongoDB to sync")
+                return (0, 0)
+            
+            # Check ES count first
+            es_count = self.autocomplete_repo.count()
+            if es_count >= total_items:
+                logger.info(f"[ES_INIT] Autocomplete ES already synced ({es_count} items)")
+                return (es_count, 0)
+            
+            batch = []
+            indexed_count = 0
+            failed_count = 0
+            
+            cursor = autocomplete_collection.find().batch_size(batch_size)
+            
+            for item in cursor:
+                # Remove MongoDB _id and convert
+                if '_id' in item:
+                    del item['_id']
+                
+                batch.append(item)
+                
+                if len(batch) >= batch_size:
+                    success, failed = self.autocomplete_repo.bulk_index(batch)
+                    indexed_count += success
+                    failed_count += failed
+                    batch = []
+                    logger.debug(f"[ES_INIT] Autocomplete sync progress: {indexed_count}/{total_items}")
+            
+            # Index remaining items
+            if batch:
+                success, failed = self.autocomplete_repo.bulk_index(batch)
+                indexed_count += success
+                failed_count += failed
+            
+            logger.info(f"[ES_INIT] Autocomplete sync completed: {indexed_count} indexed, {failed_count} failed")
+            return (indexed_count, failed_count)
+            
+        except Exception as e:
+            logger.error(f"[ES_INIT] Autocomplete sync error: {e}")
+            return (0, 0)
+    
+    def _validate_mappings(self):
+        """Validate ES mappings have required fields."""
+        try:
+            # Validate POI mapping
+            poi_index = self.poi_repo.INDEX_NAME
+            if self.es_client.indices.exists(index=poi_index):
+                mapping = self.es_client.indices.get_mapping(index=poi_index)
+                properties = mapping[poi_index].get('mappings', {}).get('properties', {})
+                name_mapping = properties.get('name', {})
+                has_edge_ngram = 'edge_ngram' in name_mapping.get('fields', {})
+                
+                if has_edge_ngram:
+                    logger.info(f"[ES_INIT] POI mapping verified (edge_ngram present)")
+                else:
+                    logger.warning(f"[ES_INIT] POI mapping missing edge_ngram field")
+            
+            # Validate Autocomplete mapping
+            auto_index = self.autocomplete_repo.INDEX_NAME
+            if self.es_client.indices.exists(index=auto_index):
+                mapping = self.es_client.indices.get_mapping(index=auto_index)
+                properties = mapping[auto_index].get('mappings', {}).get('properties', {})
+                
+                # Check required fields
+                required = ['place_id', 'main_text', 'description', 'types']
+                missing = [f for f in required if f not in properties]
+                
+                if missing:
+                    logger.warning(f"[ES_INIT] Autocomplete mapping missing fields: {missing}")
+                else:
+                    logger.info(f"[ES_INIT] Autocomplete mapping verified")
+                    
+        except Exception as e:
+            logger.warning(f"[ES_INIT] Mapping validation error: {e}")
 
 
-def _validate_es_mapping(es_client, index_name):
+# Singleton instance
+_initializer: Optional[ESInitializer] = None
+
+
+def get_es_initializer() -> ESInitializer:
+    """Get or create ESInitializer singleton."""
+    global _initializer
+    if _initializer is None:
+        _initializer = ESInitializer()
+    return _initializer
+
+
+def initialize_elasticsearch() -> bool:
     """
-    Validate that ES mapping has required fields for autocomplete
+    Initialize Elasticsearch (called from create_app).
     
-    Args:
-        es_client: Elasticsearch client instance
-        index_name: Name of the index to validate
+    Returns:
+        True if initialization successful
     """
-    try:
-        mapping = es_client.indices.get_mapping(index=index_name)
-        name_mapping = mapping[index_name]['mappings']['properties'].get('name', {})
-        has_edge_ngram = 'edge_ngram' in name_mapping.get('fields', {})
-        
-        if not has_edge_ngram:
-            print("[INIT] WARNING: Elasticsearch mapping is missing 'edge_ngram' field")
-            print("[INIT] WARNING: Autocomplete may not work correctly")
-            print("[INIT] WARNING: Run 'python scripts/fix_es_mapping.py' to fix this")
-        else:
-            print("[INIT] Elasticsearch mapping verified (edge_ngram present)")
+    initializer = get_es_initializer()
+    return initializer.initialize()
+
+
+def sync_autocomplete_to_es() -> Tuple[int, int]:
+    """
+    Sync Autocomplete data from MongoDB to ES.
     
-    except Exception as mapping_check_error:
-        print(f"[INIT] Could not verify ES mapping: {str(mapping_check_error)}")
-        logger.exception("ES mapping validation error")
+    Can be called manually or from a scheduled job.
+    
+    Returns:
+        Tuple of (indexed_count, failed_count)
+    """
+    initializer = get_es_initializer()
+    return initializer.sync_autocomplete()

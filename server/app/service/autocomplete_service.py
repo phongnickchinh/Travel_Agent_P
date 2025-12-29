@@ -85,7 +85,7 @@ class AutocompleteService:
     MIN_ES_RESULTS = 3
     
     # Default result limit
-    DEFAULT_LIMIT = 10
+    DEFAULT_LIMIT = 5
     
     # Redis key prefixes for anti-abuse
     NEGATIVE_CACHE_PREFIX = "autocomplete:negative:"

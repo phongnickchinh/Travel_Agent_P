@@ -230,7 +230,7 @@ export default function Register({ isModal = false }) {
     <div className={`${isModal ? 'w-full' : 'min-h-screen bg-gray-50 dark:bg-gray-950'} flex items-center justify-center px-4 py-10`}>
       <div className={cardClasses}>
         <div className="bg-gradient-to-br from-brand-primary/90 to-brand-secondary/90 text-white px-6 py-6 flex items-center justify-center">
-          <div>
+          <div className="justify-center">
             <p className="text-xs uppercase tracking-wide text-white">Tạo tài khoản</p>
             <h1 className="font-poppins font-semibold text-2xl mt-1">Travel Agent P</h1>
             <p className="text-sm text-white/80">Khởi động hành trình khám phá của bạn</p>

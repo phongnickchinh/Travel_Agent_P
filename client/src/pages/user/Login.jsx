@@ -153,10 +153,10 @@ export default function Login({ isModal = false }) {
       >
         {/* Header */}
         <div className="bg-gradient-to-br from-brand-primary to-brand-secondary text-white px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Travel Agent P</p>
-              <h1 className="font-poppins font-semibold text-2xl mt-1">Chào mừng trở lại</h1>
+          <div className="flex items-center justify-center">
+            <div className="justify-center">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Chào mừng trở lại</p>
+              <h1 className="font-poppins font-semibold text-2xl mt-1">Travel Agent P</h1>
               <p className="text-sm text-white/80">Đăng nhập để tiếp tục hành trình của bạn</p>
             </div>
           </div>

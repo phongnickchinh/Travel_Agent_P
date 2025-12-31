@@ -133,10 +133,10 @@ export default function Dashboard() {
 
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto">
-          <div className="h-full px-8 py-6">
+          <div className="h-full px-8 py-6 dark:bg-black">
             {/* Page Header */}
             <div className="mb-8">
-              <h1 className="font-poppins font-bold text-3xl text-gray-900 mb-1 text-justify">
+              <h1 className="font-poppins font-bold text-3xl text-brand-primary dark:text-white mb-1 text-justify">
                 Travel Plan List
               </h1>
               <p className="text-gray-500 text-sm text-justify">

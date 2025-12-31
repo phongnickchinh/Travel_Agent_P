@@ -58,7 +58,7 @@ export default function PlanCard({ plan, onDelete }) {
     const colors = {
       pending: 'bg-gray-400',
       processing: 'bg-yellow-500',
-      completed: 'bg-green-500',
+      completed: 'bg-brand-primary',
       failed: 'bg-red-500'
     };
     return colors[status] || 'bg-gray-400';

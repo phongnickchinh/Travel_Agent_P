@@ -19,7 +19,7 @@ export default function DashboardSidebar({ recentPlans = [], onPlanClick }) {
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen shrink-0">
       {/* Logo */}
       <div className="px-6 py-8">
-        <h1 className="font-poppins font-bold text-2xl text-gray-900">
+        <h1 className="font-poppins font-bold text-2xl text-brand-primary">
           Travel Agent P
         </h1>
       </div>

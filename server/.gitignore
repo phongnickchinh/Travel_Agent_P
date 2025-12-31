@@ -19,3 +19,4 @@ __pycache__/
 # Make sure this directory is not committed to source control
 secrets/
 tests/
+docs/*

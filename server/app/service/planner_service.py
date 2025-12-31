@@ -181,28 +181,34 @@ class PlannerService:
     # POI FETCHING (MongoDB → Google fallback)
     # ============================================
     
-    def _fetch_pois_for_plan(self, plan: Dict[str, Any]) -> Optional[str]:
+    def _fetch_pois_for_plan(self, plan: Dict[str, Any], num_days: int) -> tuple:
         """
         Fetch POIs for a plan and format for LLM prompt.
         
         Strategy:
         1. Get destination location from plan
-        2. Search nearby POIs in MongoDB (POIRepository)
+        2. Search nearby tourist POIs in MongoDB (POIRepository)
         3. If < TARGET_POI_COUNT, fetch more from Google API
         4. Cache new POIs to MongoDB
-        5. Format for LLM prompt
+        5. Fetch accommodation POIs separately (hotels, resorts, hostels)
+        6. Format both for LLM prompt
         
         Args:
             plan: Plan document from MongoDB
+            num_days: Number of days in the plan
             
         Returns:
-            Formatted POI context string for LLM prompt
+            Tuple of (poi_context, accommodation_context, poi_cache)
+            - poi_context: Formatted tourist POIs for LLM prompt
+            - accommodation_context: Formatted accommodations for LLM prompt
+            - poi_cache: Dict mapping poi_id to POI data for post-processing
         """
         destination_place_id = plan.get('destination_place_id')
         destination_location = plan.get('destination_location')
         destination_name = plan.get('destination', 'Unknown')
         preferences = plan.get('preferences', {}) or {}
         interests = preferences.get('interests', [])
+        target_poi_count = num_days*10
         
         # Get location from plan or resolve from place_id
         if destination_location:
@@ -235,15 +241,15 @@ class PlannerService:
         
         # Step 1: Search MongoDB first
         try:
-            mongo_pois = self._search_pois_mongodb(location, interests)
+            mongo_pois = self._search_pois_mongodb(location, interests, limit=target_poi_count)
             all_pois.extend(mongo_pois)
             logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs")
         except Exception as e:
             logger.warning(f"[MongoDB] POI search failed: {e}")
         
         # Step 2: If not enough, fetch from Google
-        if len(all_pois) < TARGET_POI_COUNT:
-            needed = TARGET_POI_COUNT - len(all_pois)
+        if len(all_pois) < target_poi_count:
+            needed = target_poi_count - len(all_pois)
             logger.info(f"[Google] Need {needed} more POIs, calling Google API...")
             
             try:
@@ -262,13 +268,29 @@ class PlannerService:
         if len(all_pois) < MIN_POI_COUNT:
             logger.warning(f"[WARN] Only found {len(all_pois)} POIs (min: {MIN_POI_COUNT})")
             if len(all_pois) == 0:
-                return None
+                return (None, None, {})
         
-        # Format for LLM prompt
-        poi_context = self._format_pois_for_prompt(all_pois[:TARGET_POI_COUNT])
-        logger.info(f"[POI_FETCH] Formatted {len(all_pois)} POIs for prompt")
+        # --- STEP 3: Fetch Accommodation POIs (hotels, resorts, hostels) ---
+        accommodation_pois = self._fetch_accommodations_for_plan(location, preferences, num_days)
+        logger.info(f"[ACCOMMODATION] Found {len(accommodation_pois)} accommodation options")
         
-        return poi_context
+        # Build POI cache for post-processing (featured_image, viewport)
+        selected_pois = all_pois[:TARGET_POI_COUNT]
+        poi_cache = {poi.get('poi_id', poi.get('place_id', '')): poi for poi in selected_pois}
+        
+        # Add accommodations to cache
+        for acc in accommodation_pois:
+            acc_id = acc.get('poi_id', acc.get('place_id', ''))
+            if acc_id:
+                poi_cache[acc_id] = acc
+        
+        # Format for LLM prompt (tourist POIs + accommodations)
+        poi_context = self._format_pois_for_prompt(selected_pois, num_days*10)
+        logger.info(f"{poi_context}")
+        accommodation_context = self._format_accommodations_for_prompt(accommodation_pois)
+        logger.info(f"[POI_FETCH] Formatted {len(selected_pois)} POIs + {len(accommodation_pois)} accommodations for prompt")
+        
+        return (poi_context, accommodation_context, poi_cache)
     
     def _search_pois_mongodb(
         self, 
@@ -394,6 +416,229 @@ class PlannerService:
         
         return results[:limit]
     
+    # ============================================
+    # ACCOMMODATION FETCHING (Hotels, Resorts, Hostels)
+    # ============================================
+    
+    # Accommodation types from Google Places API Table A
+    ACCOMMODATION_TYPES = ['lodging', 'hotel', 'resort_hotel', 'extended_stay_hotel', 
+                           'motel', 'hostel', 'bed_and_breakfast', 'guest_house']
+    
+    def _fetch_accommodations_for_plan(
+        self, 
+        location: Dict[str, float], 
+        preferences: Dict[str, Any],
+        num_days: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Fetch accommodation POIs (hotels, resorts, hostels) for the plan.
+        
+        Accommodations are fetched separately from tourist POIs because:
+        1. Different category with different selection criteria
+        2. Need check-in/check-out time consideration
+        3. May need to change based on next day's cluster location
+        
+        Args:
+            location: Destination location {'latitude': float, 'longitude': float}
+            preferences: User preferences including budget_level
+            num_days: Number of days (affects accommodation count needed)
+            
+        Returns:
+            List of accommodation POI dicts
+        """
+        accommodations = []
+        budget_level = preferences.get('budget_level', 'medium')
+        
+        # Calculate how many accommodations to fetch (1-2 options per price tier)
+        target_count = max(5, num_days + 2)  # At least 5 options
+        
+        # Step 1: Search MongoDB for cached accommodations
+        try:
+            mongo_accommodations = self._search_accommodations_mongodb(
+                location, 
+                budget_level,
+                limit=target_count
+            )
+            accommodations.extend(mongo_accommodations)
+            logger.info(f"[ACCOMMODATION] Found {len(mongo_accommodations)} cached accommodations in MongoDB")
+        except Exception as e:
+            logger.warning(f"[ACCOMMODATION] MongoDB search failed: {e}")
+        
+        # Step 2: If not enough, fetch from Google
+        if len(accommodations) < target_count:
+            needed = target_count - len(accommodations)
+            logger.info(f"[ACCOMMODATION] Need {needed} more, calling Google API...")
+            
+            try:
+                google_accommodations = self._search_accommodations_google(
+                    location,
+                    limit=needed
+                )
+                
+                # Cache new accommodations to MongoDB
+                for acc in google_accommodations:
+                    self._cache_poi_to_mongodb(acc)
+                
+                accommodations.extend(google_accommodations)
+                logger.info(f"[ACCOMMODATION] Fetched {len(google_accommodations)} from Google")
+            except Exception as e:
+                logger.warning(f"[ACCOMMODATION] Google search failed: {e}")
+        
+        return accommodations[:target_count]
+    
+    def _search_accommodations_mongodb(
+        self, 
+        location: Dict[str, float],
+        budget_level: str,
+        radius_km: float = 20.0,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Search accommodations from MongoDB cache.
+        
+        Args:
+            location: {'latitude': float, 'longitude': float}
+            budget_level: 'low', 'medium', 'high', 'luxury'
+            radius_km: Search radius
+            limit: Maximum results
+            
+        Returns:
+            List of accommodation POI dicts
+        """
+        try:
+            # Map budget level to price levels
+            price_level_filter = {
+                'low': [0, 1],      # Free, Budget-friendly
+                'medium': [1, 2],   # Budget-friendly, Moderate
+                'high': [2, 3],     # Moderate, Premium
+                'luxury': [3, 4]    # Premium, Luxury
+            }.get(budget_level, [1, 2])
+            
+            search_request = POISearchRequest(
+                lat=location.get('latitude'),
+                lng=location.get('longitude'),
+                radius=radius_km,
+                categories=self.ACCOMMODATION_TYPES,
+                limit=limit
+            )
+            
+            result = self.poi_repo.search(search_request)
+            accommodations = result.get('results', [])
+            
+            # Filter by price level if available
+            filtered = [
+                acc for acc in accommodations
+                if acc.get('price_level', 2) in price_level_filter
+            ]
+            
+            return filtered if filtered else accommodations[:limit]
+            
+        except Exception as e:
+            logger.warning(f"[ACCOMMODATION] MongoDB search failed: {e}")
+            return []
+    
+    def _search_accommodations_google(
+        self, 
+        location: Dict[str, float],
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Search accommodations from Google Places API.
+        
+        Uses accommodation-specific types: lodging, hotel, resort_hotel, etc.
+        
+        Args:
+            location: {'latitude': float, 'longitude': float}
+            limit: Maximum results
+            
+        Returns:
+            List of accommodation POI dicts
+        """
+        results = []
+        
+        # Search using primary accommodation types
+        primary_types = ['lodging', 'hotel']  # Start with main types
+        
+        for place_type in primary_types:
+            try:
+                pois = self.google_provider.nearby_search(
+                    location=location,
+                    radius=20000,  # 20km for accommodations
+                    types=[place_type],
+                    max_results=min(limit, 10)
+                )
+                
+                results.extend(pois)
+                
+                if len(results) >= limit:
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"[ACCOMMODATION] Google search for '{place_type}' failed: {e}")
+                continue
+        
+        return results[:limit]
+    
+    def _format_accommodations_for_prompt(self, accommodations: List[Dict[str, Any]]) -> str:
+        """
+        Format accommodation list for LLM prompt.
+        
+        Includes location coordinates for distance calculation to POI clusters.
+        
+        Args:
+            accommodations: List of accommodation POI dicts
+            
+        Returns:
+            Formatted string for LLM context
+        """
+        if not accommodations:
+            return ""
+        
+        lines = []
+        lines.append("\n=== AVAILABLE ACCOMMODATIONS (Hotels, Resorts, Hostels) ===\n")
+        lines.append("NOTE: Select accommodations strategically based on proximity to POI clusters.")
+        lines.append("      Consider changing accommodation if next day's cluster is far away.\n")
+        
+        for i, acc in enumerate(accommodations, 1):
+            # Extract location
+            location = acc.get('location', {})
+            if isinstance(location, dict):
+                coords = location.get('coordinates', [])
+                if len(coords) >= 2:
+                    lat, lng = coords[1], coords[0]  # GeoJSON format
+                else:
+                    lat, lng = 0, 0
+            else:
+                lat, lng = 0, 0
+            
+            # Extract rating and price
+            rating = acc.get('rating', 0)
+            reviews_count = acc.get('user_ratings_total', acc.get('total_reviews', 0))
+            price_level = acc.get('price_level', 2)
+            price_indicator = self._format_price_level(price_level)
+            
+            # Extract reviews summary if available
+            reviews_summary = self._extract_reviews_summary(acc)
+            
+            acc_id = acc.get('poi_id', acc.get('place_id', 'N/A'))
+            name = acc.get('name', 'Unknown')
+            address = acc.get('address', acc.get('vicinity', 'N/A'))
+            types = acc.get('types', [])[:3]
+            
+            lines.append(f"{i}. {name}")
+            lines.append(f"   ID: {acc_id}")
+            lines.append(f"   Location: ({lat:.6f}, {lng:.6f})")
+            lines.append(f"   Address: {address}")
+            lines.append(f"   Types: {', '.join(types)}")
+            lines.append(f"   Rating: ★{rating:.1f} ({reviews_count} reviews) | Price: {price_indicator}")
+            if reviews_summary:
+                lines.append(f"   Reviews: {reviews_summary}")
+            lines.append("")
+        
+        lines.append(f"=== TOTAL: {len(accommodations)} accommodations available ===")
+        
+        return "\n".join(lines)
+    
     def _cache_poi_to_mongodb(self, poi_data: Dict[str, Any]) -> bool:
         """
         Cache POI data to MongoDB using upsert (insert or update if stale).
@@ -443,56 +688,508 @@ class PlannerService:
     
     def _format_pois_for_prompt(self, pois: List[Dict[str, Any]], max_pois: int = 30) -> str:
         """
-        Format POI list for LLM prompt with coordinates for geographic optimization.
+        Format POI list for LLM prompt with coordinates, reviews, and pricing.
+        POIs are grouped by geographic clusters for optimal travel planning.
         
         Args:
             pois: List of POI dicts
             max_pois: Maximum POIs to include
             
         Returns:
-            Formatted string for LLM context including coordinates
+            Formatted string for LLM context with clusters, reviews, pricing
         """
         if not pois:
             return ""
         
+        # Cluster POIs by geographic proximity before formatting
+        # Use 5km radius to group POIs into larger "day-trip" capable areas
+        # Target: Create clusters equal to typical trip duration (inferred from POI count)
+        # Heuristic: ~3-4 POIs per day → target_clusters = max_pois / 4
+        target_clusters = max(3, min(7, max_pois // 4))  # Between 3-7 clusters
+        clustered_pois = self._cluster_pois_by_location(
+            pois[:max_pois], 
+            radius_km=5.0,
+            target_clusters=target_clusters
+        )
+        
         lines = []
-        lines.append("=== AVAILABLE PLACES OF INTEREST (with coordinates) ===\n")
-        lines.append("NOTE: Use coordinates to group nearby POIs together for optimal travel route.\n")
+        lines.append("=== AVAILABLE PLACES OF INTEREST (Grouped by Area) ===\n")
+        lines.append("NOTE: POIs are pre-grouped by geographic proximity (Clusters).")
+        lines.append("      - You can visit multiple clusters in one day if needed to fill the schedule.")
+        lines.append("      - If a cluster is small, combine it with nearby clusters.\n")
         
-        for i, poi in enumerate(pois[:max_pois], 1):
-            name = poi.get('name', 'Unknown')
-            categories = poi.get('categories', [])
-            rating = poi.get('ratings', {}).get('average', 'N/A')
-            description = poi.get('description', {}).get('short', '')
-            poi_id = poi.get('poi_id', f'poi_{i}')
+        poi_index = 1
+        for cluster_id, cluster_pois in clustered_pois.items():
+            cluster_center = self._calculate_cluster_center(cluster_pois)
+            lines.append(f"\n--- CLUSTER {cluster_id}: Area around ({cluster_center[0]:.4f}, {cluster_center[1]:.4f}) ---")
+            lines.append(f"    Contains {len(cluster_pois)} POIs within ~2km radius\n")
             
-            # Extract coordinates [lng, lat] from GeoJSON format
-            location = poi.get('location', {})
-            coords = location.get('coordinates', [None, None])
-            lat = coords[1] if len(coords) > 1 else None
-            lng = coords[0] if len(coords) > 0 else None
-            
-            line = f"{i}. [{poi_id}] {name}"
-            
-            # Add coordinates for geographic grouping
-            if lat and lng:
-                line += f" @({lat:.5f}, {lng:.5f})"
-            
-            if categories:
-                line += f" ({', '.join(categories[:2])})"
-            
-            if rating and rating != 'N/A':
-                line += f" ★{rating}"
-            
-            if description:
-                line += f"\n   {description[:100]}..."
-            
-            lines.append(line)
+            for poi in cluster_pois:
+                formatted_poi = self._format_single_poi(poi, poi_index)
+                lines.append(formatted_poi)
+                poi_index += 1
         
-        lines.append(f"\nTotal: {len(pois[:max_pois])} places available")
-        lines.append("\nIMPORTANT: Group POIs with similar coordinates together in the same day to minimize travel distance.")
+        lines.append(f"\n=== TOTAL: {min(len(pois), max_pois)} places in {len(clustered_pois)} geographic clusters ===")
+        lines.append("\nIMPORTANT:")
+        lines.append("- Prioritize POIs from the same cluster on the same day")
+        lines.append("- Consider review ratings and sentiments when selecting must-visit places")
+        lines.append("- Match price levels to user's budget preference")
         
         return "\n".join(lines)
+    
+    def _format_single_poi(self, poi: Dict[str, Any], index: int) -> str:
+        """
+        Format a single POI with reviews and pricing info.
+        Excludes google_data to reduce LLM input size.
+        
+        Args:
+            poi: POI dict
+            index: Display index
+            
+        Returns:
+            Formatted string for single POI
+        """
+        name = poi.get('name', 'Unknown')
+        categories = poi.get('categories', [])
+        rating = poi.get('ratings', {}).get('average', 'N/A')
+        review_count = poi.get('ratings', {}).get('count', 0)
+        description = poi.get('description', {}).get('short', '')
+        poi_id = poi.get('poi_id', f'poi_{index}')
+        
+        # Extract coordinates
+        location = poi.get('location', {})
+        coords = location.get('coordinates', [None, None])
+        lat = coords[1] if len(coords) > 1 else None
+        lng = coords[0] if len(coords) > 0 else None
+        
+        # Extract pricing info
+        pricing = poi.get('pricing', {})
+        price_level = pricing.get('level', 'N/A')
+        avg_cost = pricing.get('average_cost_per_person', {})
+        price_display = self._format_price_level(price_level, avg_cost)
+        
+        # Extract reviews from google_data (prioritize) or main ratings
+        reviews_summary = self._extract_reviews_summary(poi)
+        
+        # Build POI line
+        line = f"{index}. [{poi_id}] {name}"
+        
+        if lat and lng:
+            line += f" @({lat:.5f}, {lng:.5f})"
+        
+        if categories:
+            line += f" ({', '.join(categories[:2])})"
+        
+        if rating and rating != 'N/A':
+            line += f" ★{rating}"
+            if review_count:
+                line += f" ({review_count} reviews)"
+        
+        # Add pricing
+        if price_display:
+            line += f" | {price_display}"
+        
+        # Add description
+        if description:
+            line += f"\n   📝 {description[:120]}"
+        
+        # Add review highlights
+        if reviews_summary:
+            line += f"\n   💬 Reviews: {reviews_summary}"
+        
+        return line
+    
+    def _extract_reviews_summary(self, poi: Dict[str, Any]) -> str:
+        """
+        Extract review summary from POI data.
+        Prioritizes google_data.reviews if available.
+        
+        Args:
+            poi: POI dict
+            
+        Returns:
+            Summarized review string (max 150 chars)
+        """
+        reviews = []
+        
+        # Try google_data.reviews first
+        google_data = poi.get('google_data', {})
+        if google_data:
+            google_reviews = google_data.get('reviews', [])
+            if google_reviews:
+                for review in google_reviews[:3]:  # Max 3 reviews
+                    text = review.get('text', '')
+                    rating = review.get('rating', 0)
+                    if text and len(text) > 20:
+                        # Truncate long reviews
+                        short_text = text[:80] + '...' if len(text) > 80 else text
+                        reviews.append(f"({rating}★) {short_text}")
+        
+        if not reviews:
+            # Fallback: try main reviews field
+            main_reviews = poi.get('reviews', [])
+            if main_reviews:
+                for review in main_reviews[:3]:
+                    text = review.get('text', '')
+                    rating = review.get('rating', 0)
+                    if text:
+                        short_text = text[:80] + '...' if len(text) > 80 else text
+                        reviews.append(f"({rating}★) {short_text}")
+        
+        if reviews:
+            return ' | '.join(reviews[:2])  # Max 2 reviews in output
+        return ""
+    
+    def _format_price_level(self, price_level: str, avg_cost: Optional[Dict] = None) -> str:
+        """
+        Format price level to human-readable string.
+        
+        Args:
+            price_level: Price level enum value
+            avg_cost: Average cost dict
+            
+        Returns:
+            Formatted price string
+        """
+        level_map = {
+            'free': '💰 Free',
+            'inexpensive': '💰 Budget-friendly',
+            'moderate': '💰💰 Moderate',
+            'expensive': '💰💰💰 Premium',
+            'very_expensive': '💰💰💰💰 Luxury'
+        }
+        
+        display = level_map.get(str(price_level).lower(), '')
+        
+        if avg_cost:
+            amount = avg_cost.get('amount', 0)
+            currency = avg_cost.get('currency', 'VND')
+            if amount:
+                display += f" (~{amount:,.0f} {currency}/person)"
+        
+        return display
+    
+    def _cluster_pois_by_location(
+        self, 
+        pois: List[Dict[str, Any]], 
+        radius_km: float = 2.0,
+        target_clusters: Optional[int] = None
+    ) -> Dict[int, List[Dict]]:
+        """
+        Cluster POIs by geographic proximity using BFS + Merge Small Clusters.
+        
+        Algorithm:
+        1. Build adjacency list of POIs within radius_km
+        2. Use BFS to find connected components (transitive: A→B→C all in same cluster)
+        3. If target_clusters specified and actual_clusters > target:
+           - Merge smallest cluster with nearest cluster
+           - Repeat until len(clusters) == target_clusters
+        
+        Example:
+            POI A at (16.0544, 108.2428)
+            POI B at (16.0548, 108.2430) - 50m from A
+            POI C at (16.0552, 108.2432) - 50m from B, 100m from A
+            With radius=2km → All in same cluster (transitive)
+        
+        Args:
+            pois: List of POI dicts with location data
+            radius_km: Clustering radius in kilometers (default: 2.0)
+            target_clusters: Target number of clusters (e.g., num_days). If None, no merging.
+            
+        Returns:
+            Dict of {cluster_id: [POI, POI, ...]}
+        """
+        if not pois:
+            return {}
+        
+        # Extract coordinates from POIs
+        poi_nodes = []
+        for i, poi in enumerate(pois):
+            location = poi.get('location', {})
+            coords = location.get('coordinates', [None, None])
+            
+            # Check for valid coordinates [lng, lat]
+            is_valid = False
+            if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+                lng, lat = coords[0], coords[1]
+                if (isinstance(lng, (int, float)) and isinstance(lat, (int, float))):
+                    is_valid = True
+            
+            if is_valid:
+                poi_nodes.append({
+                    'index': i,
+                    'poi': poi,
+                    'lat': float(coords[1]),
+                    'lng': float(coords[0]),
+                    'cluster': -1  # -1 means unassigned
+                })
+            else:
+                # POI without valid coords goes to default cluster 0
+                poi_nodes.append({
+                    'index': i,
+                    'poi': poi,
+                    'lat': None,
+                    'lng': None,
+                    'cluster': 0
+                })
+        
+        # Transitive clustering (BFS/Connected Components)
+        cluster_id = 1
+        degree_threshold = radius_km / 111.0  # Approximate degrees per km
+        
+        # Get indices of valid POIs that need clustering
+        valid_indices = [i for i, p in enumerate(poi_nodes) if p['cluster'] == -1]
+        
+        for i in valid_indices:
+            if poi_nodes[i]['cluster'] != -1:
+                continue
+                
+            # Start new cluster
+            current_cluster = cluster_id
+            cluster_id += 1
+            poi_nodes[i]['cluster'] = current_cluster
+            
+            # BFS queue with visited tracking to avoid duplicate processing
+            queue = [i]
+            visited = {i}  # Track nodes already added to queue
+            
+            while queue:
+                curr_idx = queue.pop(0)
+                curr_node = poi_nodes[curr_idx]
+                
+                # Check against all other unassigned valid POIs
+                for neighbor_idx in valid_indices:
+                    # Skip if already visited or already in a cluster
+                    if neighbor_idx in visited:
+                        continue
+                    
+                    neighbor = poi_nodes[neighbor_idx]
+                    
+                    if neighbor['cluster'] != -1:
+                        continue
+                        
+                    # Calculate distance
+                    lat_diff = abs(curr_node['lat'] - neighbor['lat'])
+                    lng_diff = abs(curr_node['lng'] - neighbor['lng'])
+                    
+                    if lat_diff <= degree_threshold and lng_diff <= degree_threshold:
+                        # Assign cluster immediately
+                        neighbor['cluster'] = current_cluster
+                        # Add to queue for further expansion
+                        queue.append(neighbor_idx)
+                        # Mark as visited to prevent duplicate processing
+                        visited.add(neighbor_idx)
+        
+        # Group POIs by cluster
+        clusters = {}
+        for node in poi_nodes:
+            cid = node['cluster']
+            if cid not in clusters:
+                clusters[cid] = []
+            clusters[cid].append(node['poi'])
+        
+        logger.info(f"[CLUSTERING] BFS created {len(clusters)} clusters from {len(pois)} POIs (radius={radius_km}km)")
+        
+        # --- STEP 2: Merge small clusters if target_clusters specified ---
+        if target_clusters and len(clusters) > target_clusters:
+            logger.info(f"[MERGE] Merging {len(clusters)} clusters down to {target_clusters} target clusters")
+            clusters = self._merge_small_clusters(clusters, poi_nodes, target_clusters)
+        
+        return clusters
+    
+    def _merge_small_clusters(
+        self, 
+        clusters: Dict[int, List[Dict]], 
+        poi_nodes: List[Dict],
+        target_clusters: int
+    ) -> Dict[int, List[Dict]]:
+        """
+        Merge small clusters with nearest clusters until reaching target count.
+        
+        Strategy:
+        1. Find smallest cluster (by POI count)
+        2. Find nearest cluster to it (by cluster center distance)
+        3. Merge smallest into nearest
+        4. Repeat until len(clusters) == target_clusters
+        
+        Args:
+            clusters: Current clusters dict {cluster_id: [POI list]}
+            poi_nodes: Original POI nodes with coordinates
+            target_clusters: Desired number of clusters
+            
+        Returns:
+            Merged clusters dict
+        """
+        while len(clusters) > target_clusters:
+            # Find smallest cluster
+            smallest_id = min(clusters.keys(), key=lambda cid: len(clusters[cid]))
+            smallest_cluster = clusters[smallest_id]
+            
+            if len(clusters) == 1:
+                break  # Safety: only 1 cluster left
+            
+            # Calculate center of smallest cluster
+            smallest_center = self._calculate_cluster_center(smallest_cluster)
+            
+            # Find nearest cluster (excluding smallest)
+            min_distance = float('inf')
+            nearest_id = None
+            
+            for cluster_id, cluster_pois in clusters.items():
+                if cluster_id == smallest_id:
+                    continue
+                
+                # Calculate center of candidate cluster
+                candidate_center = self._calculate_cluster_center(cluster_pois)
+                
+                # Distance between centers (Euclidean in lat/lng degrees)
+                distance = (
+                    (smallest_center[0] - candidate_center[0]) ** 2 +
+                    (smallest_center[1] - candidate_center[1]) ** 2
+                ) ** 0.5
+                
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_id = cluster_id
+            
+            if nearest_id is None:
+                logger.warning(f"[MERGE] Could not find nearest cluster for cluster {smallest_id}")
+                break
+            
+            # Merge smallest into nearest
+            clusters[nearest_id].extend(smallest_cluster)
+            del clusters[smallest_id]
+            
+            logger.info(
+                f"[MERGE] Merged cluster {smallest_id} ({len(smallest_cluster)} POIs) "
+                f"into cluster {nearest_id} (distance={min_distance*111:.2f}km). "
+                f"Remaining: {len(clusters)} clusters"
+            )
+        
+        # Re-index clusters to be sequential (1, 2, 3, ...)
+        sorted_ids = sorted(clusters.keys())
+        reindexed = {i+1: clusters[old_id] for i, old_id in enumerate(sorted_ids)}
+        
+        logger.info(f"[MERGE] Final: {len(reindexed)} balanced clusters")
+        return reindexed
+    
+    def _calculate_cluster_center(self, cluster_pois: List[Dict[str, Any]]) -> tuple:
+        """
+        Calculate the geographic center of a cluster.
+        
+        Args:
+            cluster_pois: List of POIs in the cluster
+            
+        Returns:
+            Tuple (lat, lng) of cluster center
+        """
+        valid_coords = []
+        for poi in cluster_pois:
+            location = poi.get('location', {})
+            coords = location.get('coordinates', [])
+            if len(coords) >= 2 and coords[0] is not None:
+                valid_coords.append((coords[1], coords[0]))  # (lat, lng)
+        
+        if not valid_coords:
+            return (0.0, 0.0)
+        
+        avg_lat = sum(c[0] for c in valid_coords) / len(valid_coords)
+        avg_lng = sum(c[1] for c in valid_coords) / len(valid_coords)
+        
+        return (avg_lat, avg_lng)
+    
+    def _post_process_itinerary(
+        self, 
+        itinerary: List[Dict[str, Any]], 
+        poi_cache: Dict[str, Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Post-process LLM-generated itinerary to populate featured_image and viewport.
+        
+        Args:
+            itinerary: Raw itinerary from LLM
+            poi_cache: Dict mapping poi_id to POI data
+            
+        Returns:
+            Enhanced itinerary with featured_image and viewport populated
+        """
+        import random
+        
+        for day_plan in itinerary:
+            poi_ids = day_plan.get('poi_ids', [])
+            if not poi_ids:
+                continue
+            
+            # Collect coordinates for viewport calculation
+            coords_list = []
+            day_pois = []
+            
+            for poi_id in poi_ids:
+                poi = poi_cache.get(poi_id)
+                if not poi:
+                    continue
+                day_pois.append(poi)
+                
+                # Extract coordinates (GeoJSON format: [lng, lat])
+                location = poi.get('location', {})
+                coords = location.get('coordinates', [])
+                if len(coords) >= 2 and coords[0] is not None:
+                    coords_list.append({
+                        'lat': coords[1],
+                        'lng': coords[0]
+                    })
+            
+            # --- Populate featured_images (one per POI) ---
+            featured_images = []
+            for poi in day_pois:
+                images = poi.get('images', [])
+                featured_url = None
+                
+                if images:
+                    # Pick first image from POI
+                    if isinstance(images[0], dict):
+                        # Image objects with url field
+                        image_urls = [img.get('url') for img in images if img.get('url')]
+                    else:
+                        # Direct URLs
+                        image_urls = [img for img in images if img]
+                    
+                    if image_urls:
+                        featured_url = image_urls[0]  # Use first image
+                
+                featured_images.append(featured_url)
+            
+            day_plan['featured_images'] = featured_images
+            
+            # --- Populate viewport ---
+            if coords_list:
+                # Calculate bounding box
+                lats = [c['lat'] for c in coords_list]
+                lngs = [c['lng'] for c in coords_list]
+                
+                # Add padding (about 10% extra on each side)
+                lat_padding = (max(lats) - min(lats)) * 0.1 or 0.01
+                lng_padding = (max(lngs) - min(lngs)) * 0.1 or 0.01
+                
+                day_plan['viewport'] = {
+                    'northeast': {
+                        'lat': max(lats) + lat_padding,
+                        'lng': max(lngs) + lng_padding
+                    },
+                    'southwest': {
+                        'lat': min(lats) - lat_padding,
+                        'lng': min(lngs) - lng_padding
+                    }
+                }
+                
+                # Calculate center if not provided by LLM
+                if not day_plan.get('location'):
+                    day_plan['location'] = [
+                        sum(lats) / len(lats),
+                        sum(lngs) / len(lngs)
+                    ]
+        
+        return itinerary
     
     # ============================================
     # PLAN CRUD OPERATIONS
@@ -609,12 +1306,19 @@ class PlannerService:
             self.plan_repo.update_status(plan_id, PlanStatusEnum.PROCESSING)
             logger.info(f"[INFO] Starting LangChain generation for plan {plan_id}")
             
-            # --- STEP 1: Fetch POIs from repositories/providers ---
-            poi_context = self._fetch_pois_for_plan(plan)
+            # --- STEP 1: Fetch POIs and Accommodations from repositories/providers ---
+            poi_context, accommodation_context, poi_cache = self._fetch_pois_for_plan(plan, plan.get('num_days', 3))
             if poi_context:
-                logger.info(f"[INFO] Using real POI data for plan {plan_id}")
+                logger.info(f"[INFO] Using real POI data for plan {plan_id} ({len(poi_cache)} POIs cached)")
             else:
                 logger.warning(f"[WARN] No POI data available for plan {plan_id}")
+                poi_cache = {}  # Empty cache for post-processing
+            
+            if accommodation_context:
+                logger.info(f"[INFO] Accommodation data available for plan {plan_id}")
+            else:
+                logger.warning(f"[WARN] No accommodation data available for plan {plan_id}")
+                accommodation_context = "No accommodations found. Please suggest generic accommodation options."
             
             # --- STEP 2: Run LangChain ---
             chain = TravelPlannerChain()
@@ -627,14 +1331,22 @@ class PlannerService:
                     'preferences': plan.get('preferences', {}),
                     'start_date': plan.get('start_date')
                 },
-                poi_context=poi_context
+                poi_context=poi_context,
+                accommodation_context=accommodation_context
             )
             
             if not result.get('success'):
                 raise ValueError(result.get('error', 'LangChain generation failed'))
             
-            # --- STEP 3: Update plan with results ---
+            # --- STEP 3: Post-process itinerary (featured_image, viewport) ---
             itinerary = result.get('itinerary', [])
+            
+            # Enrich itinerary with featured_image and viewport from POI cache
+            if poi_cache:
+                itinerary = self._post_process_itinerary(itinerary, poi_cache)
+                logger.info(f"[INFO] Post-processed itinerary with featured_image and viewport")
+            
+            # --- STEP 4: Update plan with results ---
             
             # Use update_itinerary method (PlanRepository doesn't have generic update())
             self.plan_repo.update_itinerary(

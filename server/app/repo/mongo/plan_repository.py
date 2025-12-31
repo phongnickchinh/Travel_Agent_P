@@ -423,7 +423,10 @@ class PlanRepository(PlanRepositoryInterface):
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
-        Get user's deleted plans (trash).
+        Get user's deleted plans (trash) with BASIC INFO ONLY.
+        
+        Plans in trash do NOT return full itinerary details, only summary info
+        for display in trash listing UI.
         
         Args:
             user_id: User identifier
@@ -431,7 +434,7 @@ class PlanRepository(PlanRepositoryInterface):
             limit: Max results per page
             
         Returns:
-            List of deleted plan documents (newest first)
+            List of deleted plan documents with basic fields (newest first)
         """
         if self.collection is None:
             return []
@@ -443,8 +446,25 @@ class PlanRepository(PlanRepositoryInterface):
                 "is_permanently_deleted": {"$ne": True}
             }
             
+            # Projection: Only return basic info, NOT full itinerary
+            projection = {
+                "_id": 1,
+                "plan_id": 1,
+                "title": 1,
+                "destination": 1,
+                "num_days": 1,
+                "status": 1,
+                "start_date": 1,
+                "end_date": 1,
+                "created_at": 1,
+                "deleted_at": 1,
+                "is_deleted": 1,
+                "featured_images": 1,
+                # Exclude heavy fields: itinerary, llm_response_raw, etc.
+            }
+            
             plans = list(
-                self.collection.find(query)
+                self.collection.find(query, projection)
                 .sort("deleted_at", DESCENDING)
                 .skip(skip)
                 .limit(limit)
@@ -453,7 +473,7 @@ class PlanRepository(PlanRepositoryInterface):
             for plan in plans:
                 plan['_id'] = str(plan['_id'])
             
-            logger.info(f"[INFO] Found {len(plans)} deleted plans for user {user_id}")
+            logger.info(f"[INFO] Found {len(plans)} deleted plans (basic info) for user {user_id}")
             return plans
             
         except Exception as e:

@@ -101,11 +101,72 @@ class DayPlan(BaseModel):
     poi_ids: List[str] = Field(default_factory=list, description="POI IDs in visit order")
     activities: List[str] = Field(default_factory=list, description="LLM-generated activities")
     notes: Optional[str] = Field(None, description="Daily notes or tips")
+    
+    # Time and cost fields from LLM
+    opening_hours: Optional[List[str]] = Field(
+        default_factory=list, 
+        description="Opening hours for each POI in format HH:MM-HH:MM"
+    )
+    estimated_times: Optional[List[str]] = Field(
+        default_factory=list, 
+        description="Estimated visit times for each POI in format HH:MM-HH:MM"
+    )
+    estimated_cost_vnd: Optional[int] = Field(
+        None, ge=0, description="Estimated daily cost in VND"
+    )
     estimated_travel_time_min: Optional[int] = Field(
         None, ge=0, description="Estimated travel time in minutes"
     )
     estimated_cost: Optional[float] = Field(
-        None, ge=0, description="Estimated cost for the day"
+        None, ge=0, description="Estimated cost for the day (legacy)"
+    )
+    
+    # Map display fields - featured_images array (one per POI)
+    featured_images: Optional[List[str]] = Field(
+        default_factory=list, 
+        description="Featured image URLs, one per POI in visit order"
+    )
+    viewport: Optional[Dict[str, Dict[str, float]]] = Field(
+        None, 
+        description="Map viewport bounds {'northeast': {'lat': float, 'lng': float}, 'southwest': {...}}"
+    )
+    location: Optional[List[float]] = Field(
+        None,
+        description="Central point [latitude, longitude] for the day's activities"
+    )
+    
+    # Accommodation fields
+    accommodation_id: Optional[str] = Field(
+        None,
+        description="POI ID of the accommodation (hotel/hostel/resort)"
+    )
+    accommodation_name: Optional[str] = Field(
+        None,
+        description="Name of the accommodation"
+    )
+    accommodation_address: Optional[str] = Field(
+        None,
+        description="Address of the accommodation"
+    )
+    accommodation_location: Optional[List[float]] = Field(
+        None,
+        description="Accommodation coordinates [latitude, longitude]"
+    )
+    check_in_time: Optional[str] = Field(
+        None,
+        description="Check-in time in format HH:MM"
+    )
+    check_out_time: Optional[str] = Field(
+        None,
+        description="Check-out time in format HH:MM (usually on day of departure)"
+    )
+    accommodation_changed: Optional[bool] = Field(
+        False,
+        description="True if accommodation changed from previous day"
+    )
+    accommodation_change_reason: Optional[str] = Field(
+        None,
+        description="Reason for accommodation change (e.g., 'closer to next cluster')"
     )
     
     @field_validator('poi_ids')

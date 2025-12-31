@@ -147,7 +147,7 @@ class TravelPlannerChain:
         """
         # Prompt template
         prompt_template = PromptTemplate(
-        input_variables=["destination", "num_days", "preferences", "start_date", "poi_context"],
+        input_variables=["destination", "num_days", "preferences", "start_date", "poi_context", "accommodation_context"],
         template="""
         You are a senior professional travel planner AI with 10+ years of experience designing detailed, realistic itineraries.
 
@@ -158,8 +158,11 @@ class TravelPlannerChain:
         User preferences:
         {preferences}
 
-        Below is the list of available POIs. You MUST only select POIs from this list:
+        Below is the list of available POIs organized by geographic clusters. You MUST only select POIs from this list:
         {poi_context}
+        
+        Below is the list of available accommodations. You MUST select accommodations from this list:
+        {accommodation_context}
         
         Return language: Vietnamese
 
@@ -177,6 +180,7 @@ class TravelPlannerChain:
             • If pace = "moderate": 3-4 POIs per day  
             • If pace = "intensive": 5-6 POIs per day
             • If pace not specified: default to 3-4 POIs
+        - If a geographic cluster is too small, you MUST combine multiple clusters to meet the daily POI count.
         - At least:
             • 1 food-related activity for lunch
             • 1 food-related activity for dinner
@@ -198,17 +202,56 @@ class TravelPlannerChain:
         - Mix categories such as nature, culture, food, sightseeing, relaxation.
         - CRITICAL: Each day should focus on a specific geographic area.
 
-        6. GEOGRAPHIC OPTIMIZATION (CRITICAL):
-        - Each POI has coordinates in format @(latitude, longitude).
-        - Calculate approximate distance: 0.01 degree ≈ 1.1 km.
-        - POIs within 0.02 degrees (~2km) of each other should be visited on the SAME DAY.
-        - Order POIs within a day to minimize total travel distance (TSP-like optimization).
-        - Avoid zig-zag routes: if POI A and C are close, don't put POI B (far away) between them.
-        - Example: If POIs at (16.05, 108.20), (16.06, 108.21), (16.10, 108.30) - the first two are close (~1.5km), third is far (~12km). Group first two together.
+        6. GEOGRAPHIC CLUSTERING (CRITICAL - HIGHEST PRIORITY):
+        - POIs are PRE-GROUPED into geographic clusters (areas within ~2km radius).
+        - Each cluster is labeled with its center coordinates.
+        - YOU MUST select POIs from the SAME CLUSTER for the same day whenever possible.
+        - This minimizes travel distance and maximizes time at destinations.
+        - Only mix clusters if absolutely necessary for category balance.
+        - Order POIs within a day to minimize total travel distance between them.
 
-        7. Data consistency:
+        7. REVIEW-BASED DESTINATION EVALUATION:
+        - Each POI includes review summaries with ratings (Reviews: ...).
+        - Prioritize POIs with:
+            • Higher ratings (★4.5+) for must-visit recommendations
+            • More reviews (indicates popular/verified destinations)
+            • Positive review sentiments
+        - Mention notable experiences from reviews in your activity descriptions when relevant.
+        - Avoid POIs with concerning negative reviews unless they offer unique value.
+
+        8. BUDGET/PRICING EVALUATION:
+        - Each POI shows price level (indicators).
+        - Match POI price levels to user's budget preference:
+            • If budget = "low": Prioritize Free, Budget-friendly options
+            • If budget = "medium": Mix of Budget-friendly and Moderate
+            • If budget = "high"/"luxury": Include Premium and Luxury options
+        - Distribute costs across days to avoid budget spikes.
+        - Note approximate daily costs in estimated_cost_vnd.
+
+        9. Data consistency:
         - opening_hours and estimated_times MUST align with each POI.
-        - location should represent the central area of the day.
+        - location should represent the central point of the day's activities.
+
+        10. Missing data handling (CRITICAL):
+        - Do NOT skip a POI just because some fields are missing.
+        - If any field is missing or unknown, still include the POI and set that field to null in the JSON output.
+        - Apply this to every field (activities, opening_hours, estimated_times, accommodation fields, etc.) so the array length and poi_ids remain intact.
+
+        11. ACCOMMODATION PLANNING (CRITICAL FOR MULTI-DAY TRIPS):
+        - Each day MUST include accommodation information (except last day if returning home).
+        - Select accommodation from the provided ACCOMMODATIONS list using accommodation_id.
+        - Accommodation selection rules:
+            • Day 1: Choose accommodation closest to first day's POI cluster.
+            • Subsequent days: Keep same accommodation if next day's cluster is within 10km.
+            • Change accommodation if next day's cluster is >10km away from current location.
+        - If accommodation changes:
+            • Set accommodation_changed = true
+            • Provide accommodation_change_reason (e.g., "Di chuyển đến khu vực mới gần các điểm tham quan ngày mai")
+        - Check-in/Check-out times:
+            • check_in_time: Usually "14:00" or "15:00" (Day 1 or when changing)
+            • check_out_time: Usually "11:00" or "12:00" (Last day or when leaving)
+            • Only include check_out_time on days when leaving the accommodation
+        - Match accommodation price level to user's budget preference.
 
         ========================
         OUTPUT FORMAT (STRICT)
@@ -239,6 +282,11 @@ class TravelPlannerChain:
             "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
             "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
             "estimated_cost_vnd": 500000,
+            "accommodation_id": "accommodation_poi_id",
+            "accommodation_name": "Tên Khách Sạn",
+            "accommodation_location": [latitude, longitude],
+            "check_in_time": "14:00",
+            "accommodation_changed": false,
             "notes": "Tóm tắt trải nghiệm ngày 1 với dòng chảy tự nhiên và mạch lạc (25-40 từ)..."
         }},
         {{
@@ -254,6 +302,13 @@ class TravelPlannerChain:
             "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
             "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
             "estimated_cost_vnd": 600000,
+            "accommodation_id": "new_accommodation_poi_id",
+            "accommodation_name": "Tên Khách Sạn Mới",
+            "accommodation_location": [latitude, longitude],
+            "check_out_time": "11:00",
+            "check_in_time": "15:00",
+            "accommodation_changed": true,
+            "accommodation_change_reason": "Di chuyển đến khu vực mới gần các điểm tham quan ngày mai",
             "notes": "Tóm tắt ngày 2 với trải nghiệm phong phú và đa dạng..."
         }}
         ]
@@ -276,7 +331,7 @@ class TravelPlannerChain:
         
         return chain
     
-    def run(self, input_data: Dict[str, Any], poi_context: str = None) -> Dict[str, Any]:
+    def run(self, input_data: Dict[str, Any], poi_context: str = None, accommodation_context: str = None) -> Dict[str, Any]:
         """
         Generate travel itinerary.
         
@@ -288,6 +343,8 @@ class TravelPlannerChain:
                 - start_date: str (YYYY-MM-DD)
             poi_context: Pre-formatted POI context string (from PlacesService)
                          If None, falls back to mock data
+            accommodation_context: Pre-formatted accommodation context string
+                         If None, uses empty placeholder
                 
         Returns:
             Dict with keys:
@@ -318,13 +375,21 @@ class TravelPlannerChain:
                 logger.warning("[WARN] No POI context provided, using mock data")
                 poi_context = get_mock_poi_summary()
             
+            # Use provided accommodation context or placeholder
+            if accommodation_context:
+                logger.info(f"[INFO] Using accommodation context ({len(accommodation_context)} chars)")
+            else:
+                logger.warning("[WARN] No accommodation context provided")
+                accommodation_context = "No specific accommodations found. Please suggest appropriate lodging options based on the destination and budget."
+            
             # Prepare chain input
             chain_input = {
                 "destination": destination,
                 "num_days": num_days,
                 "preferences": pref_text,
                 "start_date": start_date,
-                "poi_context": poi_context
+                "poi_context": poi_context,
+                "accommodation_context": accommodation_context
             }
             
             logger.info(f"[INFO] Running LangChain for {num_days}-day {destination} itinerary")
@@ -476,12 +541,40 @@ class TravelPlannerChain:
             # Validate and normalize
             itinerary = []
             for day_data in raw_itinerary[:num_days]:  # Limit to num_days
+                # Extract location as [lat, lng] - LLM should provide this
+                location = day_data.get('location')
+                if isinstance(location, list) and len(location) == 2:
+                    location = [float(location[0]), float(location[1])]
+                else:
+                    location = None
+                
+                # Extract accommodation location as [lat, lng] if provided
+                accommodation_location = day_data.get('accommodation_location')
+                if isinstance(accommodation_location, list) and len(accommodation_location) == 2:
+                    accommodation_location = [float(accommodation_location[0]), float(accommodation_location[1])]
+                else:
+                    accommodation_location = None
+                
                 day_plan = DayPlan(
                     day=day_data.get('day', len(itinerary) + 1),
                     date=day_data.get('date', self._calculate_date(start_date, len(itinerary))),
                     poi_ids=day_data.get('poi_ids', []),
                     activities=day_data.get('activities', []),
-                    notes=day_data.get('notes')
+                    notes=day_data.get('notes'),
+                    location=location,
+                    # opening_hours and estimated_times from LLM
+                    opening_hours=day_data.get('opening_hours', []),
+                    estimated_times=day_data.get('estimated_times', []),
+                    estimated_cost_vnd=day_data.get('estimated_cost_vnd', 0),
+                    # Accommodation fields
+                    accommodation_id=day_data.get('accommodation_id'),
+                    accommodation_name=day_data.get('accommodation_name'),
+                    accommodation_address=day_data.get('accommodation_address'),
+                    accommodation_location=accommodation_location,
+                    check_in_time=day_data.get('check_in_time'),
+                    check_out_time=day_data.get('check_out_time'),
+                    accommodation_changed=day_data.get('accommodation_changed', False),
+                    accommodation_change_reason=day_data.get('accommodation_change_reason')
                 )
                 itinerary.append(day_plan.model_dump())
             

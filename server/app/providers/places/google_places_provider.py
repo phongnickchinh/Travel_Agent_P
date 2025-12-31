@@ -323,7 +323,6 @@ class GooglePlacesProvider(BaseProvider):
             response.raise_for_status()
             
             place = response.json()
-            logger.info(f"Place details response: {place}")
             
             logger.info(f"Retrieved details for place: {place.get('displayName', {}).get('text', 'Unknown')}")
             

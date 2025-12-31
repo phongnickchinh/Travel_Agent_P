@@ -14,6 +14,7 @@ import SearchExamples from './pages/SearchExamples';
 import './App.css';
 
 
+import ThemeToggle from './components/ui/ThemeToggle';
 import ProtectedRoute from './contexts/ProtectedRoute';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
 
         {/* Thêm các route yêu cầu auth khác ở đây */}
       </Routes>
+      <ThemeToggle />
     </Router>
   );
 }

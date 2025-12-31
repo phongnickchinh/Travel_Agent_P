@@ -34,7 +34,7 @@ export default function ConfirmModal({
   if (!open) return null;
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       <motion.div
         key="confirm-backdrop"
         initial={{ opacity: 0 }}

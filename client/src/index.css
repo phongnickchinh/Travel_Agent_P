@@ -1,6 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 @import 'tailwindcss';
+/* stylelint-disable */
+@custom-variant dark (&:where(.dark, .dark *));
+@theme { 
+  /* COLORS */
+  --color-brand-primary: #2E571C;
+  --color-brand-secondary: #547023;
+  --color-brand-muted: #E8F1E4;
+  --color-brand-dark: #1F3A12;
+
+  --color-accent-primary: #000000;
+  --color-accent-success: #10B981;
+  --color-accent-warning: #F59E0B;
+  --color-accent-error: #EF4444;
+
+  /* FONTS */
+  --font-sans: Inter, sans-serif;
+  --font-poppins: Poppins, sans-serif;
+  --font-dm: "DM Sans", sans-serif;
+}
+/* stylelint-enable */
+/* 
 :root {
   --font-family-sans: 'Inter', sans-serif;
   --font-family-poppins: 'Poppins', sans-serif;
@@ -10,16 +31,12 @@
   --color-accent-success: #10B981;
   --color-accent-warning: #F59E0B;
   --color-accent-error: #EF4444;
-}
+} */
 
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light;
-  color: #213547;
-  background-color: #f9fafb;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

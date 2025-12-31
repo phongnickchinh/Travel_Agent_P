@@ -73,7 +73,7 @@ export default function PlanCard({ plan, onDelete }) {
       onClick={handleClick}
     >
       {/* Thumbnail Image - Aspect ratio 4:3 horizontal rectangle */}
-      <div className="relative aspect-[4/3] bg-gray-200 overflow-hidden">
+      <div className="relative aspect-[4/2.3] bg-gray-200 overflow-hidden">
         {plan.thumbnail_url ? (
           <img
             src={plan.thumbnail_url}

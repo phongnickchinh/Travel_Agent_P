@@ -16,7 +16,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';
-import './CreatePlan.css';
 
 // Available interest options
 const INTEREST_OPTIONS = [

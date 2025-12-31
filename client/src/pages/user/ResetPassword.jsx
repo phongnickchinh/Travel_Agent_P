@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  requestPasswordResetApi,
-  resendResetCodeApi,
-  resetPasswordApi,
-  validateEmail,
-  validatePassword,
-  validateResetCodeApi
+    requestPasswordResetApi,
+    resendResetCodeApi,
+    resetPasswordApi,
+    validateEmail,
+    validatePassword,
+    validateResetCodeApi
 } from '../../services/authApi';
-import './ResetPassword.css';
 
 export default function ResetPassword({ isModal = false }) {
   const navigate = useNavigate();

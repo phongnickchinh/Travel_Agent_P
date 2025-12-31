@@ -1735,7 +1735,13 @@ class PlannerService:
         Returns:
             Plan dict if found and public
         """
-        return self.plan_repo.get_by_share_token(share_token)
+        plan = self.plan_repo.get_by_share_token(share_token)
+
+        # Enrich itinerary with POI locations for map display (match private detail response)
+        if plan and plan.get('itinerary'):
+            plan = self._enrich_itinerary_with_poi_locations(plan)
+
+        return plan
     
     def update_plan(
         self, 

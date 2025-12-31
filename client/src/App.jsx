@@ -32,13 +32,12 @@ function App() {
 
         {/* Dashboard routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/dashboard/create-plan" element={<ProtectedRoute><CreatePlanNew /></ProtectedRoute>} />
+        <Route path="/dashboard/create-plan" element={<ProtectedRoute><CreatePlan /></ProtectedRoute>} />
         <Route path="/dashboard/plan/:planId" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
         <Route path="/dashboard/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
 
         {/* Legacy routes */}
         <Route path="/dashboard/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/create-plan" element={<ProtectedRoute><CreatePlan /></ProtectedRoute>} />
         <Route path="/search-demo" element={<ProtectedRoute><SearchDemo /></ProtectedRoute>} />
         <Route path="/search-examples" element={<ProtectedRoute><SearchExamples /></ProtectedRoute>} />
 

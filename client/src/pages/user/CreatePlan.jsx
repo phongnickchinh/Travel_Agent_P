@@ -11,7 +11,9 @@
  * Author: Travel Agent P Team
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { Calendar, ChevronLeft, Loader2, MapPin, PiggyBank, Search, Sparkles, Timer, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import planAPI from '../../services/planApi';
@@ -53,27 +55,31 @@ const PACE_OPTIONS = [
   { value: 'intensive', label: 'Khám phá nhiều', description: '5+ địa điểm/ngày' },
 ];
 
+const LOCAL_STORAGE_KEY = 'ta:create-plan:last-entry';
+
+const createEmptyForm = () => ({
+  title: '',
+  destination: '',
+  destinationId: null,
+  numDays: 3,
+  startDate: '',
+  origin: null,
+  preferences: {
+    interests: [],
+    budget: 3500000,
+    budgetLevel: 'medium',
+    pace: 'moderate',
+    dietary: '',
+    customInterests: '',
+  },
+});
+
 export default function CreatePlan() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   // Form state
-  const [formData, setFormData] = useState({
-    title: '',
-    destination: '',
-    destinationId: null, // POI ID if selected from autocomplete
-    numDays: 3,
-    startDate: '',
-    origin: null, // Future: Google Maps location
-    preferences: {
-      interests: [],
-      budget: 3500000, // Default: Thoải mái
-      budgetLevel: 'medium',
-      pace: 'moderate',
-      dietary: '',
-      customInterests: '',
-    }
-  });
+  const [formData, setFormData] = useState(() => createEmptyForm());
 
   // Autocomplete state
   const [destinationQuery, setDestinationQuery] = useState('');
@@ -87,6 +93,8 @@ export default function CreatePlan() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [interestSearch, setInterestSearch] = useState('');
+  const [showInterestSuggestions, setShowInterestSuggestions] = useState(false);
 
   // Refs
   const destinationInputRef = useRef(null);
@@ -94,6 +102,15 @@ export default function CreatePlan() {
 
   // Calculate min date (today)
   const today = new Date().toISOString().split('T')[0];
+
+  const filteredInterestOptions = useMemo(() => {
+    const query = interestSearch.toLowerCase().trim();
+    return INTEREST_OPTIONS.filter((option) => {
+      const notSelected = !formData.preferences.interests.includes(option.id);
+      if (!query) return notSelected;
+      return notSelected && option.label.toLowerCase().includes(query);
+    });
+  }, [interestSearch, formData.preferences.interests]);
 
   // Convert slider position to budget value (non-linear)
   const getBudgetFromPosition = useCallback((position) => {
@@ -136,6 +153,58 @@ export default function CreatePlan() {
     return `${(value / 1000).toFixed(0)}K VNĐ`;
   };
 
+  const getPositionFromBudget = useCallback((budgetValue) => {
+    if (budgetValue === undefined || budgetValue === null) return BUDGET_MARKS[3].position;
+    for (let i = 0; i < BUDGET_MARKS.length - 1; i++) {
+      const current = BUDGET_MARKS[i];
+      const next = BUDGET_MARKS[i + 1];
+      if (budgetValue >= current.value && budgetValue <= next.value) {
+        const ratio = (budgetValue - current.value) / (next.value - current.value);
+        return Math.round(current.position + ratio * (next.position - current.position));
+      }
+    }
+    return BUDGET_MARKS[BUDGET_MARKS.length - 1].position;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed?.formData) {
+        setFormData((prev) => ({
+          ...prev,
+          ...parsed.formData,
+          preferences: {
+            ...prev.preferences,
+            ...parsed.formData.preferences,
+          },
+        }));
+
+        if (parsed.formData?.preferences?.budget) {
+          setBudgetPosition(parsed.budgetPosition ?? getPositionFromBudget(parsed.formData.preferences.budget));
+        }
+
+        if (typeof parsed.destinationQuery === 'string') {
+          setDestinationQuery(parsed.destinationQuery);
+        }
+      }
+    } catch (err) {
+      console.warn('Unable to load saved plan draft', err);
+    }
+  }, [getPositionFromBudget]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const payload = {
+      formData,
+      budgetPosition,
+      destinationQuery,
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+  }, [formData, budgetPosition, destinationQuery]);
+
   // Handle destination search with debounce
   const handleDestinationChange = useCallback(async (value) => {
     setDestinationQuery(value);
@@ -152,7 +221,11 @@ export default function CreatePlan() {
     setShowSuggestions(true);
 
     try {
-      const results = await searchAPI.debouncedAutocomplete(value, { limit: 8 });
+      const response = await searchAPI.debouncedAutocomplete(value, { limit: 8 });
+      
+      // API returns { suggestions: [], total, sources }
+      const results = response?.suggestions || response || [];
+      
       setSuggestions(results);
     } catch (err) {
       console.error('Search error:', err);
@@ -164,12 +237,15 @@ export default function CreatePlan() {
 
   // Handle suggestion selection
   const handleSelectSuggestion = useCallback((suggestion) => {
-    const displayName = suggestion.name_vi || suggestion.name_en || suggestion.name || suggestion.query;
+    // Normalize field names from different API sources
+    const displayName = suggestion.main_text || suggestion.name_vi || suggestion.name_en || suggestion.name || suggestion.query;
+    const suggestionId = suggestion.place_id || suggestion.poi_id || suggestion._id || null;
+    
     setDestinationQuery(displayName);
     setFormData(prev => ({
       ...prev,
       destination: displayName,
-      destinationId: suggestion.poi_id || suggestion._id || null
+      destinationId: suggestionId
     }));
     setSuggestions([]);
     setShowSuggestions(false);
@@ -270,6 +346,11 @@ export default function CreatePlan() {
       return;
     }
 
+    if (!formData.destinationId) {
+      setError('Vui lòng chọn điểm đến từ danh sách gợi ý');
+      return;
+    }
+
     if (!formData.startDate) {
       setError('Vui lòng chọn ngày bắt đầu');
       return;
@@ -286,7 +367,8 @@ export default function CreatePlan() {
       // Prepare API payload
       const payload = {
         title: formData.title || `Chuyến đi ${formData.destination}`,
-        destination: formData.destination,
+        destination_place_id: formData.destinationId,
+        destination_name: formData.destination,
         num_days: formData.numDays,
         start_date: formData.startDate,
         origin: formData.origin, // null for now
@@ -344,266 +426,405 @@ export default function CreatePlan() {
   }, []);
 
   return (
-    <div className="create-plan-container">
-      <div className="create-plan-card">
-        {/* Header */}
-        <div className="create-plan-header">
-          <button className="back-button" onClick={() => navigate(-1)}>
-            ← Quay lại
-          </button>
-          <h1>✨ Tạo Kế Hoạch Du Lịch</h1>
-          <p>Để AI lên lịch trình hoàn hảo cho bạn</p>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 md:p-6 dark:bg-black/60" onClick={() => navigate(-1)}>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl border border-brand-primary dark:bg-gray-900 dark:border-brand-primary"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-brand-primary/20 px-5 py-4 dark:border-brand-primary/30">
+          <div className="space-y-1">
+            {/* <div className="inline-flex items-center gap-2 rounded-full bg-brand-muted px-3 py-1 text-xs font-medium text-brand-primary">
+              <Sparkles className="h-4 w-4" />
+              <span>Nhập nhanh trên dashboard</span>
+            </div> */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-inter font-bold text-brand-secondary dark:text-white">Tạo kế hoạch</h1>
+              {/* <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 shadow-sm">
+                <CheckCircle2 className="h-4 w-4 text-brand-primary" />
+                <span>Tự lưu bản nháp</span>
+              </div> */}
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Bạn yêu cầu, chúng tôi thực hiện</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate(-1)}
+              className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-primary/30 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Quay lại</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ rotate: 90 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate(-1)}
+              aria-label="Đóng"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-gray-700 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
+            >
+              <X className="h-4 w-4" />
+            </motion.button>
+          </div>
         </div>
 
-        {/* Form */}
-        <form className="create-plan-form" onSubmit={handleSubmit}>
-          {/* Error/Success Messages */}
-          {error && <div className="message error-message">{error}</div>}
-          {success && <div className="message success-message">{success}</div>}
-
-          {/* Title (Optional) */}
-          <div className="form-group">
-            <label className="form-label">
-              📝 Tên chuyến đi <span className="optional">(Tùy chọn)</span>
-            </label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="VD: Nghỉ dưỡng Đà Nẵng cùng gia đình"
-              value={formData.title}
-              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-              maxLength={200}
-            />
-          </div>
-
-          {/* Destination with Autocomplete */}
-          <div className="form-group destination-group">
-            <label className="form-label">
-              📍 Điểm đến <span className="required">*</span>
-            </label>
-            <div className="autocomplete-wrapper">
-              <input
-                ref={destinationInputRef}
-                type="text"
-                className="form-input destination-input"
-                placeholder="Nhập tên thành phố, địa điểm..."
-                value={destinationQuery}
-                onChange={(e) => handleDestinationChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={() => destinationQuery.length >= 2 && setShowSuggestions(true)}
-                autoComplete="off"
-              />
-              {isSearching && <span className="search-spinner">🔍</span>}
-              
-              {/* Suggestions Dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
-                <ul className="suggestions-list" ref={suggestionsRef}>
-                  {suggestions.map((suggestion, index) => (
-                    <li
-                      key={suggestion.poi_id || suggestion._id || index}
-                      className={`suggestion-item ${index === selectedSuggestionIndex ? 'selected' : ''}`}
-                      onClick={() => handleSelectSuggestion(suggestion)}
-                      onMouseEnter={() => setSelectedSuggestionIndex(index)}
-                    >
-                      <span className="suggestion-icon">
-                        {suggestion.category === 'beach' ? '🏖️' :
-                         suggestion.category === 'restaurant' ? '🍽️' :
-                         suggestion.category === 'hotel' ? '🏨' :
-                         suggestion.category === 'attraction' ? '🎡' : '📍'}
-                      </span>
-                      <div className="suggestion-content">
-                        <span className="suggestion-name">
-                          {suggestion.name_vi || suggestion.name_en || suggestion.name}
-                        </span>
-                        {suggestion.address && (
-                          <span className="suggestion-address">{suggestion.address}</span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {/* Number of Days Slider */}
-          <div className="form-group">
-            <label className="form-label">
-              📅 Số ngày: <span className="value-display">{formData.numDays} ngày</span>
-            </label>
-            <div className="slider-container">
-              <input
-                type="range"
-                className="slider days-slider"
-                min="1"
-                max="30"
-                value={formData.numDays}
-                onChange={(e) => handleNumDaysChange(e.target.value)}
-              />
-              <div className="slider-labels">
-                <span>1 ngày</span>
-                <span>15 ngày</span>
-                <span>30 ngày</span>
+        <div className="grid gap-4 p-5 md:p-6 lg:p-7 lg:grid-cols-[1fr_260px]">
+          <div className="max-h-[70vh] overflow-y-auto pr-1 space-y-4">
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-950/60 dark:text-red-200">
+                {error}
               </div>
-            </div>
-          </div>
-
-          {/* Start Date */}
-          <div className="form-group">
-            <label className="form-label">
-              🗓️ Ngày bắt đầu <span className="required">*</span>
-            </label>
-            <input
-              type="date"
-              className="form-input date-input"
-              value={formData.startDate}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              min={today}
-            />
-          </div>
-
-          {/* Origin (Placeholder) */}
-          <div className="form-group origin-group">
-            <label className="form-label">
-              🚗 Điểm xuất phát <span className="optional">(Tùy chọn)</span>
-            </label>
-            <div className="origin-placeholder">
-              <div className="placeholder-icon">🗺️</div>
-              <p>Tính năng Google Maps sẽ sớm ra mắt!</p>
-              <span className="placeholder-note">Cho phép chọn địa điểm xuất phát để tối ưu lịch trình</span>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="form-divider">
-            <span>Sở thích & Ngân sách</span>
-          </div>
-
-          {/* Interests Multi-Choice */}
-          <div className="form-group">
-            <label className="form-label">
-              ❤️ Sở thích <span className="required">*</span>
-              <span className="hint">(Chọn nhiều)</span>
-            </label>
-            <div className="interests-grid">
-              {INTEREST_OPTIONS.map((interest) => (
-                <button
-                  key={interest.id}
-                  type="button"
-                  className={`interest-chip ${formData.preferences.interests.includes(interest.id) ? 'selected' : ''}`}
-                  onClick={() => handleInterestToggle(interest.id)}
-                >
-                  <span className="chip-icon">{interest.icon}</span>
-                  <span className="chip-label">{interest.label}</span>
-                </button>
-              ))}
-            </div>
-            
-            {/* Custom Interests */}
-            <div className="custom-interests">
-              <input
-                type="text"
-                className="form-input custom-input"
-                placeholder="Thêm sở thích khác (cách nhau bằng dấu phẩy)"
-                value={formData.preferences.customInterests}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  preferences: { ...prev.preferences, customInterests: e.target.value }
-                }))}
-              />
-            </div>
-          </div>
-
-          {/* Budget Slider (Non-linear) */}
-          <div className="form-group">
-            <label className="form-label">
-              💰 Ngân sách / ngày
-            </label>
-            <div className="budget-display">
-              <span className="budget-value">{formatCurrency(formData.preferences.budget)}</span>
-              <span className="budget-label">{getBudgetLabel(formData.preferences.budget)}</span>
-            </div>
-            <div className="slider-container budget-slider-container">
-              <input
-                type="range"
-                className="slider budget-slider"
-                min="0"
-                max="100"
-                value={budgetPosition}
-                onChange={(e) => handleBudgetChange(parseInt(e.target.value, 10))}
-              />
-              <div className="budget-marks">
-                {BUDGET_MARKS.filter((_, i) => i % 2 === 0).map((mark) => (
-                  <div 
-                    key={mark.position} 
-                    className="budget-mark"
-                    style={{ left: `${mark.position}%` }}
-                  >
-                    <span className="mark-dot"></span>
-                    <span className="mark-label">{mark.sublabel}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Pace Selection */}
-          <div className="form-group">
-            <label className="form-label">
-              🏃 Nhịp độ du lịch
-            </label>
-            <div className="pace-options">
-              {PACE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`pace-option ${formData.preferences.pace === option.value ? 'selected' : ''}`}
-                  onClick={() => handlePaceChange(option.value)}
-                >
-                  <span className="pace-label">{option.label}</span>
-                  <span className="pace-description">{option.description}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Dietary (Optional) */}
-          <div className="form-group">
-            <label className="form-label">
-              🥗 Yêu cầu ăn uống <span className="optional">(Tùy chọn)</span>
-            </label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="VD: Chay, không gluten, halal..."
-              value={formData.preferences.dietary}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                preferences: { ...prev.preferences, dietary: e.target.value }
-              }))}
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button 
-            type="submit" 
-            className={`btn btn-submit ${isSubmitting ? 'loading' : ''}`}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="spinner"></span>
-                <span>Đang tạo...</span>
-              </>
-            ) : (
-              <>
-                <span>🚀</span>
-                <span>Tạo Kế Hoạch</span>
-              </>
             )}
-          </button>
-        </form>
-      </div>
+            {success && (
+              <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-700 dark:bg-emerald-950/50 dark:text-emerald-200">
+                {success}
+              </div>
+            )}
+
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    <MapPin className="h-4 w-4 text-brand-secondary" />
+                    Điểm đến <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      ref={destinationInputRef}
+                      type="text"
+                      className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
+                      placeholder="Nhập thành phố hoặc địa điểm"
+                      value={destinationQuery}
+                      onChange={(e) => handleDestinationChange(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onFocus={() => destinationQuery.length >= 2 && setShowSuggestions(true)}
+                      autoComplete="off"
+                    />
+                    {isSearching && (
+                      <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+                    )}
+
+                    {showSuggestions && suggestions.length > 0 && (
+                      <ul
+                        ref={suggestionsRef}
+                        className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-brand-primary/30 bg-white shadow-xl divide-y divide-brand-primary/10 dark:border-brand-primary/50 dark:bg-gray-900 dark:divide-brand-primary/20"
+                      >
+                        {suggestions.map((suggestion, index) => {
+                          // Normalize field names from different sources
+                          const displayName = suggestion.main_text || suggestion.name_vi || suggestion.name_en || suggestion.name || suggestion.query;
+                          const displayAddress = suggestion.secondary_text || suggestion.description || suggestion.address || '';
+                          const suggestionId = suggestion.place_id || suggestion.poi_id || suggestion._id || index;
+                          
+                          return (
+                            <li
+                              key={suggestionId}
+                              className={`flex cursor-pointer items-start gap-3 px-3.5 py-3 text-sm transition hover:bg-gray-50 dark:hover:bg-gray-800 ${index === selectedSuggestionIndex ? 'bg-gray-50 dark:bg-gray-800' : ''}`}
+                              onClick={() => handleSelectSuggestion(suggestion)}
+                              onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                            >
+                              <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                                <MapPin className="h-4 w-4" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900 line-clamp-1 dark:text-gray-100">{displayName}</p>
+                                {displayAddress && (
+                                  <p className="text-xs text-gray-600 line-clamp-2 dark:text-gray-400">{displayAddress}</p>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    <Calendar className="h-4 w-4 text-brand-secondary" />
+                    Ngày bắt đầu <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                    min={today}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-brand-primary/20 bg-gray-50/80 p-4 shadow-sm space-y-3 dark:border-brand-primary/30 dark:bg-gray-800/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-800 font-semibold dark:text-gray-100">
+                      <Timer className="h-4 w-4 text-brand-secondary" />
+                      <span>Số ngày</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={formData.numDays}
+                      onChange={(e) => handleNumDaysChange(e.target.value)}
+                      className="w-20 rounded-lg border border-brand-primary/30 px-2.5 py-1.5 text-sm text-gray-800 focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white"
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    className="w-full accent-[#2E571C]"
+                    min="1"
+                    max="30"
+                    value={formData.numDays}
+                    onChange={(e) => handleNumDaysChange(e.target.value)}
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>1</span>
+                    <span>15</span>
+                    <span>30</span>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-dashed border-brand-primary/30 bg-white/60 p-4 shadow-sm dark:border-brand-primary/40 dark:bg-gray-800/60">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Điểm xuất phát (tùy chọn)</p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Sắp ra mắt: chọn vị trí xuất phát để AI tối ưu quãng đường.</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">Tên chuyến đi <span className="text-gray-400">(tuỳ chọn)</span></label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
+                  placeholder="VD: Nghỉ dưỡng Đà Nẵng cùng gia đình"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  maxLength={200}
+                />
+              </div>
+
+              <div className="rounded-2xl border border-brand-primary/20 bg-white p-4 shadow-sm space-y-3 dark:border-brand-primary/30 dark:bg-gray-800/80">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-gray-900 font-semibold dark:text-gray-100">
+                    <PiggyBank className="h-4 w-4 text-brand-secondary" />
+                    <span>Ngân sách / ngày</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50000"
+                    value={formData.preferences.budget}
+                    onChange={(e) => {
+                      const typed = Math.max(0, Number(e.target.value) || 0);
+                      setFormData(prev => ({
+                        ...prev,
+                        preferences: { ...prev.preferences, budget: typed },
+                      }));
+                      setBudgetPosition(getPositionFromBudget(typed));
+                    }}
+                    className="w-32 rounded-lg border border-brand-primary/30 px-2.5 py-1.5 text-sm text-gray-800 focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white"
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(formData.preferences.budget)}</span>
+                  <span className="dark:text-gray-300">{getBudgetLabel(formData.preferences.budget)}</span>
+                </div>
+                <input
+                  type="range"
+                  className="w-full accent-[#2E571C]"
+                  min="0"
+                  max="100"
+                  value={budgetPosition}
+                  onChange={(e) => handleBudgetChange(parseInt(e.target.value, 10))}
+                />
+                <div className="flex justify-between text-[11px] text-gray-500 dark:text-gray-400">
+                  {BUDGET_MARKS.filter((_, idx) => idx % 2 === 0).map((mark) => (
+                    <span key={mark.position}>{mark.sublabel}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-brand-primary/20 bg-gray-50/70 p-4 shadow-sm dark:border-brand-primary/30 dark:bg-gray-800/60">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-gray-900 font-semibold dark:text-gray-100">
+                    <Sparkles className="h-4 w-4 text-brand-secondary" />
+                    <span>Sở thích</span>
+                    <span className="text-red-500">*</span>
+                  </div>
+                  <span className="text-xs text-gray-500 dark:text-gray-300">{formData.preferences.interests.length} lựa chọn</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {INTEREST_OPTIONS.map((interest) => {
+                    const isSelected = formData.preferences.interests.includes(interest.id);
+                    return (
+                      <motion.button
+                        key={interest.id}
+                        type="button"
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handleInterestToggle(interest.id)}
+                        className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? 'border-brand-primary bg-brand-primary text-white shadow-sm'
+                            : 'border-brand-primary/30 bg-white text-gray-800 hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-900 dark:text-white dark:hover:border-brand-primary dark:hover:text-white'
+                        }`}
+                      >
+                        <span>{interest.icon}</span>
+                        <span>{interest.label}</span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Thêm từ gợi ý (autocomplete)</label>
+                  <div className="relative">
+                    <div className="flex items-center gap-2 rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 shadow-sm focus-within:border-brand-primary dark:border-brand-primary/50 dark:bg-gray-900 dark:focus-within:border-white">
+                      <Search className="h-4 w-4 text-gray-500 dark:text-gray-300" />
+                      <input
+                        type="text"
+                        value={interestSearch}
+                        onChange={(e) => {
+                          setInterestSearch(e.target.value);
+                          setShowInterestSuggestions(true);
+                        }}
+                        onFocus={() => setShowInterestSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowInterestSuggestions(false), 120)}
+                        className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100 dark:placeholder:text-gray-500"
+                        placeholder="Nhập để tìm nhanh (biển, ẩm thực...)"
+                      />
+                    </div>
+                    {showInterestSuggestions && filteredInterestOptions.length > 0 && (
+                      <div className="absolute z-10 mt-2 w-full rounded-xl border border-brand-primary/30 bg-white shadow-lg dark:border-brand-primary/50 dark:bg-gray-900">
+                        {filteredInterestOptions.map((item) => (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                              handleInterestToggle(item.id);
+                              setInterestSearch('');
+                            }}
+                            className="flex w-full items-center gap-2 px-3.5 py-2 text-sm text-left hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                          >
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Thêm sở thích khác (tùy chọn)</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
+                    placeholder="Cách nhau bằng dấu phẩy"
+                    value={formData.preferences.customInterests}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      preferences: { ...prev.preferences, customInterests: e.target.value },
+                    }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Nhịp độ du lịch</p>
+                  <select
+                    value={formData.preferences.pace}
+                    onChange={(e) => handlePaceChange(e.target.value)}
+                    className="rounded-lg border border-brand-primary/30 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white"
+                  >
+                    {PACE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {PACE_OPTIONS.map((option) => {
+                    const active = formData.preferences.pace === option.value;
+                    return (
+                      <motion.button
+                        key={option.value}
+                        type="button"
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => handlePaceChange(option.value)}
+                        className={`flex h-full flex-col items-start gap-1 rounded-2xl border p-3 text-left transition ${
+                          active
+                            ? 'border-brand-primary bg-brand-primary text-white shadow-sm'
+                            : 'border-brand-primary/30 bg-white text-gray-800 hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-900 dark:text-white dark:hover:border-white dark:hover:text-white'
+                        }`}
+                      >
+                        <span className="text-sm font-semibold">{option.label}</span>
+                        <span
+                            className={`text-sm line-clamp-2 ${active ? 'text-gray-100' : 'text-gray-500 dark:text-gray-300'}`}
+                        >
+                          {option.description}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Yêu cầu ăn uống <span className="text-gray-400">(tuỳ chọn)</span></label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
+                  placeholder="VD: Chay, không gluten, halal..."
+                  value={formData.preferences.dietary}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    preferences: { ...prev.preferences, dietary: e.target.value },
+                  }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-300">Có thể chỉnh trước khi gửi cho AI.</p>
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.01, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition disabled:opacity-70 dark:bg-white dark:text-gray-900"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span>{isSubmitting ? 'Đang tạo...' : 'Tạo kế hoạch'}</span>
+                </motion.button>
+              </div>
+            </form>
+          </div>
+
+          <div className="hidden lg:block space-y-3 rounded-2xl border border-brand-primary/20 bg-gray-50 p-4 text-sm text-gray-700 shadow-inner dark:border-brand-primary/30 dark:bg-gray-800/80 dark:text-gray-200">
+            <div className="flex items-center gap-3">
+              <PiggyBank className="h-5 w-5 text-brand-secondary" />
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Ngân sách / ngày</p>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(formData.preferences.budget)}</p>
+                <p className="text-gray-500 dark:text-gray-300">{getBudgetLabel(formData.preferences.budget)}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-brand-primary/30 bg-white px-3 py-2 dark:border-brand-primary/50 dark:bg-gray-900/80">
+              <p className="font-semibold text-gray-900 dark:text-gray-100">Tóm tắt nhanh</p>
+              <ul className="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
+                <li>- {formData.numDays} ngày • {formData.startDate ? 'Khởi hành ' + formData.startDate : 'Chưa chọn ngày'}</li>
+                <li>- {formData.preferences.interests.length} sở thích đã chọn</li>
+                <li>- Nhịp độ: {PACE_OPTIONS.find(p => p.value === formData.preferences.pace)?.label || '...'}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

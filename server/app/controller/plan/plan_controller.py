@@ -640,23 +640,11 @@ class PlanController:
                     404
                 )
             
-            # Remove sensitive fields from response
+            # Remove sensitive fields, keep the full plan structure for frontend parity
             safe_plan = {
-                'plan_id': plan.get('plan_id'),
-                'title': plan.get('title'),
-                'destination': plan.get('destination'),
-                'destination_place_id': plan.get('destination_place_id'),
-                'destination_types': plan.get('destination_types'),
-                'destination_location': plan.get('destination_location'),
-                'num_days': plan.get('num_days'),
-                'start_date': plan.get('start_date'),
-                'end_date': plan.get('end_date'),
-                'preferences': plan.get('preferences'),
-                'itinerary': plan.get('itinerary'),
-                'status': plan.get('status'),
-                'total_pois': plan.get('total_pois'),
-                'created_at': plan.get('created_at'),
-                'updated_at': plan.get('updated_at')
+                k: v
+                for k, v in plan.items()
+                if k not in {"user_id", "is_deleted", "is_public"}
             }
             
             return build_success_response(

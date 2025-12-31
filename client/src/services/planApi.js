@@ -148,6 +148,84 @@ class PlanAPI {
     }
   }
 
+  // ========================================
+  // TRASH OPERATIONS
+  // ========================================
+
+  /**
+   * Get list of deleted plans (trash) with pagination
+   * Returns BASIC INFO ONLY (no full itinerary)
+   * 
+   * @param {Object} params - Query parameters
+   * @param {number} params.page - Page number (default: 1)
+   * @param {number} params.limit - Items per page (default: 20)
+   * @returns {Promise<Object>} - Trash plans list with pagination
+   */
+  async getTrashPlans(params = {}) {
+    try {
+      const response = await api.get('/plan/trash', { params });
+      return {
+        success: true,
+        data: {
+          plans: response.data.plans || [],
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20
+        }
+      };
+    } catch (error) {
+      console.error('[ERROR] Get trash plans failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  /**
+   * Restore plan from trash
+   * 
+   * @param {string} planId - Plan ID
+   * @returns {Promise<Object>} - Restore result
+   */
+  async restorePlan(planId) {
+    try {
+      const response = await api.post(`/plan/${planId}/restore`);
+      return {
+        success: true,
+        message: response.data.message
+      };
+    } catch (error) {
+      console.error('[ERROR] Restore plan failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  /**
+   * Permanently delete plan from trash
+   * 
+   * @param {string} planId - Plan ID
+   * @returns {Promise<Object>} - Permanent delete result
+   */
+  async permanentDeletePlan(planId) {
+    try {
+      const response = await api.delete(`/plan/${planId}/permanent-delete`);
+      return {
+        success: true,
+        message: response.data.message
+      };
+    } catch (error) {
+      console.error('[ERROR] Permanent delete plan failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
   /**
    * Poll plan status until completed or failed
    * 
@@ -214,6 +292,60 @@ class PlanAPI {
 
       poll();
     });
+  }
+
+  // ========================================
+  // SHARING
+  // ========================================
+
+  /**
+   * Toggle plan sharing (public/private)
+   * @param {string} planId
+   * @param {boolean} isPublic
+   */
+  async toggleShare(planId, isPublic) {
+    try {
+      const response = await api.post(`/plan/${planId}/share`, { is_public: isPublic });
+      const payload = response.data?.data || response.data;
+      return {
+        success: true,
+        data: {
+          plan_id: payload?.plan_id,
+          is_public: payload?.is_public,
+          share_token: payload?.share_token,
+          share_url: payload?.share_url,
+        },
+        message: response.data?.resultMessage || response.data?.message,
+      };
+    } catch (error) {
+      console.error('[ERROR] Toggle share failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message,
+        errorVi: error.response?.data?.message_vi,
+      };
+    }
+  }
+
+  /**
+   * Get public plan by share token (no auth required)
+   * @param {string} shareToken
+   */
+  async getSharedPlan(shareToken) {
+    try {
+      const response = await api.get(`/plan/shared/${shareToken}`);
+      return {
+        success: true,
+        data: response.data?.plan || response.data?.data?.plan || response.data,
+      };
+    } catch (error) {
+      console.error('[ERROR] Get shared plan failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message,
+        errorVi: error.response?.data?.message_vi,
+      };
+    }
   }
 }
 

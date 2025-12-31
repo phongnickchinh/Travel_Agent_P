@@ -5,6 +5,7 @@ import CreatePlan from './pages/user/CreatePlan';
 import CreatePlanNew from './pages/user/CreatePlanNew';
 import Dashboard from './pages/user/Dashboard';
 import PlanDetail from './pages/user/PlanDetail';
+import Trash from './pages/user/Trash';
 import Welcome from './pages/Welcome';
 
 // Search Autocomplete Demo Pages (Week 3 Deliverable)
@@ -27,11 +28,13 @@ function App() {
         <Route path="/register" element={<Welcome />} />
         <Route path="/reset-password" element={<Welcome />} />
         <Route path="/tailwind-test" element={<TailwindTest />} />
+        <Route path="/shared/:shareToken" element={<PlanDetail />} />
 
         {/* Dashboard routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/create-plan" element={<ProtectedRoute><CreatePlanNew /></ProtectedRoute>} />
         <Route path="/dashboard/plan/:planId" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
+        <Route path="/dashboard/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
 
         {/* Legacy routes */}
         <Route path="/dashboard/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

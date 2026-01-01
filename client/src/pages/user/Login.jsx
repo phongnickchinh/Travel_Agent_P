@@ -152,7 +152,7 @@ export default function Login({ isModal = false }) {
         className={cardClasses}
       >
         {/* Header */}
-        <div className="bg-gradient-to-br from-brand-primary to-brand-secondary text-white px-6 py-6">
+        <div className="bg-linear-to-br from-brand-primary to-brand-secondary text-white px-6 py-6">
           <div className="flex items-center justify-center">
             <div className="justify-center">
               <p className="text-xs uppercase tracking-[0.2em] text-white/70">Chào mừng trở lại</p>

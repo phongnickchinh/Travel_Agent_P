@@ -69,11 +69,11 @@ export default function PlanCard({ plan, onDelete }) {
     <motion.div
       whileHover={{ y: -6 }}
       transition={{ duration: 0.2 }}
-      className="group relative bg-white rounded-2xl shadow-md hover:shadow-[0_20px_35px_-10px_rgba(46,87,28,0.45)] overflow-hidden cursor-pointer"
+      className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-[0_20px_35px_-10px_rgba(46,87,28,0.45)] dark:hover:shadow-[0_20px_35px_-10px_rgba(46,87,28,0.25)] overflow-hidden cursor-pointer"
       onClick={handleClick}
     >
       {/* Thumbnail Image - Aspect ratio 4:3 horizontal rectangle */}
-      <div className="relative aspect-[4/2.3] bg-gray-200 overflow-hidden">
+      <div className="relative aspect-[4/2.3] bg-gray-200 dark:bg-gray-700 overflow-hidden">
         {plan.thumbnail_url ? (
           <img
             src={plan.thumbnail_url}
@@ -82,7 +82,7 @@ export default function PlanCard({ plan, onDelete }) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
+          <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
             <MapPin className="w-16 h-16" />
           </div>
         )}
@@ -93,10 +93,10 @@ export default function PlanCard({ plan, onDelete }) {
           whileTap={{ scale: 0.9 }}
           onClick={handleDeleteClick}
           disabled={isDeleting}
-          className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-red-50 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-10"
+          className="absolute top-3 right-3 p-2 bg-white/90 dark:bg-gray-800/90 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-60 z-10"
           aria-label="Delete plan"
         >
-          <Trash2 className="w-4 h-4 text-gray-700 hover:text-red-600" />
+          <Trash2 className="w-4 h-4 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400" />
         </motion.button>
 
         {/* Status Badge */}
@@ -107,13 +107,13 @@ export default function PlanCard({ plan, onDelete }) {
         </div>
 
         {/* Gradient Overlay on Hover */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Card Content */}
       <div className="p-4">
         {/* Title */}
-        <h3 className="font-poppins font-bold text-lg text-gray-900 mb-3 line-clamp-1 text-justify">
+        <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3 line-clamp-1 text-justify">
           {plan.title || plan.destination}
         </h3>
 
@@ -122,7 +122,7 @@ export default function PlanCard({ plan, onDelete }) {
           {/* Destination & Dates */}
           <div className="flex-1 space-y-2">
             {/* Destination & Duration */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <MapPin className="w-4 h-4" />
               <span className="line-clamp-1">{plan.destination}</span>
               <span>•</span>
@@ -131,7 +131,7 @@ export default function PlanCard({ plan, onDelete }) {
 
             {/* Dates */}
             {plan.start_date && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-500">
                 <Calendar className="w-4 h-4" />
                 <span>
                   {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
@@ -145,7 +145,7 @@ export default function PlanCard({ plan, onDelete }) {
             whileHover={{ x: 4 }}
             whileTap={{ scale: 0.97 }}
             onClick={(e) => { e.stopPropagation(); handleClick(); }}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-[#2E571C] hover:border-[#2E571C] hover:text-white transition font-bold text-lg self-center"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-brand-primary hover:border-brand-primary hover:text-white dark:hover:bg-brand-primary dark:hover:border-brand-primary transition font-bold text-lg self-center"
             aria-label="View plan"
           >
             <ChevronRight className="w-6 h-6" />

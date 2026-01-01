@@ -1,5 +1,5 @@
-import {AnimatePresence , motion } from 'framer-motion';
-import { AlertCircle, Calendar, FolderOpen, Loader2, MapPin, RotateCcw, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Calendar, FolderOpen, Loader2, MapPin, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import DashboardHeader from '../../components/ui/DashboardHeader';
@@ -81,33 +81,33 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className="group relative bg-white rounded-2xl shadow-md hover:shadow-lg overflow-hidden"
+        className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg dark:shadow-gray-900/30 overflow-hidden"
       >
         {/* Thumbnail Image */}
-        <div className="relative aspect-[4/2.3] bg-gray-200 overflow-hidden">
+        <div className="relative aspect-[4/2.3] bg-gray-200 dark:bg-gray-700 overflow-hidden">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}
               alt={plan.destination}
-              className="w-full h-full object-cover opacity-70 grayscale-[30%]"
+              className="w-full h-full object-cover opacity-70 grayscale-30"
               loading="lazy"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
               <MapPin className="w-16 h-16" />
             </div>
           )}
           
           {/* Deleted Badge */}
           <div className="absolute top-3 left-3">
-            <span className="px-3 py-1 rounded-full text-xs font-medium text-white bg-red-500">
+            <span className="px-3 py-1 rounded-full text-xs font-medium text-white bg-red-500 dark:bg-red-600">
               Đã xoá
             </span>
           </div>
 
           {/* Deleted date */}
           <div className="absolute top-3 right-3">
-            <span className="px-3 py-1 rounded-full text-xs font-medium text-gray-700 bg-white/90">
+            <span className="px-3 py-1 rounded-full text-xs font-medium text-gray-700 dark:text-gray-200 bg-white/90 dark:bg-gray-800/90">
               {formatDeletedAt(plan.deleted_at)}
             </span>
           </div>
@@ -116,14 +116,14 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
         {/* Card Content */}
         <div className="p-4">
           {/* Title */}
-          <h3 className="font-poppins font-bold text-lg text-gray-900 mb-3 line-clamp-1">
+          <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3 line-clamp-1">
             {plan.title || plan.destination}
           </h3>
 
           {/* Info Row */}
           <div className="space-y-2 mb-4">
             {/* Destination & Duration */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <MapPin className="w-4 h-4" />
               <span className="line-clamp-1">{plan.destination}</span>
               <span>•</span>
@@ -132,7 +132,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
 
             {/* Dates */}
             {plan.start_date && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-500">
                 <Calendar className="w-4 h-4" />
                 <span>
                   {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
@@ -149,7 +149,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               whileTap={{ scale: 0.98 }}
               onClick={handleRestore}
               disabled={isRestoring || isDeleting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-primary text-white rounded-lg font-medium text-sm hover:bg-brand-dark transition disabled:opacity-60"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-primary dark:bg-brand-secondary text-white rounded-lg font-medium text-sm hover:bg-brand-dark dark:hover:bg-brand-primary transition disabled:opacity-60"
             >
               {isRestoring ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -165,7 +165,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               whileTap={{ scale: 0.98 }}
               onClick={() => setConfirmDeleteOpen(true)}
               disabled={isRestoring || isDeleting}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium text-sm hover:bg-red-100 transition disabled:opacity-60"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium text-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition disabled:opacity-60"
             >
               <Trash2 className="w-4 h-4" />
             </motion.button>
@@ -267,7 +267,7 @@ export default function Trash() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col">
       {/* Header */}
       <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
 
@@ -283,16 +283,16 @@ export default function Trash() {
           {/* Page Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <Trash2 className="w-8 h-8 text-gray-700" />
-              <h1 className="font-poppins font-bold text-2xl md:text-3xl text-gray-900">
+              <Trash2 className="w-8 h-8 text-gray-700 dark:text-gray-300" />
+              <h1 className="font-poppins font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">
                 Thùng rác
               </h1>
             </div>
-            <p className="text-gray-500">
+            <p className="text-gray-500 dark:text-gray-400">
               Các kế hoạch đã xoá sẽ được lưu tại đây. Bạn có thể khôi phục hoặc xoá vĩnh viễn.
             </p>
             {total > 0 && (
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                 {total} kế hoạch trong thùng rác
               </p>
             )}
@@ -315,13 +315,13 @@ export default function Trash() {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center justify-center py-20 text-center"
             >
-              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-6">
-                <FolderOpen className="w-12 h-12 text-gray-400" />
+              <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-6">
+                <FolderOpen className="w-12 h-12 text-gray-400 dark:text-gray-500" />
               </div>
-              <h2 className="font-poppins font-semibold text-xl text-gray-700 mb-2">
+              <h2 className="font-poppins font-semibold text-xl text-gray-700 dark:text-gray-300 mb-2">
                 Thùng rác trống
               </h2>
-              <p className="text-gray-500 max-w-sm">
+              <p className="text-gray-500 dark:text-gray-400 max-w-sm">
                 Không có kế hoạch nào trong thùng rác. Khi bạn xoá một kế hoạch, nó sẽ xuất hiện ở đây.
               </p>
             </motion.div>
@@ -349,7 +349,7 @@ export default function Trash() {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleLoadMore}
                     disabled={loadingMore}
-                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-60"
+                    className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-60"
                   >
                     {loadingMore ? (
                       <>
@@ -370,14 +370,14 @@ export default function Trash() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 justify-center"
+              className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl flex items-start gap-3 justify-center"
             >
               
               <div>
-                <p className="text-amber-800 font-medium text-sm">
+                <p className="text-amber-800 dark:text-amber-300 font-medium text-sm">
                   Lưu ý về thùng rác
                 </p>
-                <p className="text-amber-700 text-sm mt-1">
+                <p className="text-amber-700 dark:text-amber-400/80 text-sm mt-1">
                   Các kế hoạch trong thùng rác sẽ được giữ lại cho đến khi bạn xoá vĩnh viễn. 
                   Kế hoạch đã xoá vĩnh viễn sẽ không thể khôi phục.
                 </p>

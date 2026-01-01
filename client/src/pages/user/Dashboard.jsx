@@ -116,7 +116,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-50">
+    <div className="flex h-screen w-full bg-gray-50 dark:bg-black">
       {/* Sidebar */}
       <DashboardSidebar
         recentPlans={recentPlans}
@@ -147,19 +147,19 @@ export default function Dashboard() {
             {/* Loading State */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
               </div>
             ) : plans.length === 0 ? (
               /* Empty State */
               <div className="text-center py-20">
-                <p className="text-gray-500 text-lg mb-4">
+                <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
                   Bạn chưa có kế hoạch nào
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleNewPlan}
-                  className="px-8 py-3 bg-black text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
+                  className="px-8 py-3 bg-brand-primary dark:bg-brand-secondary text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
                 >
                   Tạo kế hoạch đầu tiên
                 </motion.button>
@@ -199,7 +199,7 @@ export default function Dashboard() {
                       whileTap={{ scale: 0.98 }}
                       onClick={handleLoadMore}
                       disabled={loadingMore}
-                      className="px-8 py-3 bg-white border border-gray-300 text-gray-700 rounded-full font-medium shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
+                      className="px-8 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-full font-medium shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
                     >
                       {loadingMore ? (
                         <span className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function Dashboard() {
                         'Load more'
                       )}
                     </motion.button>
-                    <p className="text-sm text-gray-500 mt-3">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
                       Showing {plans.length} of {total}
                     </p>
                   </div>

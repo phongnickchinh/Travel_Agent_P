@@ -35,15 +35,15 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
   ];
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+    <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
       <div className="flex items-center justify-between px-8 py-4">
         {/* Mobile Menu Toggle */}
         <button
           onClick={onMenuToggle}
-          className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+          className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
           aria-label="Toggle menu"
         >
-          <Menu className="w-6 h-6 text-gray-700" />
+          <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
         </button>
 
         {/* Spacer for alignment */}
@@ -54,7 +54,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
           whileHover={{ scale: 1.02, y: -1 }}
           whileTap={{ scale: 0.97 }}
           onClick={onNewPlan}
-          className="flex items-center gap-2 px-6 py-2.5 bg-white border-2 border-gray-900 text-gray-900 rounded-full font-semibold hover:bg-[#2E571C] hover:border-[#2E571C] hover:text-white transition-all mr-6"
+          className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white rounded-full font-semibold hover:bg-brand-primary hover:border-brand-primary hover:text-white dark:hover:bg-brand-primary dark:hover:border-brand-primary transition-all mr-6"
         >
           <Plus className="w-5 h-5" />
           <span>New Plan</span>
@@ -66,24 +66,24 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
           onMouseEnter={() => setShowMenu(true)}
           onMouseLeave={() => setShowMenu(false)}
         >
-          <div className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition">
+          <div className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
             {/* User Avatar */}
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt={displayName}
-                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
+                className="w-10 h-10 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-[#2E571C] to-[#4a8c2e] rounded-full flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 bg-linear-to-br from-brand-primary to-brand-secondary rounded-full flex items-center justify-center text-white font-semibold">
                 {displayName[0]?.toUpperCase() || 'U'}
               </div>
             )}
 
             {/* Username */}
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {displayName}
               </p>
             </div>
@@ -94,7 +94,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
               transition={{ duration: 0.2 }}
               className="hidden md:block"
             >
-              <ChevronDown className="w-4 h-4 text-gray-600" />
+              <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </motion.div>
           </div>
 
@@ -106,12 +106,12 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden py-2"
+                className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-700 overflow-hidden py-2"
               >
                 {/* User Info Header */}
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayName}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                 </div>
 
                 {/* Menu Items */}
@@ -124,8 +124,8 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition ${
                       item.danger
-                        ? 'text-red-600 hover:bg-red-50'
-                        : 'text-gray-700 hover:bg-[#2E571C]/10 hover:text-[#2E571C]'
+                        ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted'
                     }`}
                   >
                     <item.icon className="w-4 h-4" />

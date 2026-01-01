@@ -153,6 +153,12 @@ export default function CreatePlan() {
     return `${(value / 1000).toFixed(0)}K VNĐ`;
   };
 
+  const estimatedTotalCost = useMemo(() => {
+    const perDay = Math.max(0, Number(formData.preferences?.budget) || 0);
+    const days = Math.max(0, Number(formData.numDays) || 0);
+    return perDay * days;
+  }, [formData.preferences?.budget, formData.numDays]);
+
   const getPositionFromBudget = useCallback((budgetValue) => {
     if (budgetValue === undefined || budgetValue === null) return BUDGET_MARKS[3].position;
     for (let i = 0; i < BUDGET_MARKS.length - 1; i++) {
@@ -575,7 +581,7 @@ export default function CreatePlan() {
                   </div>
                   <input
                     type="range"
-                    className="w-full accent-[#2E571C]"
+                    className="w-full accent-brand-primary"
                     min="1"
                     max="30"
                     value={formData.numDays}
@@ -632,9 +638,10 @@ export default function CreatePlan() {
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(formData.preferences.budget)}</span>
                   <span className="dark:text-gray-300">{getBudgetLabel(formData.preferences.budget)}</span>
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-300">Ước tính tổng: {formatCurrency(estimatedTotalCost)}</p>
                 <input
                   type="range"
-                  className="w-full accent-[#2E571C]"
+                  className="w-full accent-brand-primary"
                   min="0"
                   max="100"
                   value={budgetPosition}

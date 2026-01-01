@@ -397,6 +397,8 @@ export default function PlanDetail() {
     
     let totalCost = 0;
     const accommodations = [];
+    const perDayBudget = Number(plan?.preferences?.budget) || 0;
+    const numDays = plan.itinerary.length;
     
     plan.itinerary.forEach((day) => {
       if (day.estimated_cost_vnd) {
@@ -416,8 +418,9 @@ export default function PlanDetail() {
       totalCost,
       accommodations,
       preferences: plan.preferences || {},
-      numDays: plan.itinerary.length,
-      numPOIs: allPOIs.length
+      numDays,
+      numPOIs: allPOIs.length,
+      playfulBudgetTotal: perDayBudget * numDays
     };
   }, [plan, allPOIs]);
 
@@ -607,7 +610,7 @@ export default function PlanDetail() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-73px)]">
         {/* Left: Scrollable Itinerary - All Days */}
-        <main className="w-[40%] overflow-y-auto px-8 py-6 min-w-[400px] border-r border-gray-200">
+        <main className="w-[40%] overflow-y-auto px-8 py-6 min-w-100 border-r border-gray-200">
           <div className="max-w-3xl mx-auto space-y-8">
             {plan.itinerary?.map((day, dayIndex) => {
               // Calculate starting index for this day
@@ -662,6 +665,8 @@ export default function PlanDetail() {
                             rating,
                               category,
                           } = extracted;
+
+                          const displayPoiName = typeof poiName === 'string' ? poiName.replace(/^"+|"+$/g, '') : poiName;
                           
                           // Use parsed time or fallback to extracted
                           const displayTime = startTime || time;
@@ -715,7 +720,7 @@ export default function PlanDetail() {
                                     }`}
                                   >
                                     <TypeIcon className="w-4 h-4" />
-                                    "{poiName}"
+                                    {displayPoiName}
                                   </button>
                                 ) : poiName ? (
                                   <span className="font-semibold text-base text-gray-800 inline-flex items-center gap-1">
@@ -750,7 +755,7 @@ export default function PlanDetail() {
                               {(estimatedCost || address) && (
                                 <div className="text-xs text-gray-400 mt-1 ml-8 flex flex-wrap gap-2">
                                   {estimatedCost && <span>💰 {estimatedCost}</span>}
-                                  {address && <span className="truncate max-w-[250px]" title={address}>📍 {address}</span>}
+                                  {address && <span className="truncate max-w-62.5" title={address}>📍 {address}</span>}
                                 </div>
                               )}
                             </li>
@@ -794,7 +799,7 @@ export default function PlanDetail() {
         </main>
 
         {/* Right: Sticky Google Map with Info Panels */}
-        <aside className="w-[60%] bg-white shrink-0 sticky top-[73px] h-[calc(100vh-73px)] relative">
+        <aside className="w-[60%] bg-white shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
           {loadError && (
             <div className="flex items-center justify-center h-full text-gray-500">
               Lỗi tải Google Maps
@@ -897,7 +902,7 @@ export default function PlanDetail() {
                         maxWidth: 220
                       }}
                     >
-                      <div className="p-1 min-w-[160px] max-w-[200px]">
+                      <div className="p-1 min-w-40 max-w-50">
                         {/* Featured image */}
                         {poi.featuredImage && (
                           <img 
@@ -1009,6 +1014,9 @@ export default function PlanDetail() {
                                 <p className="text-xs text-gray-500">
                                   ~{formatVND(Math.round(tripSummary.totalCost / tripSummary.numDays))}/ngày
                                 </p>
+                                {tripSummary.playfulBudgetTotal > 0 && (
+                                  <p className="text-xs text-gray-500">Ước tính vui: {formatVND(tripSummary.playfulBudgetTotal)}</p>
+                                )}
                               </div>
 
                               {/* Accommodation Info */}

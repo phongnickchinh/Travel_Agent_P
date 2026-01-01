@@ -1,11 +1,14 @@
-import { motion } from 'framer-motion';
-import { ArrowRight, Compass, MapPin } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, Mail, X } from 'lucide-react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/auth/AuthModal';
 
 export default function Welcome() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   const currentPath = location.pathname.toLowerCase();
   const mode =
@@ -55,6 +58,22 @@ export default function Welcome() {
 
           {/* Nav Buttons */}
           <div className="hidden md:flex items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowAboutModal(true)}
+              className="px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
+            >
+              About Us
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowContactModal(true)}
+              className="px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
+            >
+              Contact Us
+            </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
@@ -175,7 +194,7 @@ Chào mừng đến với Travel Agent P — nhận lịch trình được cá n
         </motion.footer>
 
         {/* Mobile Nav Buttons */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
           <div className="flex gap-3">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -199,6 +218,170 @@ Chào mừng đến với Travel Agent P — nhận lịch trình được cá n
 
       {/* Auth Modal */}
       <AuthModal open={Boolean(mode)} mode={mode || 'login'} onClose={handleClose} />
+
+      {/* About Us Modal */}
+      <AnimatePresence>
+        {showAboutModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowAboutModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="relative px-6 py-5 bg-brand-primary dark:bg-brand-dark">
+                <div className="flex items-center">
+                  <h2 className="font-poppins font-bold text-xl text-white">About Us</h2>
+                </div>
+                <button
+                  onClick={() => setShowAboutModal(false)}
+                  className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-4">
+                <div className="text-center space-y-1">
+                  <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white">Travel Agent P</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">AI-Powered Travel Planning</p>
+                </div>
+
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  Chúng tôi là nền tảng lập kế hoạch du lịch thông minh, sử dụng công nghệ AI tiên tiến để tạo ra những lịch trình du lịch được cá nhân hóa hoàn hảo cho bạn.
+                </p>
+
+                <div className="space-y-3 pt-2 text-center">
+                  <div className="space-y-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Sứ mệnh</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Giúp mọi người khám phá thế giới một cách thông minh và tiết kiệm.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Công nghệ</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Sử dụng LLM và Machine Learning để tối ưu hóa lịch trình.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Phạm vi</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Hỗ trợ hàng nghìn điểm đến trên toàn thế giới.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowAboutModal(false)}
+                  className="w-full py-3 bg-brand-primary hover:bg-brand-secondary text-white font-medium rounded-xl transition"
+                >
+                  Đóng
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Contact Us Modal */}
+      <AnimatePresence>
+        {showContactModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowContactModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="relative px-6 py-5 bg-brand-primary dark:bg-brand-dark">
+                <div className="flex items-center gap-3">
+                  <Mail className="w-6 h-6 text-white" />
+                  <h2 className="font-poppins font-bold text-xl text-white">Contact Us</h2>
+                </div>
+                <button
+                  onClick={() => setShowContactModal(false)}
+                  className="absolute top-4 right-4 p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-full transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-5">
+                <p className="text-gray-600 dark:text-gray-300">
+                  Chúng tôi luôn sẵn sàng hỗ trợ bạn. Hãy liên hệ với chúng tôi qua các kênh sau:
+                </p>
+
+                <div className="space-y-4">
+                  {/* Email */}
+                  <a
+                    href="mailto:support@travelagentp.com"
+                    className="p-4 min-h-24 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-brand-muted/30 dark:hover:bg-brand-dark/30 transition group overflow-hidden flex flex-col items-center justify-center text-center"
+                  >
+                    <h4 className="font-medium text-gray-900 dark:text-white group-hover:text-brand-primary transition">Email</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">support@travelagentp.com</p>
+                  </a>
+
+                  {/* Phone */}
+                  <a
+                    href="tel:+84123456789"
+                    className="p-4 min-h-24 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-brand-muted/30 dark:hover:bg-brand-dark/30 transition group overflow-hidden flex flex-col items-center justify-center text-center"
+                  >
+                    <h4 className="font-medium text-gray-900 dark:text-white group-hover:text-brand-primary transition">Hotline</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">+84 123 456 789</p>
+                  </a>
+
+                  {/* Address */}
+                  <div className="p-4 min-h-24 bg-gray-50 dark:bg-gray-800 rounded-xl overflow-hidden flex flex-col items-center justify-center text-center">
+                    <h4 className="font-medium text-gray-900 dark:text-white">Địa chỉ</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Hà Nội, Việt Nam</p>
+                  </div>
+                </div>
+
+                {/* Working hours */}
+                <div className="p-4 bg-brand-muted/30 dark:bg-brand-dark/20 rounded-xl">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Giờ làm việc</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Thứ 2 - Thứ 6: 8:00 - 18:00<br />
+                    Thứ 7 - Chủ nhật: 9:00 - 17:00
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowContactModal(false)}
+                  className="w-full py-3 bg-brand-primary hover:bg-brand-secondary text-white font-medium rounded-xl transition"
+                >
+                  Đóng
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

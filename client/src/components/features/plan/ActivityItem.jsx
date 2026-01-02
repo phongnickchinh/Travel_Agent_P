@@ -62,6 +62,8 @@ const ActivityItem = ({
   onLeave,
   dragHandle,
   listeners,
+  attributes,
+  setNodeRef,
   transform,
   transition,
   isDragging,
@@ -94,7 +96,9 @@ const ActivityItem = ({
 
   return (
     <motion.li
+      ref={setNodeRef}
       layout
+      {...attributes}
       style={style}
       className={`group border-l-3 pl-4 pr-2 py-3 rounded-r-lg bg-white shadow-sm transition-all ${
         isDragging ? 'ring-2 ring-brand-primary/40 bg-brand-muted/50' : 'hover:bg-gray-50'
@@ -120,11 +124,12 @@ const ActivityItem = ({
             </span>
             {getTypeIcon(category)}
             <span
-              className={`font-semibold cursor-pointer transition-colors duration-200 ${
+              className={`font-semibold cursor-pointer transition-all duration-100 ${
                 isNameHovered 
-                  ? (isAccommodation ? 'text-purple-600' : 'text-brand-primary')
+                  ? (isAccommodation ? 'text-purple-600' : 'text-brand-primary underline')
                   : (isAccommodation ? 'text-purple-700' : 'text-gray-900')
               }`}
+              
               onMouseEnter={() => {
                 setIsNameHovered(true);
                 onHover?.(globalIndex);
@@ -220,6 +225,8 @@ export const SortableActivityItem = (props) => {
     <ActivityItem
       {...props}
       dragHandle={{ ref: sortable.setActivatorNodeRef }}
+      setNodeRef={sortable.setNodeRef}
+      attributes={sortable.attributes}
       listeners={sortable.listeners}
       transform={sortable.transform}
       transition={sortable.transition}

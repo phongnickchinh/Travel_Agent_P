@@ -1871,7 +1871,16 @@ class PlannerService:
                     day_data['notes'] = day_patch.notes
                     
                 if day_patch.activities is not None:
-                    day_data['activities'] = day_patch.activities
+                    # Convert Pydantic models to dicts if necessary
+                    activities_data = []
+                    for act in day_patch.activities:
+                        if hasattr(act, 'model_dump'):
+                            activities_data.append(act.model_dump())
+                        elif hasattr(act, 'dict'):
+                            activities_data.append(act.dict())
+                        else:
+                            activities_data.append(act)
+                    day_data['activities'] = activities_data
                     
                 if day_patch.estimated_times is not None:
                     day_data['estimated_times'] = day_patch.estimated_times
@@ -1891,6 +1900,26 @@ class PlannerService:
                     
                 if day_patch.check_out_time is not None:
                     day_data['check_out_time'] = day_patch.check_out_time
+
+                # Extended fields
+                if day_patch.poi_ids is not None:
+                    day_data['poi_ids'] = day_patch.poi_ids
+                if day_patch.opening_hours is not None:
+                    day_data['opening_hours'] = day_patch.opening_hours
+                if day_patch.featured_images is not None:
+                    day_data['featured_images'] = day_patch.featured_images
+                if day_patch.viewport is not None:
+                    day_data['viewport'] = day_patch.viewport
+                if day_patch.location is not None:
+                    day_data['location'] = day_patch.location
+                if day_patch.accommodation_id is not None:
+                    day_data['accommodation_id'] = day_patch.accommodation_id
+                if day_patch.accommodation_location is not None:
+                    day_data['accommodation_location'] = day_patch.accommodation_location
+                if day_patch.accommodation_changed is not None:
+                    day_data['accommodation_changed'] = day_patch.accommodation_changed
+                if day_patch.accommodation_change_reason is not None:
+                    day_data['accommodation_change_reason'] = day_patch.accommodation_change_reason
                 
                 logger.info(f"[PATCH] Updated day {day_patch.day} with {len([f for f in [day_patch.notes, day_patch.activities, day_patch.estimated_times, day_patch.estimated_cost_vnd, day_patch.accommodation_name, day_patch.accommodation_address, day_patch.check_in_time, day_patch.check_out_time] if f is not None])} fields")
             

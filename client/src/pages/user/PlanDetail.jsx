@@ -47,7 +47,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import DayItinerary from '../../components/features/plan/DayItinerary';
 import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
-import { EditableDate, EditableNotes, EditableTitle } from '../../components/ui/EditableField';
+import { EditableDate, EditableTitle } from '../../components/ui/EditableField';
 import planAPI from '../../services/planApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
 
@@ -380,9 +380,9 @@ export default function PlanDetail() {
   }, [planId, isPublicView]);
 
   // Save day itinerary (activities + estimated times)
-  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes) => {
+  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes, poiIds) => {
     if (!planId || isPublicView) return;
-    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes);
+    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds);
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
@@ -925,27 +925,6 @@ export default function PlanDetail() {
                     onHover={handleActivityHover}
                     onLeave={handleActivityLeave}
                   />
-
-                  {/* Day Notes - Editable for owner */}
-                  <div className="px-6 pb-4">
-                    <div className="border-t border-gray-100 pt-4">
-                      {isPublicView ? (
-                        // Public view - static display
-                        day.notes && (
-                          <p className="text-sm text-gray-500 italic">
-                            💡 {day.notes}
-                          </p>
-                        )
-                      ) : (
-                        // Owner view - editable
-                        <EditableNotes
-                          value={day.notes || ''}
-                          onSave={(newNotes) => handleSaveDayNotes(dayIndex + 1, newNotes)}
-                          maxLength={500}
-                        />
-                      )}
-                    </div>
-                  </div>
                 </motion.div>
               );
             })}

@@ -11,7 +11,7 @@ Author: Travel Agent P Team
 Date: Week 4 - HuggingFace + LangChain Integration
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import datetime, timedelta
 from enum import Enum
@@ -423,6 +423,20 @@ class PlanUpdateRequest(BaseModel):
 # PATCH Request Models (Non-Core Updates)
 # ============================================
 
+class ActivityDetail(BaseModel):
+    """
+    Detailed activity model for drag-and-drop updates.
+    Contains both the display text and metadata (POI ID, location).
+    """
+    activity: str
+    poi_id: Optional[str] = None
+    location: Optional[Dict[str, float]] = None
+    rating: Optional[float] = None
+    image: Optional[str] = None
+    
+    class Config:
+        extra = "allow"
+
 class DayPlanPatch(BaseModel):
     """
     Partial update for a single day in itinerary.
@@ -432,7 +446,10 @@ class DayPlanPatch(BaseModel):
     
     # User-editable text fields
     notes: Optional[str] = Field(None, max_length=2000, description="Daily notes or tips")
-    activities: Optional[List[str]] = Field(None, description="Activity descriptions (user can edit text)")
+    activities: Optional[List[Union[str, ActivityDetail, Dict[str, Any]]]] = Field(
+        None, 
+        description="Activity list: can be List[str] (text) or List[Dict] (with POI metadata)"
+    )
     
     # Time and cost adjustments
     estimated_times: Optional[List[str]] = Field(
@@ -446,6 +463,17 @@ class DayPlanPatch(BaseModel):
     accommodation_address: Optional[str] = Field(None, max_length=500)
     check_in_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}$', description="Format: HH:MM")
     check_out_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}$', description="Format: HH:MM")
+    
+    # Extended fields for full day update
+    poi_ids: Optional[List[str]] = Field(None, description="POI IDs in visit order")
+    opening_hours: Optional[List[str]] = Field(None, description="Opening hours")
+    featured_images: Optional[List[str]] = Field(None, description="Featured images")
+    viewport: Optional[Dict[str, Dict[str, float]]] = Field(None, description="Map viewport")
+    location: Optional[List[float]] = Field(None, description="Central point")
+    accommodation_id: Optional[str] = Field(None, description="Accommodation POI ID")
+    accommodation_location: Optional[List[float]] = Field(None, description="Accommodation location")
+    accommodation_changed: Optional[bool] = Field(None, description="Accommodation changed flag")
+    accommodation_change_reason: Optional[str] = Field(None, description="Reason for accommodation change")
     
     class Config:
         extra = "forbid"  # Reject unknown fields

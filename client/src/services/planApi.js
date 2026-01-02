@@ -439,10 +439,15 @@ class PlanAPI {
    * @param {number} dayNumber
    * @param {Array} activities
    * @param {Array<string>} estimatedTimes - Format: "HH:MM-HH:MM"
+   * @param {Array<string>} poiIds - Optional: List of POI IDs corresponding to activities
    */
-  async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes) {
+  async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds = null) {
+    const update = { day: dayNumber, activities, estimated_times: estimatedTimes };
+    if (poiIds) {
+      update.poi_ids = poiIds;
+    }
     return this.patchPlan(planId, {
-      itinerary_updates: [{ day: dayNumber, activities, estimated_times: estimatedTimes }]
+      itinerary_updates: [update]
     });
   }
 

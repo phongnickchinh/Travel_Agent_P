@@ -14,7 +14,7 @@ export default function TailwindTest() {
       <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">1. Colors Test</h2>
         <div className="flex gap-4">
-          <div className="w-16 h-16 bg-red-500 rounded"></div>
+          <div className="w-16 h-16 bg-brand-primary! rounded"></div>
           <div className="w-16 h-16 bg-green-500 rounded"></div>
           <div className="w-16 h-16 bg-blue-500 rounded"></div>
           <div className="w-16 h-16 bg-yellow-500 rounded"></div>

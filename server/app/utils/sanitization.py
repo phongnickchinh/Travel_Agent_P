@@ -44,12 +44,70 @@ def contains_mongo_operators(obj: Any) -> bool:
         return False
 
 
+def _deep_sanitize_value(value: Any, max_depth: int = 5, current_depth: int = 0) -> Any:
+    """
+    Recursively sanitize a value while preserving structure.
+    
+    - Sanitize strings (remove control chars, limit length)
+    - Preserve lists and dicts structure
+    - Prevent infinite recursion with max_depth
+    
+    Args:
+        value: Value to sanitize
+        max_depth: Maximum recursion depth (default 5)
+        current_depth: Current recursion level
+        
+    Returns:
+        Sanitized value with preserved structure
+    """
+    # Prevent infinite recursion
+    if current_depth > max_depth:
+        return None
+    
+    if isinstance(value, str):
+        # Sanitize string: remove control chars, limit length
+        sanitized = re.sub(r"[\x00-\x1F\x7F\r\n\t]", " ", value)
+        # Shorter limit for nested values to prevent huge payloads
+        max_len = 500 if current_depth == 0 else 200
+        return sanitized[:max_len]
+    
+    elif isinstance(value, list):
+        # Recursively sanitize each item in list
+        return [
+            _deep_sanitize_value(item, max_depth, current_depth + 1)
+            for item in value
+        ]
+    
+    elif isinstance(value, dict):
+        # Recursively sanitize each value in dict
+        return {
+            k: _deep_sanitize_value(v, max_depth, current_depth + 1)
+            for k, v in value.items()
+        }
+    
+    elif _is_primitive(value):
+        # Keep primitives as-is (int, float, bool, None)
+        return value
+    
+    else:
+        # Unsupported types (objects, functions, etc.)
+        return None
+
+
 def sanitize_user_input(data: Dict[str, Any], allowed_keys: List[str]) -> Dict[str, Any]:
-    """Keep only allowed keys and sanitize string values by removing newlines and trimming length.
+    """Keep only allowed keys and deeply sanitize all values while preserving structure.
 
     - Remove keys not in allowed_keys
-    - Truncate string values to 500 chars by default (avoid huge payloads)
-    - Remove newlines and stray control characters
+    - Recursively sanitize strings (remove control chars, limit length)
+    - Preserve nested lists and dicts structure
+    - Support complex structures like itinerary_updates
+    
+    Args:
+        data: Input dictionary
+        allowed_keys: List of allowed top-level keys
+        
+    Returns:
+        Sanitized dictionary with only allowed keys
     """
     if not isinstance(data, dict):
         return {}
@@ -58,28 +116,8 @@ def sanitize_user_input(data: Dict[str, Any], allowed_keys: List[str]) -> Dict[s
     for k in allowed_keys:
         if k in data:
             v = data[k]
-            if isinstance(v, str):
-                # Strip control chars and limit length
-                s = re.sub(r"[\x00-\x1F\x7F\r\n\t]", " ", v)
-                sanitized[k] = s[:500]
-            elif isinstance(v, list):
-                # Keep only primitives and strings truncated
-                cleaned_list = []
-                for item in v:
-                    if _is_primitive(item):
-                        if isinstance(item, str):
-                            item = re.sub(r"[\x00-\x1F\x7F\r\n\t]", " ", item)[:200]
-                        cleaned_list.append(item)
-                sanitized[k] = cleaned_list
-            elif isinstance(v, dict):
-                # Shallow sanitize nested dictionaries
-                nested = {nk: nv for nk, nv in v.items() if _is_primitive(nv)}
-                sanitized[k] = nested
-            elif _is_primitive(v):
-                sanitized[k] = v
-            else:
-                # Unsupported types are skipped
-                continue
+            # Deep sanitize value while preserving structure
+            sanitized[k] = _deep_sanitize_value(v)
 
     return sanitized
 

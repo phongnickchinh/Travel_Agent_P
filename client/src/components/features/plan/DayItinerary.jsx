@@ -3,9 +3,9 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { motion } from 'framer-motion';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { EditableNotes } from '../../ui/EditableField';
 import { SortableActivityItem } from './ActivityItem';
 import AddActivityModal from './AddActivityModal';
-
 const DayItinerary = ({
   day,
   dayNumber,
@@ -16,21 +16,35 @@ const DayItinerary = ({
   onHover,
   onLeave
 }) => {
-  const mergeActivitiesWithTypes = (activities, types) => {
+  const mergeActivitiesWithTypes = (activities, types, poiIds) => {
     if (!activities) return [];
-    return activities.map((activity, index) => ({
-      ...activity,
-      category: types && types[index] ? types[index] : activity.category
-    }));
+    return activities.map((activity, index) => {
+      let item = typeof activity === 'string' ? { activity } : { ...activity };
+      
+      // Ensure we have a description/activity field
+      if (!item.activity && typeof activity === 'string') item.activity = activity;
+      
+      // Merge category
+      if (types && types[index]) {
+        item.category = types[index];
+      }
+      
+      // Merge POI ID
+      if (poiIds && poiIds[index]) {
+        item.poi_id = poiIds[index];
+      }
+      
+      return item;
+    });
   };
 
-  const [items, setItems] = useState(mergeActivitiesWithTypes(day.activities, day.types));
+  const [items, setItems] = useState(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids));
   const [times, setTimes] = useState(day.estimated_times || []);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setItems(mergeActivitiesWithTypes(day.activities, day.types));
+    setItems(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids));
     setTimes(day.estimated_times || []);
   }, [day]);
 
@@ -40,7 +54,9 @@ const DayItinerary = ({
     if (isPublicView) return;
     setSaving(true);
     try {
-      await onSave(dayNumber, nextItems, nextTimes);
+      const nextActivities = nextItems.map(item => item.activity || item.description || '');
+      const nextPoiIds = nextItems.map(item => item.poi_id || null);
+      await onSave(dayNumber, nextActivities, nextTimes, nextPoiIds);
     } finally {
       setSaving(false);
     }
@@ -86,22 +102,26 @@ const DayItinerary = ({
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-gray-500">
-          {saving && !isPublicView ? 'Đang lưu...' : null}
+    {/* Day Notes - Editable for owner */}
+    <div className="px-6">
+        <div className="border-b border-gray-100 pb-6">
+            {isPublicView ? (
+            // Public view - static display
+            day.notes && (
+                <p className="text-sm text-gray-500 italic">
+                💡 {day.notes}
+                </p>
+            )
+            ) : (
+            // Owner view - editable
+            <EditableNotes
+                value={day.notes || ''}
+                onSave={(newNotes) => handleSaveDayNotes(dayIndex + 1, newNotes)}
+                maxLength={500}
+            />
+            )}
         </div>
-        {!isPublicView && (
-          <motion.button
-            whileHover={{ scale: 1.02, y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-primary text-white text-sm shadow"
-          >
-            <Plus className="w-4 h-4" /> Thêm hoạt động
-          </motion.button>
-        )}
-      </div>
-
+    </div>
       {estimatedItems.length === 0 ? (
         <p className="text-gray-500 text-center py-4">Chưa có hoạt động cho ngày này</p>
       ) : (
@@ -127,6 +147,22 @@ const DayItinerary = ({
           </SortableContext>
         </DndContext>
       )}
+
+    <div className="flex items-center justify-between mt-3">
+        <div className="text-sm text-gray-500">
+          {saving && !isPublicView ? 'Đang lưu...' : null}
+        </div>
+        {!isPublicView && (
+          <motion.button
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-primary text-white text-sm shadow"
+          >
+            <Plus className="w-4 h-4" /> Thêm hoạt động
+          </motion.button>
+        )}
+    </div>
 
       <AddActivityModal
         isOpen={showAddModal}

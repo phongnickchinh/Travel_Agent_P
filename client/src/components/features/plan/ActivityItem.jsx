@@ -82,7 +82,9 @@ const ActivityItem = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: isDragging ? 'none' : transition,
+    zIndex: isDragging ? 9999 : undefined,
+    willChange: 'transform',
   };
 
   const handleSave = () => {
@@ -97,7 +99,6 @@ const ActivityItem = ({
   return (
     <motion.li
       ref={setNodeRef}
-      layout
       {...attributes}
       style={style}
       className={`group border-l-3 pl-4 pr-2 py-3 rounded-r-lg bg-white shadow-sm transition-all ${
@@ -109,7 +110,7 @@ const ActivityItem = ({
           <div
             {...dragHandle}
             {...listeners}
-            className="mt-1 cursor-grab text-gray-400 hover:text-gray-600"
+            className={`mt-1 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} text-gray-400 hover:text-gray-600`}
             aria-label="Kéo để sắp xếp"
           >
             <GripVertical className="w-4 h-4" />

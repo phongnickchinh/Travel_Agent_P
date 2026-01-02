@@ -442,7 +442,10 @@ class PlanAPI {
    * @param {Array<string>} poiIds - Optional: List of POI IDs corresponding to activities
    */
   async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds = null) {
-    const update = { day: dayNumber, activities, estimated_times: estimatedTimes };
+    const update = { day: dayNumber, activities };
+    if (typeof estimatedTimes !== 'undefined') {
+      update.estimated_times = estimatedTimes;
+    }
     if (poiIds) {
       update.poi_ids = poiIds;
     }

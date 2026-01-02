@@ -26,7 +26,7 @@ const SearchDemo = () => {
   //           lat: position.coords.latitude,
   //           lng: position.coords.longitude
   //         });
-  //         // console.log('[INFO] User location obtained:', position.coords);
+
   //       },
   //       (error) => {
   //         console.warn('[WARNING] Geolocation denied:', error);
@@ -67,7 +67,7 @@ const SearchDemo = () => {
       if (typeof url === 'string' && url.includes('/api/search')) {
         callCount++;
         setApiCallCount(callCount);
-        // console.log(`[API CALL #${callCount}]`, url);
+
       }
       return originalFetch(...args);
     };
@@ -82,7 +82,7 @@ const SearchDemo = () => {
    */
   const handlePOISelect = (poi) => {
     setSelectedPOI(poi);
-    // console.log('[SELECTED POI]', poi);
+
   };
 
   /**
@@ -92,7 +92,7 @@ const SearchDemo = () => {
     searchAPI.clearCache();
     setCacheStats(searchAPI.getCacheStats());
     setApiCallCount(0);
-    // console.log('[INFO] Cache cleared');
+
   };
 
   return (

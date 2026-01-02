@@ -784,11 +784,11 @@ export default function PlanDetail() {
               {/* Editable Title - only for owner view */}
               {isPublicView ? (
                 <h1 className="font-poppins font-bold text-xl text-gray-900">
-                  {plan.plan_name || plan.destination}
+                  {plan.title || plan.destination}
                 </h1>
               ) : (
                 <EditableTitle
-                  value={plan.plan_name || plan.destination}
+                  value={plan.title || plan.destination}
                   onSave={handleSaveTitle}
                   level="h1"
                 />

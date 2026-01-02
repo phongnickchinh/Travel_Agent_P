@@ -81,12 +81,12 @@ const SearchAutocomplete = ({
       });
       
       // Debug: Log response
-      console.log('[DEBUG] AutocompleteV2 response:', response);
+      // console.log('[DEBUG] AutocompleteV2 response:', response);
       
       const suggestions = response.suggestions || [];
 
       // Debug: Log suggestions to check structure
-      console.log('[DEBUG] Autocomplete suggestions:', suggestions);
+      // console.log('[DEBUG] Autocomplete suggestions:', suggestions);
       
       // Ensure suggestions is an array and flatten nested objects
       const validResults = Array.isArray(suggestions) 
@@ -123,7 +123,7 @@ const SearchAutocomplete = ({
     if (result.status === 'pending' && result.place_id) {
       try {
         setResolvingId(result.place_id);
-        console.log('[RESOLVE] Resolving pending place:', result.place_id);
+        // console.log('[RESOLVE] Resolving pending place:', result.place_id);
         
         const resolved = await searchAPI.resolvePlace(result.place_id);
         

@@ -27,7 +27,7 @@ const SearchExamples = () => {
           <div className="example-code">
             <pre>{`<SearchAutocomplete
   placeholder="Search places..."
-  onSelect={(poi) => console.log(poi)}
+  onSelect={(poi) => {}}
 />`}</pre>
           </div>
 

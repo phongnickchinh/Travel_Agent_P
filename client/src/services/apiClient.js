@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // Log API URL để debugging
-console.log('API Base URL:', API_BASE);
+// console.log('API Base URL:', API_BASE);
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -74,7 +74,6 @@ api.interceptors.response.use(
       }
 
       return new Promise((resolve, reject) => {
-        console.log('Attempting to refresh token with:', API_BASE);
         
         axios
           .post(`${API_BASE}/refresh-token`, { refresh_token: refreshToken }, {
@@ -85,9 +84,10 @@ api.interceptors.response.use(
             }
           })
           .then(({ data }) => {
-            console.log('Token refresh successful');
-            localStorage.setItem('access_token', data.access_token);
+            // console.log('Token refresh successful');
             localStorage.setItem('refresh_token', data.refresh_token);
+            // Persist new access token so future requests (and reloads) use the updated value
+            localStorage.setItem('access_token', data.access_token);
             api.defaults.headers.Authorization = 'Bearer ' + data.access_token;
             originalRequest.headers.Authorization = 'Bearer ' + data.access_token;
             onRefreshed(data.access_token);

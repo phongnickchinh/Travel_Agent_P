@@ -21,7 +21,7 @@ from ...core.rate_limiter import rate_limit, get_identifier_from_auth_token
 from config import Config
 from ...utils.response_helpers import build_success_response, build_error_response
 from ...core.di_container import DIContainer
-from ...model.mongo.plan import PlanCreateRequest, PlanUpdateRequest, PlanStatusEnum
+from ...model.mongo.plan import PlanCreateRequest, PlanUpdateRequest, PlanPatchRequest, PlanStatusEnum
 from ...utils.sanitization import sanitize_user_input, contains_mongo_operators
 
 # Import Celery task (will create later)
@@ -64,6 +64,8 @@ class PlanController:
         plan_api.add_url_rule("/<plan_id>", "get_plan", self._wrap_jwt_required(self.get_plan), methods=["GET"])
         
         plan_api.add_url_rule("/<plan_id>","update_plan", self._wrap_jwt_required(self.update_plan), methods=["PUT"])
+        
+        plan_api.add_url_rule("/<plan_id>", "patch_plan", self._wrap_jwt_required(self.patch_plan), methods=["PATCH"])
         
         plan_api.add_url_rule("/<plan_id>", "delete_plan", self._wrap_jwt_required(self.delete_plan), methods=["DELETE"])
         
@@ -418,6 +420,95 @@ class PlanController:
                 "Failed to delete plan.",
                 f"Không thể xóa kế hoạch: {str(e)}",
                 "50006",
+                500
+            )
+
+    def patch_plan(self, user, plan_id: str):
+        """
+        Partial update plan (non-core fields only).
+        Does NOT trigger regeneration.
+        
+        PATCH /plan/<plan_id>
+        Body:
+        {
+            "title": "My Updated Title",
+            "start_date": "2026-02-01",
+            "itinerary_updates": [
+                {"day": 1, "notes": "Custom note for day 1"},
+                {"day": 2, "activities": ["Morning yoga", "Beach visit"]}
+            ]
+        }
+        
+        Editable fields:
+        - Plan level: title, thumbnail_url, start_date, estimated_total_cost
+        - Day level: notes, activities, estimated_times, estimated_cost_vnd, 
+                     accommodation_name, accommodation_address, check_in_time, check_out_time
+        
+        Response:
+        {
+            "plan": { ... updated plan ... }
+        }
+        """
+        try:
+            data = request.get_json() or {}
+            
+            # Allowed keys for PATCH (non-core fields)
+            allowed_keys = [
+                "title", 
+                "thumbnail_url", 
+                "start_date", 
+                "estimated_total_cost",
+                "itinerary_updates"
+            ]
+            sanitized_data = sanitize_user_input(data, allowed_keys)
+            
+            if contains_mongo_operators(sanitized_data):
+                return build_error_response(
+                    "Invalid request payload (forbidden operators).",
+                    "Dữ liệu chứa ký tự MongoDB không hợp lệ.",
+                    "40006",
+                    400
+                )
+            
+            # Validate with PlanPatchRequest
+            try:
+                patch_request = PlanPatchRequest(**sanitized_data)
+            except Exception as e:
+                return build_error_response(
+                    "Invalid request payload.",
+                    f"Dữ liệu yêu cầu không hợp lệ: {str(e)}",
+                    "40007",
+                    400
+                )
+            
+            # Call service
+            updated_plan = self.planner_service.patch_plan(
+                plan_id, user.id, patch_request
+            )
+            
+            if not updated_plan:
+                return build_error_response(
+                    "Plan not found or unauthorized.",
+                    "Không tìm thấy kế hoạch hoặc không có quyền chỉnh sửa.",
+                    "40407",
+                    404
+                )
+            
+            logger.info(f"[INFO] Plan {plan_id} patched by user {user.id}")
+            
+            return build_success_response(
+                "Plan updated successfully.",
+                "Đã cập nhật kế hoạch thành công.",
+                "20012",
+                {"plan": updated_plan}
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to patch plan {plan_id}: {e}")
+            return build_error_response(
+                "Failed to update plan.",
+                f"Không thể cập nhật kế hoạch: {str(e)}",
+                "50012",
                 500
             )
 

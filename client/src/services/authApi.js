@@ -23,7 +23,6 @@ export function getDeviceId() {
  * Login with email and password
  */
 export async function loginApi(credentials) {
-  console.log(import.meta.env.VITE_APP_NAME);
   const res = await api.post('/login', credentials);
   // res.data = { user: {...}, access_token, refresh_token }
   return res.data;
@@ -153,9 +152,7 @@ export async function logoutApi() {
 
 export async function getProfileApi() {
   try {
-    console.log('Calling getProfileApi...');
     const res = await api.get('/user/');
-    console.log('Profile API response:', res);
     if (!res.data) {
       throw new Error('User data is empty');
     }

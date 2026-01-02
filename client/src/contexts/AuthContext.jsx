@@ -11,13 +11,10 @@ useEffect(() => {
   // Sử dụng một hàm async bên trong useEffect
   const checkUserAuthentication = async () => {
     const accessToken = localStorage.getItem('access_token');
-    // console.log('Access Token:', accessToken);
 
     if (accessToken) {
-      console.log('Checking user authentication...');
       try {
         const userInfo = await getProfileApi();
-        console.log('User info from API:', userInfo);
         setUser(userInfo);
       } catch (error) {
         console.error('Failed to get user profile:', error);

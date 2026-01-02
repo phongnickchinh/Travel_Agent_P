@@ -48,7 +48,7 @@ class AuthController:
     
     def get_auth_config(self):
         """Public endpoint to get authentication configuration (e.g., Google Client ID)."""
-        print(Config.GOOGLE_CLIENT_ID)
+
         return build_success_response(
             "Authentication configuration retrieved successfully.",
             "Lấy cấu hình xác thực thành công.",

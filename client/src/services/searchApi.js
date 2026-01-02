@@ -178,7 +178,6 @@ class SearchAPI {
 
   clearRecentSearches() {
     localStorage.removeItem(this.recentSearchesKey);
-    console.log('[INFO] Recent searches cleared');
   }
 
   /**
@@ -187,7 +186,6 @@ class SearchAPI {
   clearCache() {
     this.cache.clear();
     this.clearRecentSearches();
-    console.log('[INFO] All caches cleared');
   }
 
   /**
@@ -261,7 +259,7 @@ class SearchAPI {
     const cacheKey = `v2:${cleanQuery}`;
     const cached = this.getCached(cacheKey);
     if (cached) {
-      console.log('[CACHE HIT] AutocompleteV2:', cleanQuery);
+      // console.log('[CACHE HIT] AutocompleteV2:', cleanQuery);
       return cached;
     }
 
@@ -309,26 +307,18 @@ class SearchAPI {
       // Save to recent searches
       this.addRecentSearch(cleanQuery, normalizedData.total > 0);
       
-      console.log(
-        '[API CALL] AutocompleteV2:', cleanQuery,
-        `(${normalizedData.total || 0} results)`,
-        'Sources:', normalizedData.sources || {}
-      );
-      
       return normalizedData;
-      
     } catch (error) {
       console.error('[ERROR] AutocompleteV2 failed:', error);
       
       // Fallback to recent searches if API fails
-      console.log('[FALLBACK] Using recent searches...');
+      // console.log('[FALLBACK] Using recent searches...');
       const recentResults = this.getRecentSearches()
         .filter(s => s.query.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 5)
         .map(s => ({ name: s.query, type: 'recent', source_type: 'recent', _fallback: true }));
       return {
         suggestions: recentResults,
-        total: recentResults.length,
         sources: { fallback_recent: recentResults.length },
         query_time_ms: 0
       };
@@ -397,7 +387,7 @@ class SearchAPI {
       // Reset session token after successful resolution
       this.resetSessionToken();
       
-      console.log('[API CALL] ResolvePlace:', placeId, '✓');
+      // console.log('[API CALL] ResolvePlace:', placeId, '✓');
       return response.data;
       
     } catch (error) {
@@ -405,7 +395,6 @@ class SearchAPI {
       throw error;
     }
   }
-
   /**
    * Get autocomplete cache statistics (for monitoring)
    */

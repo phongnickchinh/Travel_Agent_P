@@ -75,8 +75,7 @@ class ProviderFactory:
         if os.getenv('FEATURE_TRIPADVISOR_ENABLED', 'false').lower() == 'true':
             tripadvisor_key = os.getenv('TRIPADVISOR_API_KEY')
             if tripadvisor_key:
-                # from .tripadvisor_provider import TripAdvisorProvider
-                # providers.append(TripAdvisorProvider(api_key=tripadvisor_key))
+
                 logger.info("TripAdvisor provider would be enabled (not implemented yet)")
         
         # Log active providers

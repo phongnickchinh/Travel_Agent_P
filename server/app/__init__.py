@@ -28,8 +28,7 @@ class MongoJSONProvider(DefaultJSONProvider):
         return super().default(obj)
 
 
-# Removing the import that causes circular imports
-# from .AppConfig.di_setup import init_di
+
 
 
 class Base(DeclarativeBase):

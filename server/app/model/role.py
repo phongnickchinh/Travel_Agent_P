@@ -54,13 +54,4 @@ class UserRole(Base): # Association table, not from BaseModel
     def __repr__(self):
         return f"<UserRole user_id='{self.user_id}' role_id='{self.role_id}'>"
 
-# Reminder: In User model (app/models/user.py), define the reverse relationship:
-# class User(UserMixin, BaseModel):
-#     # ...
-#     roles = relationship(
-#         "Role",
-#         secondary="user_roles",
-#         back_populates="users",
-#         lazy="select"
-#     )
-#     # ...
+

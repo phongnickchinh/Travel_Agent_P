@@ -71,7 +71,7 @@ const cleanupExpiredCache = () => {
   }
   
   if (removed > 0) {
-    // console.log(`[ImageCache] Cleaned up ${removed} expired entries`);
+
   }
 };
 
@@ -110,7 +110,7 @@ const evictOldestEntries = () => {
   }
   
   if (removed > 0) {
-    // console.log(`[ImageCache] Evicted ${removed} oldest entries to free space`);
+
   }
 };
 
@@ -269,7 +269,7 @@ export const clearImageCache = () => {
     }
   }
   
-  // console.log('[ImageCache] All cached images cleared');
+
 };
 
 /**

@@ -53,11 +53,4 @@ class Token(BaseModel):
     def __repr__(self):
         return f"<Token id='{self.id}' user_id='{self.user_id}'>"
 
-# Reminder: In your User model (app/models/user.py), define the reverse relationship:
-# class User(UserMixin, BaseModel):
-#     # ... other fields ...
-#     __tablename__ = 'users' # Ensure this is present
-#
-#     tokens = relationship('Token', back_populates='user', cascade="all, delete-orphan", lazy='dynamic')
-#    
-#     # ... rest of the User model ...
+

@@ -18,14 +18,17 @@ import {
   Camera,
   ChevronDown,
   ChevronUp,
+  Church,
   Coffee,
   CreditCard,
   Dumbbell,
   Film,
+  Heart,
   Hospital,
   Landmark,
   Loader2,
   MapPin,
+  Mountain,
   Music,
   Palmtree,
   Plane,
@@ -42,7 +45,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import DayItinerary from '../../components/features/plan/DayItinerary';
+import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
+import { EditableDate, EditableNotes, EditableTitle } from '../../components/ui/EditableField';
 import planAPI from '../../services/planApi';
+import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
 
 // Map container style
 const mapContainerStyle = {
@@ -81,47 +88,68 @@ const getTypeIcon = (category) => {
     pub: Wine,
     club: Music,
     nightlife: Music,
-    // Cultural
+    // Cultural & Historical
     landmark: Landmark,
     museum: Landmark,
     temple: Landmark,
     pagoda: Landmark,
-    church: Landmark,
+    church: Church,
+    cathedral: Church,
+    mosque: Church,
+    shrine: Church,
+    religious: Church,
     historical: Landmark,
+    cultural: Landmark,
+    heritage: Landmark,
     // Shopping
     shopping: ShoppingBag,
     mall: ShoppingBag,
     market: ShoppingBag,
     store: ShoppingBag,
-    // Nature
+    boutique: ShoppingBag,
+    // Nature & Outdoor
     nature: TreePine,
     park: TreePine,
     beach: Palmtree,
-    mountain: TreePine,
+    mountain: Mountain,
+    hill: Mountain,
+    peak: Mountain,
     lake: TreePine,
     waterfall: TreePine,
+    river: TreePine,
+    forest: TreePine,
+    garden: TreePine,
     // Accommodation
     hotel: Bed,
     accommodation: Bed,
     resort: Bed,
     hostel: Bed,
     homestay: Bed,
-    // Activities
+    lodge: Bed,
+    // Activities & Entertainment
     viewpoint: Camera,
     attraction: Camera,
     entertainment: Film,
     cinema: Film,
+    theater: Film,
+    adventure: Mountain,
+    // Wellness & Sports
     spa: Sparkles,
-    wellness: Sparkles,
+    wellness: Heart,
+    massage: Heart,
     gym: Dumbbell,
     sport: Dumbbell,
+    fitness: Dumbbell,
+    yoga: Heart,
     // Transport
     airport: Plane,
     station: Train,
     transport: Train,
+    bus: Train,
     // Services
     hospital: Hospital,
     clinic: Hospital,
+    medical: Hospital,
   };
   
   if (!category) return MapPin;
@@ -138,6 +166,64 @@ const isAccommodation = (category) => {
   if (!category) return false;
   const lower = category.toLowerCase();
   return ['hotel', 'accommodation', 'resort', 'hostel', 'homestay', 'lodge', 'villa'].some(t => lower.includes(t));
+};
+
+// Get marker color based on POI type (category-themed colors)
+const getMarkerColor = (category) => {
+  if (!category) return '#2E571C'; // Default brand primary
+  const lower = category.toLowerCase();
+  
+  // Category-themed color palette
+  const colorMap = {
+    // Nature & Beach (Blue/Aqua)
+    beach: '#3B82F6',
+    ocean: '#3B82F6',
+    sea: '#3B82F6',
+    // Nature (Green)
+    nature: '#10B981',
+    park: '#10B981',
+    forest: '#10B981',
+    garden: '#10B981',
+    tree: '#10B981',
+    // Cultural & Historical (Purple)
+    cultural: '#8B5CF6',
+    museum: '#8B5CF6',
+    temple: '#8B5CF6',
+    pagoda: '#8B5CF6',
+    church: '#8B5CF6',
+    historical: '#8B5CF6',
+    heritage: '#8B5CF6',
+    landmark: '#8B5CF6',
+    // Food & Drink (Orange/Red)
+    restaurant: '#F97316',
+    food: '#F97316',
+    cafe: '#F59E0B',
+    coffee: '#F59E0B',
+    bar: '#EF4444',
+    // Shopping (Pink)
+    shopping: '#EC4899',
+    mall: '#EC4899',
+    market: '#EC4899',
+    // Mountain & Adventure (Brown/Gray)
+    mountain: '#78716C',
+    hill: '#78716C',
+    adventure: '#78716C',
+    // Wellness (Pink/Rose)
+    wellness: '#F472B6',
+    spa: '#F472B6',
+    yoga: '#F472B6',
+    // Accommodation (Indigo)
+    hotel: '#6366F1',
+    accommodation: '#6366F1',
+    resort: '#6366F1',
+  };
+  
+  // Find matching color
+  for (const [key, color] of Object.entries(colorMap)) {
+    if (lower.includes(key)) return color;
+  }
+  
+  return '#2E571C'; // Default brand primary
 };
 
 // Format duration in Vietnamese
@@ -181,14 +267,24 @@ const parseEstimatedTime = (timeSlot) => {
   }
 };
 
-// Normalize photo URL (Google Places photo path → media URL)
+// Normalize photo URL (Google Places photo path → media URL) with caching
 const buildPhotoUrl = (url, apiKey) => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  if (url.startsWith('places/') && apiKey) {
-    return `https://places.googleapis.com/v1/${url}/media?key=${apiKey}&maxHeightPx=600&maxWidthPx=600`;
+  
+  let finalUrl = url;
+  
+  // Build full URL if needed
+  if (!url.startsWith('http')) {
+    if (url.startsWith('places/') && apiKey) {
+      finalUrl = `https://places.googleapis.com/v1/${url}/media?key=${apiKey}&maxHeightPx=600&maxWidthPx=600`;
+    } else {
+      finalUrl = url;
+    }
   }
-  return url;
+  
+  // Check cache first
+  const cached = getCachedImage(finalUrl);
+  return cached || finalUrl;
 };
 
 // Build share URL from token (fallback to current origin)
@@ -213,7 +309,109 @@ export default function PlanDetail() {
   const [shareState, setShareState] = useState({ isPublic: false, shareToken: null, shareUrl: null });
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [hoveredImageCache, setHoveredImageCache] = useState({}); // Lazy-loaded images cache
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [regenerateLoading, setRegenerateLoading] = useState(false);
   const mapRef = useRef(null);
+  const preHoverViewRef = useRef(null);
+
+  // ========== INLINE EDITING HANDLERS ==========
+  
+  // Save plan title
+  const handleSaveTitle = useCallback(async (newTitle) => {
+    if (!planId || isPublicView) return;
+    const result = await planAPI.updateTitle(planId, newTitle);
+    if (result.success) {
+      setPlan(prev => ({ ...prev, plan_name: newTitle }));
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật tiêu đề');
+    }
+  }, [planId, isPublicView]);
+
+  // Save start date (recalculates all day dates on backend)
+  const handleSaveStartDate = useCallback(async (newDate) => {
+    if (!planId || isPublicView) return;
+    const result = await planAPI.updateStartDate(planId, newDate);
+    if (result.success && result.data) {
+      // Update full plan to get recalculated day dates
+      setPlan(result.data);
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật ngày bắt đầu');
+    }
+  }, [planId, isPublicView]);
+
+  // Save day notes
+  const handleSaveDayNotes = useCallback(async (dayNumber, newNotes) => {
+    if (!planId || isPublicView) return;
+    const result = await planAPI.updateDayNotes(planId, dayNumber, newNotes);
+    if (result.success && result.data) {
+      setPlan(result.data);
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật ghi chú');
+    }
+  }, [planId, isPublicView]);
+
+  // Save day activities (array of strings)
+  const handleSaveDayActivities = useCallback(async (dayNumber, activitiesText) => {
+    if (!planId || isPublicView) return;
+    // Convert comma/newline-separated text to array
+    const activities = activitiesText
+      .split(/[,\n]/)
+      .map(a => a.trim())
+      .filter(a => a.length > 0);
+    
+    const result = await planAPI.updateDayActivities(planId, dayNumber, activities);
+    if (result.success && result.data) {
+      setPlan(result.data);
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật hoạt động');
+    }
+  }, [planId, isPublicView]);
+
+  // Save day accommodation
+  const handleSaveAccommodation = useCallback(async (dayNumber, accommodationData) => {
+    if (!planId || isPublicView) return;
+    const result = await planAPI.updateDayAccommodation(planId, dayNumber, accommodationData);
+    if (result.success && result.data) {
+      setPlan(result.data);
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật chỗ ở');
+    }
+  }, [planId, isPublicView]);
+
+  // Save day itinerary (activities + estimated times)
+  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes) => {
+    if (!planId || isPublicView) return;
+    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes);
+    if (result.success && result.data) {
+      setPlan(result.data);
+    } else {
+      throw new Error(result.error || 'Lỗi cập nhật hoạt động');
+    }
+  }, [planId, isPublicView]);
+
+  const handleRegeneratePlan = useCallback(async (payload) => {
+    if (!planId || isPublicView) return;
+    setRegenerateLoading(true);
+    try {
+      const updateResult = await planAPI.updatePlan(planId, payload);
+      if (!updateResult.success) {
+        throw new Error(updateResult.error || 'Lỗi cập nhật kế hoạch');
+      }
+      const refreshed = await planAPI.getPlanById(planId);
+      if (refreshed.success && refreshed.data) {
+        const planData = refreshed.data.plan || refreshed.data;
+        setPlan(planData);
+      }
+      setShowRegenerateModal(false);
+    } catch (err) {
+      console.error('[Regenerate] failed', err);
+    } finally {
+      setRegenerateLoading(false);
+    }
+  }, [planId, isPublicView]);
+
+  // ========================================
 
   // Load Google Maps
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -320,7 +518,6 @@ export default function PlanDetail() {
   // Extract ALL POIs with coordinates from entire itinerary (continuous numbering)
   const allPOIs = useMemo(() => {
     if (!plan?.itinerary) return [];
-    
     const pois = [];
     let globalIndex = 0;
     
@@ -328,6 +525,7 @@ export default function PlanDetail() {
       const activities = day.activities || [];
       const estimatedTimes = day.estimated_times || [];
       const featuredImages = (day.featured_images || []).map((img) => buildPhotoUrl(img, googleMapsApiKey));
+      const dayTypes = day.types || []; // Extract types array from day data
       
       let poiIndexInDay = 0;
       activities.forEach((activity, actIndex) => {
@@ -339,6 +537,10 @@ export default function PlanDetail() {
         // Parse estimated time for this activity
         const { startTime, durationMinutes } = parseEstimatedTime(estimatedTimes[actIndex]);
         
+        // Get types for this POI (array of category strings)
+        const poiTypes = dayTypes[poiIndexInDay] || [data.category].filter(Boolean);
+        const primaryType = poiTypes[0] || data.category || 'attraction';
+        
         pois.push({
           id: globalIndex,
           dayIndex: dayIndex + 1,
@@ -347,10 +549,12 @@ export default function PlanDetail() {
           lng: data.location.longitude,
           time: startTime || data.time || null,
           duration: durationMinutes || data.duration || null,
-          category: data.category,
+          category: primaryType, // Use first type as primary category
+          types: poiTypes, // Store full types array
+          markerColor: getMarkerColor(primaryType), // Category-themed color
           rating: data.rating || null,
           reviewCount: activity.poi?.user_ratings_total || activity.user_ratings_total || null,
-          featuredImage: featuredImages[poiIndexInDay] || null
+          imageUrl: featuredImages[poiIndexInDay] || null // Store URL but don't load immediately
         });
         poiIndexInDay++;
       });
@@ -391,6 +595,14 @@ export default function PlanDetail() {
     return { lat: 16.0544, lng: 108.2428 }; // Default: Da Nang
   }, [allPOIs, plan]);
 
+  const destinationLocation = useMemo(() => {
+    const loc = plan?.destination_location;
+    if (loc?.latitude && loc?.longitude) {
+      return { lat: loc.latitude, lng: loc.longitude };
+    }
+    return null;
+  }, [plan]);
+
   // Calculate trip summary (costs, accommodations, preferences)
   const tripSummary = useMemo(() => {
     if (!plan?.itinerary) return null;
@@ -430,6 +642,14 @@ export default function PlanDetail() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
+  const clampMapZoom = useCallback((map) => {
+    if (!map) return;
+    const currentZoom = map.getZoom();
+    if (currentZoom && currentZoom > 17) {
+      map.setZoom(17);
+    }
+  }, []);
+
   // Handle map load
   const onMapLoad = useCallback((mapInstance) => {
     mapRef.current = mapInstance;
@@ -439,26 +659,42 @@ export default function PlanDetail() {
       const bounds = new window.google.maps.LatLngBounds();
       allPOIs.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
       mapInstance.fitBounds(bounds, { padding: 50 });
+      window.google.maps.event.addListenerOnce(mapInstance, 'bounds_changed', () => clampMapZoom(mapInstance));
+    } else {
+      clampMapZoom(mapInstance);
     }
-  }, [allPOIs]);
+  }, [allPOIs, clampMapZoom]);
 
   // Handle activity hover - focus on map
   const handleActivityHover = (globalIndex) => {
     const poi = allPOIs.find(p => p.id === globalIndex);
-    if (poi && mapRef.current) {
-      mapRef.current.panTo({ lat: poi.lat, lng: poi.lng });
-      mapRef.current.setZoom(16);
-      setHoveredPOI(poi.id);
+    const map = mapRef.current;
+    if (!poi || !map) return;
+
+    // Store pre-hover view once to restore later
+    if (!hoveredPOI && !preHoverViewRef.current) {
+      preHoverViewRef.current = {
+        zoom: map.getZoom(),
+        center: map.getCenter(),
+      };
     }
+
+    if (hoveredPOI === poi.id) return;
+
+    map.panTo({ lat: poi.lat, lng: poi.lng });
+    const currentZoom = map.getZoom();
+    const targetZoom = Math.min(Math.max(currentZoom ?? 15, 15), 17);
+    if (!currentZoom || Math.abs(targetZoom - currentZoom) > 0.01) {
+      map.setZoom(targetZoom);
+    }
+    clampMapZoom(map);
+    setHoveredPOI(poi.id);
   };
 
-  // Handle mouse leave - reset to show all
+  // Handle mouse leave - keep map at current POI position (don't reset)
   const handleActivityLeave = () => {
-    if (mapRef.current && allPOIs.length > 1) {
-      const bounds = new window.google.maps.LatLngBounds();
-      allPOIs.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
-      mapRef.current.fitBounds(bounds, { padding: 50 });
-    }
+    // Don't reset map view - keep it at the last hovered POI
+    // Only clear the hovered state for visual feedback
     setHoveredPOI(null);
   };
 
@@ -545,9 +781,18 @@ export default function PlanDetail() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div>
-              <h1 className="font-poppins font-bold text-xl text-gray-900">
-                {plan.plan_name || plan.destination}
-              </h1>
+              {/* Editable Title - only for owner view */}
+              {isPublicView ? (
+                <h1 className="font-poppins font-bold text-xl text-gray-900">
+                  {plan.plan_name || plan.destination}
+                </h1>
+              ) : (
+                <EditableTitle
+                  value={plan.plan_name || plan.destination}
+                  onSave={handleSaveTitle}
+                  level="h1"
+                />
+              )}
               <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
@@ -566,6 +811,23 @@ export default function PlanDetail() {
               <span className="text-xs font-medium text-brand-primary bg-brand-muted px-3 py-1 rounded-full">
                 Bản chia sẻ công khai
               </span>
+            )}
+
+            {!isPublicView && (
+              <motion.button
+                whileHover={{ scale: 1.02, y: -1 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowRegenerateModal(true)}
+                disabled={regenerateLoading}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                  regenerateLoading
+                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'border-brand-primary text-brand-primary bg-white hover:bg-brand-muted'
+                }`}
+              >
+                <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
+                <span className="text-sm font-semibold">Tái tạo kế hoạch</span>
+              </motion.button>
             )}
 
             {!isPublicView && (
@@ -628,155 +890,62 @@ export default function PlanDetail() {
                 >
                   {/* Day Header */}
                   <div className="bg-brand-primary text-white px-6 py-4">
-                    <h2 className="font-poppins font-bold text-lg">
-                      Ngày {dayIndex + 1}
-                      {day.date && (
-                        <span className="font-normal text-gray-300 ml-2">
+                    <h2 className="font-poppins font-bold text-lg flex items-center flex-wrap gap-2">
+                      <span>Ngày {dayIndex + 1}</span>
+                      {/* Editable start date for Day 1 only (owner view) */}
+                      {dayIndex === 0 && !isPublicView ? (
+                        <span className="font-normal text-gray-200">
+                          - Bắt đầu từ: 
+                          <span className="ml-1 inline-block bg-white/10 rounded px-2 py-0.5 hover:bg-white/20 transition-colors">
+                            <EditableDate
+                              value={day.date || plan.start_date}
+                              onSave={handleSaveStartDate}
+                              variant="dark"
+                            />
+                          </span>
+                        </span>
+                      ) : day.date ? (
+                        <span className="font-normal text-gray-300">
                           - {formatDate(day.date)}
                         </span>
-                      )}
+                      ) : null}
                     </h2>
                     {day.theme && (
                       <p className="text-gray-300 text-sm mt-1">{day.theme}</p>
                     )}
                   </div>
 
-                  {/* Activities - Continuous bullet list */}
-                  <div className="p-6">
-                    {day.activities?.length > 0 ? (
-                      <ul className="space-y-3">
-                        {day.activities.map((activity, actIndex) => {
-                          const globalIndex = startIndex + actIndex + 1;
-                          const extracted = extractActivityData(activity);
-                          const isString = extracted.isString;
-                          
-                          // Parse estimated time from day's estimated_times array
-                          const estimatedTimes = day.estimated_times || [];
-                          const { startTime, durationMinutes } = parseEstimatedTime(estimatedTimes[actIndex]);
-                          
-                          const {
-                            poiName,
-                            description,
-                            time,
-                            duration,
-                            estimatedCost,
-                            location,
-                            address,
-                            rating,
-                              category,
-                          } = extracted;
+                  <DayItinerary
+                    day={day}
+                    dayNumber={dayIndex + 1}
+                    startIndex={startIndex}
+                    isPublicView={isPublicView}
+                    onSave={handleSaveDayItinerary}
+                    location={destinationLocation}
+                    onHover={handleActivityHover}
+                    onLeave={handleActivityLeave}
+                  />
 
-                          const displayPoiName = typeof poiName === 'string' ? poiName.replace(/^"+|"+$/g, '') : poiName;
-                          
-                          // Use parsed time or fallback to extracted
-                          const displayTime = startTime || time;
-                          const displayDuration = durationMinutes || duration;
-                          
-                          const hasLocation = location?.latitude && location?.longitude;
-                          const isAccomm = isAccommodation(category);
-                          const TypeIcon = getTypeIcon(category);
-                          const durationText = formatDuration(displayDuration);
-
-                          return (
-                            <li
-                              key={actIndex}
-                              className={`py-2 border-l-3 pl-4 transition-all ${
-                                isAccomm 
-                                  ? 'border-l-purple-400 bg-purple-50/50 rounded-r-lg -ml-4 pl-8 pr-4'
-                                  : hoveredPOI === globalIndex
-                                    ? 'border-l-brand-secondary bg-brand-muted/30'
-                                    : 'border-l-gray-200 hover:border-l-brand-primary'
-                              }`}
-                            >
-                              {/* Main line: Time + POI Name (clickable) + Duration */}
-                              <div className="flex items-start gap-2 flex-wrap">
-                                {/* Index badge */}
-                                <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full shrink-0 ${
-                                  isAccomm ? 'bg-purple-500 text-white' : 'bg-brand-primary text-white'
-                                }`}>
-                                  {globalIndex}
-                                </span>
-                                
-                                {/* Time */}
-                                {displayTime && (
-                                  <span className="text-sm text-gray-500 font-medium">
-                                    {displayTime}
-                                  </span>
-                                )}
-                                
-                                {/* Separator */}
-                                {displayTime && <span className="text-gray-300">—</span>}
-                                
-                                {/* POI Name - Clickable link to map */}
-                                {poiName && hasLocation ? (
-                                  <button
-                                    onClick={() => handleActivityHover(globalIndex)}
-                                    onMouseEnter={() => handleActivityHover(globalIndex)}
-                                    onMouseLeave={handleActivityLeave}
-                                    className={`font-semibold text-base hover:underline cursor-pointer inline-flex items-center gap-1 transition-colors ${
-                                      isAccomm 
-                                        ? 'text-purple-700 hover:text-purple-800'
-                                        : 'text-brand-primary hover:text-brand-secondary'
-                                    }`}
-                                  >
-                                    <TypeIcon className="w-4 h-4" />
-                                    {displayPoiName}
-                                  </button>
-                                ) : poiName ? (
-                                  <span className="font-semibold text-base text-gray-800 inline-flex items-center gap-1">
-                                    <TypeIcon className="w-4 h-4 text-gray-400" />
-                                    {poiName}
-                                  </span>
-                                ) : null}
-                                
-                                {/* Duration badge */}
-                                {durationText && (
-                                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                    ~{durationText}
-                                  </span>
-                                )}
-                                
-                                {/* Accommodation badge */}
-                                {isAccomm && (
-                                  <span className="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full font-medium">
-                                    Lưu trú
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {/* Description line */}
-                              {description && (
-                                <p className="text-sm text-gray-600 mt-1 ml-8">
-                                  {description}
-                                </p>
-                              )}
-                              
-                              {/* Meta info (cost, address) */}
-                              {(estimatedCost || address) && (
-                                <div className="text-xs text-gray-400 mt-1 ml-8 flex flex-wrap gap-2">
-                                  {estimatedCost && <span>💰 {estimatedCost}</span>}
-                                  {address && <span className="truncate max-w-62.5" title={address}>📍 {address}</span>}
-                                </div>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="text-gray-500 text-center py-4">
-                        Chưa có hoạt động cho ngày này
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Day Notes */}
-                  {day.notes && (
-                    <div className="px-6 pb-4">
-                      <p className="text-sm text-gray-500 italic border-t border-gray-100 pt-4">
-                        💡 {day.notes}
-                      </p>
+                  {/* Day Notes - Editable for owner */}
+                  <div className="px-6 pb-4">
+                    <div className="border-t border-gray-100 pt-4">
+                      {isPublicView ? (
+                        // Public view - static display
+                        day.notes && (
+                          <p className="text-sm text-gray-500 italic">
+                            💡 {day.notes}
+                          </p>
+                        )
+                      ) : (
+                        // Owner view - editable
+                        <EditableNotes
+                          value={day.notes || ''}
+                          onSave={(newNotes) => handleSaveDayNotes(dayIndex + 1, newNotes)}
+                          maxLength={500}
+                        />
+                      )}
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -823,8 +992,29 @@ export default function PlanDetail() {
               >
                 {/* Custom Markers for ALL POIs using OverlayView */}
                 {allPOIs.map((poi) => {
-                  const TypeIcon = getTypeIcon(poi.category);
+                  const TypeIconComponent = getTypeIcon(poi.category);
                   const isHovered = hoveredPOI === poi.id;
+                  const isAccomm = isAccommodation(poi.category);
+                  
+                  // Handle marker hover for lazy loading images
+                  const handleMarkerEnter = async () => {
+                    setHoveredPOI(poi.id);
+                    
+                    // Lazy load image if not cached (TTL: 3 days for POI featured images)
+                    if (poi.imageUrl && !hoveredImageCache[poi.id]) {
+                      const fullUrl = buildPhotoUrl(poi.imageUrl, googleMapsApiKey);
+                      
+                      preloadAndCacheImage(fullUrl, 'poi_featured')
+                        .then((url) => {
+                          setHoveredImageCache(prev => ({ ...prev, [poi.id]: url }));
+                        })
+                        .catch((err) => {
+                          console.error('Failed to load POI image:', err);
+                          // Fallback: still show the URL even if preload fails
+                          setHoveredImageCache(prev => ({ ...prev, [poi.id]: fullUrl }));
+                        });
+                    }
+                  };
                   
                   return (
                     <OverlayView
@@ -833,64 +1023,71 @@ export default function PlanDetail() {
                       mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                     >
                       <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
+                        initial={{ scale: 0.9, opacity: 0.85 }}
                         animate={{ 
-                          scale: isHovered ? 1.2 : 1, 
-                          opacity: 1,
+                          scale: isHovered ? 1.08 : 0.95, 
+                          opacity: isHovered ? 1 : 0.9,
                           zIndex: isHovered ? 100 : 1
                         }}
-                        className="relative cursor-pointer transform -translate-x-1/2 -translate-y-1/2"
-                        onMouseEnter={() => setHoveredPOI(poi.id)}
+                        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                        className="relative cursor-pointer flex flex-col items-center"
+                        onMouseEnter={handleMarkerEnter}
                         onMouseLeave={() => setHoveredPOI(null)}
-                        style={{ position: 'relative', zIndex: isHovered ? 100 : 1 }}
+                        style={{ 
+                          position: 'relative', 
+                          zIndex: isHovered ? 100 : 1,
+                          transform: 'translate(-50%, -100%)' // Center marker on coordinates
+                        }}
                       >
-                        {/* Marker container - bumped size for clarity */}
+                        {/* Marker container - Icon-first design */}
                         <div 
-                          className={`w-11 h-11 rounded-full border-2 shadow-md overflow-hidden transition-all duration-200 ${
-                            isAccommodation(poi.category)
-                              ? isHovered 
-                                ? 'border-purple-400 ring-3 ring-purple-400/40' 
-                                : 'border-purple-300'
-                              : isHovered 
-                                ? 'border-brand-secondary ring-3 ring-brand-secondary/30' 
-                                : 'border-white'
+                          className={`w-11 h-11 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
+                            isHovered 
+                              ? 'border-white ring-3 ring-white/50 shadow-xl' 
+                              : 'border-white shadow-lg'
                           }`}
                           style={{
-                            backgroundImage: poi.featuredImage ? `url(${poi.featuredImage})` : 'none',
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            backgroundColor: poi.featuredImage ? 'transparent' : (isAccommodation(poi.category) ? '#8B5CF6' : '#2E571C')
+                            backgroundColor: poi.markerColor,
+                            opacity: isHovered ? 1 : 0.9,
+                            transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                            transition: 'opacity 180ms ease, transform 180ms ease'
                           }}
                         >
-                          {/* Icon overlay at bottom-right - smaller */}
-                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-white rounded-full shadow-sm flex items-center justify-center">
-                            <TypeIcon className="w-2.5 h-2.5 text-brand-primary" />
-                          </div>
+                          {/* Centered type icon */}
+                          {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
                           
-                          {/* Number badge at top-left - smaller */}
-                          <div className={`absolute -top-1 -left-1 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow ${
-                            isAccommodation(poi.category) ? 'bg-purple-500' : 'bg-brand-primary'
+                          {/* Number badge at top-right */}
+                          <div className={`absolute -top-1 -right-1 w-5 h-5 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white ${
+                            isAccomm ? 'bg-purple-500' : 'bg-gray-900'
                           }`}>
                             {poi.id}
                           </div>
-                          
-                          {/* Fallback icon if no image - smaller */}
-                          {!poi.featuredImage && (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <TypeIcon className="w-4 h-4 text-white" />
-                            </div>
-                          )}
+                        </div>
+                        
+                        {/* POI name label below marker */}
+                        <div 
+                          className={`mt-1 px-2 py-0.5 bg-white rounded-md shadow-sm border transition-all duration-200 max-w-32 ${
+                            isHovered 
+                              ? 'border-gray-300 shadow-md' 
+                              : 'border-gray-200'
+                          }`}
+                          style={{ opacity: isHovered ? 1 : 0.9, transform: isHovered ? 'translateY(-2px)' : 'translateY(0)' }}
+                        >
+                          <p className="text-xs font-semibold text-gray-800 truncate text-center">
+                            {poi.name}
+                          </p>
                         </div>
                       </motion.div>
                     </OverlayView>
                   );
                 })}
 
-                {/* InfoWindow for hovered POI - Compact & Professional */}
+                {/* InfoWindow for hovered POI - Show lazy-loaded image */}
                 {hoveredPOI && (() => {
                   const poi = allPOIs.find(p => p.id === hoveredPOI);
                   if (!poi) return null;
                   const isAccomm = isAccommodation(poi.category);
+                  const cachedImage = hoveredImageCache[poi.id]; // Get cached image
                   
                   return (
                     <InfoWindow
@@ -898,22 +1095,22 @@ export default function PlanDetail() {
                       onCloseClick={() => setHoveredPOI(null)}
                       options={{ 
                         disableAutoPan: true, 
-                        pixelOffset: new window.google.maps.Size(0, -24),
-                        maxWidth: 220
+                        pixelOffset: new window.google.maps.Size(0, -60), // Adjusted for larger marker
+                        maxWidth: 240
                       }}
                     >
-                      <div className="p-1 min-w-40 max-w-50">
-                        {/* Featured image */}
-                        {poi.featuredImage && (
+                      <div className="p-2 min-w-44 max-w-56">
+                        {/* Lazy-loaded featured image */}
+                        {cachedImage && (
                           <img 
-                            src={poi.featuredImage}
-                            alt=""
-                            className="w-full h-16 object-cover rounded mb-1.5"
+                            src={cachedImage}
+                            alt={poi.name}
+                            className="w-full h-20 object-cover rounded mb-2 shadow-sm"
                           />
                         )}
                         
                         {/* POI Name */}
-                        <p className={`font-semibold text-sm leading-tight ${
+                        <p className={`font-semibold text-sm leading-tight mb-1 ${
                           isAccomm ? 'text-purple-700' : 'text-gray-900'
                         }`}>
                           {poi.id}. {poi.name}
@@ -1091,6 +1288,18 @@ export default function PlanDetail() {
           )}
         </aside>
       </div>
+
+      {!isPublicView && (
+        <RegeneratePlanModal
+          isOpen={showRegenerateModal}
+          onClose={() => setShowRegenerateModal(false)}
+          onSubmit={handleRegeneratePlan}
+          initialBudget={plan?.budget || plan?.estimated_total_cost}
+          initialPace={plan?.pace || plan?.trip_pace}
+          initialTypes={plan?.preferences?.types || plan?.preferred_types || []}
+          loading={regenerateLoading}
+        />
+      )}
     </div>
   );
 }

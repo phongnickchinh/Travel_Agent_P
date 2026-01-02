@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { Calendar, ChevronRight, MapPin, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import planAPI from '../../services/planApi';
+import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
 import ConfirmModal from './ConfirmModal';
 
 /**
@@ -15,6 +16,23 @@ export default function PlanCard({ plan, onDelete }) {
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cachedThumbnail, setCachedThumbnail] = useState(null);
+
+  // Preload and cache thumbnail on mount
+  useEffect(() => {
+    if (plan.thumbnail_url) {
+      // Check if already cached
+      const cached = getCachedImage(plan.thumbnail_url);
+      if (cached) {
+        setCachedThumbnail(cached);
+      } else {
+        // Preload and cache (TTL: 7 days for thumbnails)
+        preloadAndCacheImage(plan.thumbnail_url, 'thumbnail')
+          .then(() => setCachedThumbnail(plan.thumbnail_url))
+          .catch(() => setCachedThumbnail(plan.thumbnail_url)); // Fallback to original URL
+      }
+    }
+  }, [plan.thumbnail_url]);
 
   const handleClick = () => {
     navigate(`/dashboard/plan/${plan.plan_id}`);
@@ -74,13 +92,17 @@ export default function PlanCard({ plan, onDelete }) {
     >
       {/* Thumbnail Image - Aspect ratio 4:3 horizontal rectangle */}
       <div className="relative aspect-[4/2.3] bg-gray-200 dark:bg-gray-700 overflow-hidden">
-        {plan.thumbnail_url ? (
+        {cachedThumbnail ? (
           <img
-            src={plan.thumbnail_url}
+            src={cachedThumbnail}
             alt={plan.destination}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
+        ) : plan.thumbnail_url ? (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-gray-300 border-t-brand-primary rounded-full animate-spin" />
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500">
             <MapPin className="w-16 h-16" />

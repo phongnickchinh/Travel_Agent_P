@@ -113,7 +113,7 @@ class TravelPlannerChain:
             "preferences": {"interests": ["beach", "culture"]},
             "start_date": "2025-06-01"
         })
-        print(f"Tokens used: {result['usage'].tokens_total}")
+
     """
     
     def __init__(
@@ -273,6 +273,7 @@ class TravelPlannerChain:
             "day": 1,
             "date": "YYYY-MM-DD",
             "poi_ids": ["poi_id_1", "poi_id_2", "poi_id_3"],
+            "types": [["beach", "nature"], ["restaurant", "food"], ["cultural", "museum"]],
             "location": [latitude, longitude],
             "activities": [
             "Buổi sáng, tham quan \"Tên POI 1\" để khám phá và trải nghiệm (12-20 từ).",
@@ -293,6 +294,7 @@ class TravelPlannerChain:
             "day": 2,
             "date": "YYYY-MM-DD",
             "poi_ids": ["poi_id_4", "poi_id_5", "poi_id_6"],
+            "types": [["historical", "landmark"], ["cafe", "food"], ["shopping", "market"]],
             "location": [latitude, longitude],
             "activities": [
             "Sáng sớm ghé \"Tên POI 4\" để tham quan và chụp ảnh...",
@@ -559,6 +561,7 @@ class TravelPlannerChain:
                     day=day_data.get('day', len(itinerary) + 1),
                     date=day_data.get('date', self._calculate_date(start_date, len(itinerary))),
                     poi_ids=day_data.get('poi_ids', []),
+                    types=day_data.get('types', []),  # Extract types from LLM output
                     activities=day_data.get('activities', []),
                     notes=day_data.get('notes'),
                     location=location,

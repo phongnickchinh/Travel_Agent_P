@@ -99,6 +99,10 @@ class DayPlan(BaseModel):
     day: int = Field(..., ge=1, description="Day number (1-based)")
     date: str = Field(..., description="ISO date (YYYY-MM-DD)")
     poi_ids: List[str] = Field(default_factory=list, description="POI IDs in visit order")
+    types: Optional[List[List[str]]] = Field(
+        default_factory=list,
+        description="POI types array (one array per POI). e.g., [['beach', 'nature'], ['restaurant']]"
+    )
     activities: List[str] = Field(default_factory=list, description="LLM-generated activities")
     notes: Optional[str] = Field(None, description="Daily notes or tips")
     
@@ -411,5 +415,88 @@ class PlanUpdateRequest(BaseModel):
                     "interests": ["adventure", "nightlife"],
                     "budget": 8000000
                 }
+            }
+        }
+
+
+# ============================================
+# PATCH Request Models (Non-Core Updates)
+# ============================================
+
+class DayPlanPatch(BaseModel):
+    """
+    Partial update for a single day in itinerary.
+    Only non-core fields that don't require AI regeneration.
+    """
+    day: int = Field(..., ge=1, description="Day number to update (1-based)")
+    
+    # User-editable text fields
+    notes: Optional[str] = Field(None, max_length=2000, description="Daily notes or tips")
+    activities: Optional[List[str]] = Field(None, description="Activity descriptions (user can edit text)")
+    
+    # Time and cost adjustments
+    estimated_times: Optional[List[str]] = Field(
+        None, 
+        description="Visit times in format HH:MM-HH:MM (must match activities count)"
+    )
+    estimated_cost_vnd: Optional[int] = Field(None, ge=0, description="Daily cost estimate in VND")
+    
+    # Accommodation fields
+    accommodation_name: Optional[str] = Field(None, max_length=200)
+    accommodation_address: Optional[str] = Field(None, max_length=500)
+    check_in_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}$', description="Format: HH:MM")
+    check_out_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}$', description="Format: HH:MM")
+    
+    class Config:
+        extra = "forbid"  # Reject unknown fields
+
+
+class PlanPatchRequest(BaseModel):
+    """
+    Request payload for partial plan updates (non-regenerating).
+    
+    Use cases:
+    - Change plan title
+    - Update start_date (auto-recalculates end_date)
+    - Edit daily notes/activities text
+    - Adjust accommodation details
+    - Update estimated costs
+    
+    Does NOT trigger AI regeneration.
+    """
+    
+    # Plan-level editable fields
+    title: Optional[str] = Field(None, max_length=200, description="User-defined plan title")
+    thumbnail_url: Optional[str] = Field(None, description="Custom thumbnail URL")
+    start_date: Optional[str] = Field(
+        None, 
+        pattern=r'^\d{4}-\d{2}-\d{2}$', 
+        description="Trip start date (YYYY-MM-DD)"
+    )
+    estimated_total_cost: Optional[float] = Field(None, ge=0, description="User-adjusted total cost")
+    
+    # Nested itinerary updates (by day index)
+    itinerary_updates: Optional[List[DayPlanPatch]] = Field(
+        None, 
+        description="Partial updates for specific days"
+    )
+    
+    class Config:
+        extra = "forbid"  # Reject unknown fields
+        json_schema_extra = {
+            "example": {
+                "title": "Chuyến đi Đà Nẵng 2026",
+                "start_date": "2026-02-01",
+                "itinerary_updates": [
+                    {
+                        "day": 1, 
+                        "notes": "Nhớ mang kem chống nắng",
+                        "accommodation_name": "Khách sạn ABC"
+                    },
+                    {
+                        "day": 2, 
+                        "activities": ["Tập yoga buổi sáng", "Tham quan Bà Nà Hills"]
+                    }
+                ]
             }
         }

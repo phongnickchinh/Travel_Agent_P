@@ -23,7 +23,7 @@ import logging
 import time
 from typing import List, Dict, Any, Optional
 
-from ..model.mongo.plan import Plan, PlanStatusEnum, PlanCreateRequest, PlanUpdateRequest
+from ..model.mongo.plan import Plan, PlanStatusEnum, PlanCreateRequest, PlanUpdateRequest, PlanPatchRequest
 from ..model.mongo.place_detail import PlaceDetail
 from ..model.mongo.poi import POISearchRequest
 from ..repo.mongo.plan_repository import PlanRepository
@@ -1141,6 +1141,7 @@ class PlannerService:
             
             # --- Populate featured_images (one per POI) ---
             featured_images = []
+            types_list = []  # NEW: Populate types array for each POI
             for poi in day_pois:
                 images = poi.get('images', [])
                 featured_url = None
@@ -1158,8 +1159,13 @@ class PlannerService:
                         featured_url = image_urls[0]  # Use first image
                 
                 featured_images.append(featured_url)
+                
+                # Extract categories/types from POI
+                poi_types = poi.get('categories', [])
+                types_list.append(poi_types if poi_types else [])
             
             day_plan['featured_images'] = featured_images
+            day_plan['types'] = types_list  # Add types to day plan
             
             # --- Populate viewport ---
             if coords_list:
@@ -1779,4 +1785,128 @@ class PlannerService:
         if update_data:
             return self.plan_repo.update(plan_id, update_data)
         
+        return plan
+
+    def patch_plan(
+        self, 
+        plan_id: str, 
+        user_id: str, 
+        request: PlanPatchRequest
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Partial update for non-core plan fields.
+        Does NOT trigger regeneration or reset status.
+        
+        Editable fields:
+        - Plan level: title, thumbnail_url, start_date, estimated_total_cost
+        - Day level: notes, activities, estimated_times, estimated_cost_vnd, accommodation fields
+        
+        Args:
+            plan_id: Plan identifier
+            user_id: User ID for ownership check
+            request: PlanPatchRequest with partial updates
+            
+        Returns:
+            Updated plan dict if successful, None if not found/unauthorized
+        """
+        # Step 1: Ownership check
+        plan = self.plan_repo.get_by_id(plan_id)
+        if not plan or plan.get('user_id') != user_id:
+            logger.warning(f"[PATCH] Plan {plan_id} not found or user {user_id} not authorized")
+            return None
+        
+        update_data = {}
+        
+        # Step 2: Plan-level field updates
+        if request.title is not None:
+            update_data['title'] = request.title
+            logger.info(f"[PATCH] Updating title to: {request.title}")
+            
+        if request.thumbnail_url is not None:
+            update_data['thumbnail_url'] = request.thumbnail_url
+            
+        if request.estimated_total_cost is not None:
+            update_data['estimated_total_cost'] = request.estimated_total_cost
+            
+        if request.start_date is not None:
+            update_data['start_date'] = request.start_date
+            # Auto-calculate end_date based on num_days
+            try:
+                from datetime import datetime, timedelta
+                start = datetime.strptime(request.start_date, '%Y-%m-%d')
+                num_days = plan.get('num_days', 1)
+                end = start + timedelta(days=num_days - 1)
+                update_data['end_date'] = end.strftime('%Y-%m-%d')
+                
+                # Also update date field in each day of itinerary
+                itinerary = plan.get('itinerary', [])
+                if itinerary:
+                    for i, day_plan in enumerate(itinerary):
+                        day_date = start + timedelta(days=i)
+                        day_plan['date'] = day_date.strftime('%Y-%m-%d')
+                    update_data['itinerary'] = itinerary
+                    
+                logger.info(f"[PATCH] Updated start_date to {request.start_date}, end_date to {update_data['end_date']}")
+            except ValueError as e:
+                logger.warning(f"[PATCH] Invalid date format: {e}")
+        
+        # Step 3: Itinerary day-level updates
+        if request.itinerary_updates:
+            itinerary = plan.get('itinerary', [])
+            num_days = plan.get('num_days', 0)
+            
+            for day_patch in request.itinerary_updates:
+                day_idx = day_patch.day - 1  # Convert to 0-based index
+                
+                # Validate day bounds
+                if day_idx < 0 or day_idx >= len(itinerary):
+                    logger.warning(f"[PATCH] Day {day_patch.day} out of bounds (1-{num_days}), skipping")
+                    continue
+                
+                # Apply updates to the day
+                day_data = itinerary[day_idx]
+                
+                # Editable fields
+                if day_patch.notes is not None:
+                    day_data['notes'] = day_patch.notes
+                    
+                if day_patch.activities is not None:
+                    day_data['activities'] = day_patch.activities
+                    
+                if day_patch.estimated_times is not None:
+                    day_data['estimated_times'] = day_patch.estimated_times
+                    
+                if day_patch.estimated_cost_vnd is not None:
+                    day_data['estimated_cost_vnd'] = day_patch.estimated_cost_vnd
+                    
+                # Accommodation fields
+                if day_patch.accommodation_name is not None:
+                    day_data['accommodation_name'] = day_patch.accommodation_name
+                    
+                if day_patch.accommodation_address is not None:
+                    day_data['accommodation_address'] = day_patch.accommodation_address
+                    
+                if day_patch.check_in_time is not None:
+                    day_data['check_in_time'] = day_patch.check_in_time
+                    
+                if day_patch.check_out_time is not None:
+                    day_data['check_out_time'] = day_patch.check_out_time
+                
+                logger.info(f"[PATCH] Updated day {day_patch.day} with {len([f for f in [day_patch.notes, day_patch.activities, day_patch.estimated_times, day_patch.estimated_cost_vnd, day_patch.accommodation_name, day_patch.accommodation_address, day_patch.check_in_time, day_patch.check_out_time] if f is not None])} fields")
+            
+            update_data['itinerary'] = itinerary
+        
+        # Step 4: Apply updates if any
+        if update_data:
+            updated_plan = self.plan_repo.update(plan_id, update_data)
+            
+            # Enrich with POI locations for map display
+            if updated_plan and updated_plan.get('itinerary'):
+                updated_plan = self._enrich_itinerary_with_poi_locations(updated_plan)
+            
+            return updated_plan
+        
+        # No updates, return current plan (enriched)
+        if plan.get('itinerary'):
+            plan = self._enrich_itinerary_with_poi_locations(plan)
         return plan

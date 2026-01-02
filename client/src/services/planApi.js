@@ -20,7 +20,6 @@ class PlanAPI {
   async createPlan(planData) {
     try {
       const response = await api.post('/plan/', planData);
-      console.log('Create plan response:', response);
       
       // Backend returns data directly in response.data (not nested in data.data)
       return {
@@ -346,6 +345,127 @@ class PlanAPI {
         errorVi: error.response?.data?.message_vi,
       };
     }
+  }
+
+  // ========================================
+  // PATCH (NON-CORE UPDATES)
+  // ========================================
+
+  /**
+   * Partial update plan (non-core fields only)
+   * Does NOT trigger AI regeneration
+   * 
+   * @param {string} planId - Plan ID
+   * @param {Object} patchData - Partial update data
+   * @param {string} patchData.title - New title
+   * @param {string} patchData.thumbnail_url - New thumbnail
+   * @param {string} patchData.start_date - New start date (YYYY-MM-DD)
+   * @param {number} patchData.estimated_total_cost - User-adjusted cost
+   * @param {Array} patchData.itinerary_updates - Day-level updates
+   * @returns {Promise<Object>} - Updated plan
+   * 
+   * @example
+   * // Update title and day 1 notes
+   * await planAPI.patchPlan('plan_123', {
+   *   title: 'My Updated Trip',
+   *   itinerary_updates: [
+   *     { day: 1, notes: 'Remember sunscreen!' }
+   *   ]
+   * });
+   */
+  async patchPlan(planId, patchData) {
+    try {
+      const response = await api.patch(`/plan/${planId}`, patchData);
+      return {
+        success: true,
+        data: response.data?.data?.plan || response.data?.plan || response.data,
+        message: response.data?.resultMessage
+      };
+    } catch (error) {
+      console.error('[ERROR] Patch plan failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.resultMessage?.en || error.response?.data?.message || error.message,
+        errorVi: error.response?.data?.resultMessage?.vn || error.response?.data?.message_vi
+      };
+    }
+  }
+
+  /**
+   * Update plan title (convenience method)
+   * @param {string} planId
+   * @param {string} title
+   */
+  async updateTitle(planId, title) {
+    return this.patchPlan(planId, { title });
+  }
+
+  /**
+   * Update plan start date (convenience method)
+   * @param {string} planId
+   * @param {string} startDate - Format: YYYY-MM-DD
+   */
+  async updateStartDate(planId, startDate) {
+    return this.patchPlan(planId, { start_date: startDate });
+  }
+
+  /**
+   * Update day notes (convenience method)
+   * @param {string} planId
+   * @param {number} dayNumber - 1-based day number
+   * @param {string} notes
+   */
+  async updateDayNotes(planId, dayNumber, notes) {
+    return this.patchPlan(planId, {
+      itinerary_updates: [{ day: dayNumber, notes }]
+    });
+  }
+
+  /**
+   * Update day activities (convenience method)
+   * @param {string} planId
+   * @param {number} dayNumber - 1-based day number
+   * @param {Array<string>} activities
+   */
+  async updateDayActivities(planId, dayNumber, activities) {
+    return this.patchPlan(planId, {
+      itinerary_updates: [{ day: dayNumber, activities }]
+    });
+  }
+
+  /**
+   * Update day activities and time slots.
+   * @param {string} planId
+   * @param {number} dayNumber
+   * @param {Array} activities
+   * @param {Array<string>} estimatedTimes - Format: "HH:MM-HH:MM"
+   */
+  async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes) {
+    return this.patchPlan(planId, {
+      itinerary_updates: [{ day: dayNumber, activities, estimated_times: estimatedTimes }]
+    });
+  }
+
+  /**
+   * Update day accommodation (convenience method)
+   * @param {string} planId
+   * @param {number} dayNumber - 1-based day number
+   * @param {Object} accommodation
+   * @param {string} accommodation.name
+   * @param {string} accommodation.address
+   * @param {string} accommodation.checkIn - Format: HH:MM
+   * @param {string} accommodation.checkOut - Format: HH:MM
+   */
+  async updateDayAccommodation(planId, dayNumber, accommodation) {
+    return this.patchPlan(planId, {
+      itinerary_updates: [{
+        day: dayNumber,
+        accommodation_name: accommodation.name,
+        accommodation_address: accommodation.address,
+        check_in_time: accommodation.checkIn,
+        check_out_time: accommodation.checkOut
+      }]
+    });
   }
 }
 

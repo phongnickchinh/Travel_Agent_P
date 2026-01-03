@@ -30,6 +30,7 @@ from ..repo.mongo.plan_repository import PlanRepository
 from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
 from ..providers.places.google_places_provider import GooglePlacesProvider
+from ..providers.type_mapping import map_user_interests_to_categories
 from .lc_chain import TravelPlannerChain
 from .cost_usage_service import CostUsageService
 from ..utils.sanitization import sanitize_user_input
@@ -37,7 +38,6 @@ from ..utils.sanitization import sanitize_user_input
 logger = logging.getLogger(__name__)
 
 # Target POI count for itinerary generation
-TARGET_POI_COUNT = 30
 MIN_POI_COUNT = 10
 
 
@@ -209,6 +209,7 @@ class PlannerService:
         preferences = plan.get('preferences', {}) or {}
         interests = preferences.get('interests', [])
         target_poi_count = num_days*10
+        print(f"Target POI count: {target_poi_count}")
         
         # Get location from plan or resolve from place_id
         if destination_location:
@@ -241,6 +242,7 @@ class PlannerService:
         
         # Step 1: Search MongoDB first
         try:
+            print(interests)
             mongo_pois = self._search_pois_mongodb(location, interests, limit=target_poi_count)
             all_pois.extend(mongo_pois)
             logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs")
@@ -275,7 +277,7 @@ class PlannerService:
         logger.info(f"[ACCOMMODATION] Found {len(accommodation_pois)} accommodation options")
         
         # Build POI cache for post-processing (featured_image, viewport)
-        selected_pois = all_pois[:TARGET_POI_COUNT]
+        selected_pois = all_pois[:target_poi_count]
         poi_cache = {poi.get('poi_id', poi.get('place_id', '')): poi for poi in selected_pois}
         
         # Add accommodations to cache
@@ -286,7 +288,6 @@ class PlannerService:
         
         # Format for LLM prompt (tourist POIs + accommodations)
         poi_context = self._format_pois_for_prompt(selected_pois, num_days*10)
-        logger.info(f"{poi_context}")
         accommodation_context = self._format_accommodations_for_prompt(accommodation_pois)
         logger.info(f"[POI_FETCH] Formatted {len(selected_pois)} POIs + {len(accommodation_pois)} accommodations for prompt")
         
@@ -302,26 +303,40 @@ class PlannerService:
         """
         Search POIs from MongoDB cache.
         
+        EXCLUDES accommodation POIs (HOTEL category) - those are fetched separately.
+        
         Args:
             location: {'latitude': float, 'longitude': float}
-            interests: User interests for filtering
+            interests: User interests for filtering (frontend strings like 'photography', 'romantic')
             radius_km: Search radius in kilometers
             limit: Maximum results
             
         Returns:
-            List of POI dicts
+            List of POI dicts (excluding hotels/lodging)
         """
         try:
+            # Map frontend user interests to CategoryEnum values
+            # E.g., ['photography', 'romantic', 'beach'] -> [CategoryEnum.LANDMARK, CategoryEnum.RESTAURANT, CategoryEnum.BEACH]
+            mapped_categories = map_user_interests_to_categories(interests) if interests else None
+            
             search_request = POISearchRequest(
                 lat=location.get('latitude'),
                 lng=location.get('longitude'),
                 radius=radius_km,
-                categories=interests if interests else None,
+                categories=mapped_categories,
                 limit=limit
             )
             
             result = self.poi_repo.search(search_request)
-            return result.get('results', [])
+            all_results = result.get('results', [])
+            
+            # FILTER OUT accommodations - these should NOT be in tourist POI list
+            filtered_results = [
+                poi for poi in all_results
+                if not self._is_accommodation_poi(poi)
+            ]
+            
+            return filtered_results
             
         except Exception as e:
             logger.warning(f"[MongoDB] Search failed: {e}")
@@ -354,6 +369,7 @@ class PlannerService:
         
         # Map user-friendly interest IDs to valid Google Place Types (Table A)
         # Frontend uses these IDs, backend maps to Google types
+        # NOTE: 'hotel', 'lodging' are EXCLUDED - those are fetched separately for accommodations
         type_mapping = {
             # Direct Google types (no mapping needed)
             'tourist_attraction': 'tourist_attraction',
@@ -383,8 +399,7 @@ class PlannerService:
             'family': 'amusement_park',
             'photography': 'tourist_attraction',
             'romantic': 'restaurant',
-            'hotel': 'lodging',
-            'lodging': 'lodging',
+            # REMOVED: 'hotel': 'lodging', 'lodging': 'lodging' - Fetched separately!
         }
         
         # Convert interests to valid Google types
@@ -405,7 +420,12 @@ class PlannerService:
                     max_results=min(limit // len(valid_types) + 1, 20)
                 )
                 
-                results.extend(pois)
+                # Filter out any accommodation POIs that slip through
+                filtered_pois = [
+                    poi for poi in pois
+                    if not self._is_accommodation_poi(poi)
+                ]
+                results.extend(filtered_pois)
                 
                 if len(results) >= limit:
                     break
@@ -423,6 +443,46 @@ class PlannerService:
     # Accommodation types from Google Places API Table A
     ACCOMMODATION_TYPES = ['lodging', 'hotel', 'resort_hotel', 'extended_stay_hotel', 
                            'motel', 'hostel', 'bed_and_breakfast', 'guest_house']
+    
+    def _is_accommodation_poi(self, poi: Dict[str, Any]) -> bool:
+        """
+        Check if a POI is an accommodation (hotel, lodging, etc.).
+        
+        Accommodations should NOT be included in tourist activity POIs.
+        They are fetched separately for accommodation planning.
+        
+        Args:
+            poi: POI dict with 'categories' or 'types' field
+            
+        Returns:
+            True if POI is accommodation, False otherwise
+        """
+        # Check categories (internal CategoryEnum)
+        categories = poi.get('categories', [])
+        if isinstance(categories, list):
+            if 'HOTEL' in categories:
+                return True
+        elif isinstance(categories, str):
+            if categories == 'HOTEL':
+                return True
+        
+        # Check types (Google Places types or primary_type)
+        types = poi.get('types', [])
+        primary_type = poi.get('primary_type', '')
+        
+        # Combine all type fields
+        all_types = []
+        if isinstance(types, list):
+            all_types.extend(types)
+        if primary_type:
+            all_types.append(primary_type)
+        
+        # Check if any type is in ACCOMMODATION_TYPES
+        for t in all_types:
+            if t.lower() in [acc.lower() for acc in self.ACCOMMODATION_TYPES]:
+                return True
+        
+        return False
     
     def _fetch_accommodations_for_plan(
         self, 
@@ -1313,6 +1373,7 @@ class PlannerService:
             logger.info(f"[INFO] Starting LangChain generation for plan {plan_id}")
             
             # --- STEP 1: Fetch POIs and Accommodations from repositories/providers ---
+            # print(plan)
             poi_context, accommodation_context, poi_cache = self._fetch_pois_for_plan(plan, plan.get('num_days', 3))
             if poi_context:
                 logger.info(f"[INFO] Using real POI data for plan {plan_id} ({len(poi_cache)} POIs cached)")
@@ -1327,6 +1388,10 @@ class PlannerService:
                 accommodation_context = "No accommodations found. Please suggest generic accommodation options."
             
             # --- STEP 2: Run LangChain ---
+            logger.info(f"[INFO] view poi_context:\n{poi_context}\n")
+            #tôi muốn ghi ra file để đọc chi tiêt
+            with open("poi_context_debug.txt", "w", encoding="utf-8") as f:
+                f.write(poi_context)
             chain = TravelPlannerChain()
             
             # TravelPlannerChain uses run() method with input_data dict

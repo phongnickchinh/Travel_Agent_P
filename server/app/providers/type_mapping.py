@@ -124,3 +124,48 @@ def map_google_types_to_categories(types: Iterable[str], primary_type: Optional[
         categories = [CategoryEnum.OTHER]
 
     return categories
+
+
+# Frontend user interest -> CategoryEnum mapping
+# Maps interests from CreatePlan.jsx to internal CategoryEnum values
+USER_INTEREST_TO_CATEGORY = {
+    # Direct matches
+    "beach": CategoryEnum.BEACH,
+    "nature": CategoryEnum.NATURE,
+    "adventure": CategoryEnum.ADVENTURE,
+    "food": CategoryEnum.FOOD,
+    "shopping": CategoryEnum.SHOPPING,
+    "nightlife": CategoryEnum.NIGHTLIFE,
+    "family": CategoryEnum.FAMILY,
+    
+    # Mapped interests (no direct CategoryEnum match)
+    "culture": CategoryEnum.CULTURAL,      # culture -> cultural
+    "history": CategoryEnum.HISTORICAL,    # history -> historical
+    "photography": CategoryEnum.LANDMARK,  # photography -> landmark (scenic spots)
+    "romantic": CategoryEnum.RESTAURANT,   # romantic -> restaurant (romantic dining)
+    "relaxation": CategoryEnum.WELLNESS,   # relaxation -> wellness (spa, massage)
+}
+
+
+def map_user_interests_to_categories(interests: List[str]) -> List[CategoryEnum]:
+    """Map frontend user interests to internal CategoryEnum list with de-duplication.
+    
+    Args:
+        interests: List of user interest strings from frontend (e.g., ['photography', 'romantic', 'beach'])
+        
+    Returns:
+        List of CategoryEnum values (de-duplicated)
+        
+    Example:
+        >>> map_user_interests_to_categories(['photography', 'romantic', 'beach'])
+        [CategoryEnum.LANDMARK, CategoryEnum.RESTAURANT, CategoryEnum.BEACH]
+    """
+    categories: List[CategoryEnum] = []
+    for interest in interests or []:
+        mapped = USER_INTEREST_TO_CATEGORY.get(interest.lower())
+        if mapped and mapped not in categories:
+            categories.append(mapped)
+    
+    # If no valid mappings found, return empty list (not OTHER)
+    # This allows MongoDB search to find all categories
+    return categories

@@ -67,7 +67,7 @@ def create_llm_instance(provider: str = None, temperature: float = 0.7):
             api_key=Config.GROQ_API_KEY,
             model=Config.GROQ_MODEL or "llama-3.1-70b-versatile",
             temperature=temperature,
-            max_tokens=4096,  # Increased for full itinerary generation (4-7 days)
+            max_tokens=32768,  # Increased for full itinerary generation (supports up to 128k context on some models)
         )
         return llm, "groq", Config.GROQ_MODEL or "llama-3.1-70b-versatile"
     
@@ -167,91 +167,134 @@ class TravelPlannerChain:
         Return language: Vietnamese
 
         ========================
+        POI DATA FIELDS REFERENCE
+        ========================
+        Each POI in the context contains these fields - USE THEM to create better activity descriptions:
+        
+        - poi_id: Unique identifier (MUST use EXACTLY as provided)
+        - name: Display name of the place
+        - description.short / description.long: Key information about the place - INCORPORATE into activity text
+        - categories: Type of place (beach, restaurant, museum, temple, cafe, etc.)
+        - amenities: Special features array - USE to tailor activity suggestions:
+            • "good_for_children" → suggest family-friendly activities, mention kid-safe aspects
+            • "outdoor_seating" → recommend enjoying outdoor ambiance, sunset views
+            • "live_music" / "live_performances" → mention entertainment options
+            • "reservations_required" → advise booking in advance
+            • "wheelchair_accessible" → note accessibility for relevant travelers
+            • "serves_breakfast" / "serves_lunch" / "serves_dinner" → suggest appropriate meal times
+            • "free_wifi" → good for remote work or relaxation
+            • "parking_available" → convenient for drivers
+            • "takeout" / "delivery" → flexible dining options
+            • "pets_allowed" → pet-friendly mention
+        - opening_hours: Detailed schedule object:
+            • is_24_hours: true/false - if true, open all day
+            • weekday_descriptions: Array of daily schedules (e.g., "Monday: 8:00 AM – 10:00 PM")
+            • periods: Structured open/close times
+        - ratings: Quality indicator:
+            • average: Star rating (1.0-5.0)
+            • count: Number of reviews (higher = more verified)
+        - pricing: Cost information:
+            • level: "free", "budget", "moderate", "expensive", "luxury"
+            • entrance_fee: Specific admission cost if applicable
+            • average_cost_per_person: Typical spending estimate
+        - address.full_address: Location details for context
+        - contact: Phone, website, google_maps_uri for booking suggestions
+
+        ========================
         CRITICAL INSTRUCTIONS
         ========================
 
-        1. You MUST select POIs strictly from the provided list.
-        - Use "poi_id" EXACTLY as shown.
-        - Do NOT invent or modify any poi_id.
+        1. POI SELECTION RULES:
+        - Use "poi_id" EXACTLY as shown - do NOT invent or modify.
+        - Prioritize POIs with ratings.average ≥ 4.0 and higher ratings.count.
+        - Match POI categories to user's stated interests.
 
-        2. Each day MUST include:
-        - POIs per day based on user's pace preference:
-            • If pace = "relaxed": 2-3 POIs per day
-            • If pace = "moderate": 3-4 POIs per day  
-            • If pace = "intensive": 5-6 POIs per day
-            • If pace not specified: default to 3-4 POIs
-        - If a geographic cluster is too small, you MUST combine multiple clusters to meet the daily POI count.
-        - At least:
-            • 1 food-related activity for lunch
-            • 1 food-related activity for dinner
+        2. LODGING POI EXCLUSION (CRITICAL - DO NOT VIOLATE):
+        - POIs with category "HOTEL" or types containing "hotel", "lodging", "resort_hotel", "guest_house", "hostel", "motel", "bed_and_breakfast" are for ACCOMMODATION ONLY.
+        - NEVER include these POIs in "poi_ids" or "activities" list.
+        - Use these POIs ONLY for "accommodation_id" and "accommodation_name" fields.
+        - If a POI has both HOTEL category and other categories (e.g., "resort with beach"), still EXCLUDE it from activities.
+        - Examples of EXCLUDED types: hotel, lodging, resort_hotel, guest_house, hostel, motel, bed_and_breakfast.
+        - Rationale: Hotels/lodging are for staying overnight, NOT for sightseeing/visiting.
 
-        3. Time planning rules:
-        - Sort POIs in logical visiting order within the day.
-        - Respect opening hours.
-        - Avoid overlapping estimated visit times.
-        - Travel pace should feel realistic and comfortable.
+        3. DAILY POI COUNT & MEALS:
+        - Based on user's pace preference:
+            • pace = "relaxed": 2-3 POIs per day
+            • pace = "moderate": 3-4 POIs per day  
+            • pace = "intensive": 5-6 POIs per day
+            • Default: 3-4 POIs per day
+        - Each day MUST include at least 1 food-related POI for meals.
+        - Combine multiple clusters if needed to meet POI count.
 
-        4. Content quality rules:
-        - Activities MUST be descriptive and natural (minimum 25 words per activity).
+        4. OPENING HOURS COMPLIANCE (CRITICAL):
+        - Read each POI's "opening_hours" field carefully.
+        - If "is_24_hours" = true → POI is open all day.
+        - Otherwise, check "weekday_descriptions" or "periods" for specific hours.
+        - Schedule visits ONLY during open hours for the specific day of the week.
+        - For output "opening_hours": Convert to "HH:MM-HH:MM" format. If 24h, use "00:00-23:59".
+
+        5. AMENITIES-BASED ACTIVITY SUGGESTIONS (IMPORTANT - USE THIS DATA):
+        - Read each POI's "amenities" array and tailor activity descriptions:
+            • "good_for_children" → "Địa điểm này rất phù hợp cho gia đình có trẻ nhỏ..."
+            • "outdoor_seating" → "Thưởng thức không gian ngoài trời thoáng mát..."
+            • "live_music" → "Đừng bỏ lỡ các buổi biểu diễn nhạc sống vào buổi tối..."
+            • "reservations_required" → "Nên đặt bàn trước để đảm bảo chỗ ngồi..."
+            • "serves_breakfast" → "Điểm đến lý tưởng cho bữa sáng với..."
+            • "parking_available" → "Thuận tiện đỗ xe miễn phí..."
+        - Weave amenities naturally into activity narratives.
+
+        6. DESCRIPTION-BASED CONTENT (IMPORTANT - USE THIS DATA):
+        - Use "description.short" or "description.long" to enrich activity text.
+        - Extract unique features, history, specialties, or highlights from descriptions.
+        - Do NOT just copy descriptions - synthesize them into engaging activity suggestions.
+        - Example: If description mentions "famous for sunset views", include: "nổi tiếng với khung cảnh hoàng hôn tuyệt đẹp".
+
+        7. PRICING-AWARE RECOMMENDATIONS:
+        - Match POI "pricing.level" to user's budget:
+            • User budget "low" → Prioritize "free", "budget" POIs
+            • User budget "medium" → Mix "budget" and "moderate"
+            • User budget "high"/"luxury" → Include "expensive", "luxury" options
+        - If "entrance_fee" or "average_cost_per_person" is provided, factor into estimated_cost_vnd.
+        - Distribute costs evenly across days.
+
+        8. RATING-BASED PRIORITIZATION:
+        - Prefer POIs with ratings.average ≥ 4.0 for must-visit recommendations.
+        - POIs with ratings.count > 500 are verified popular destinations.
+        - Mention high ratings naturally: "được du khách đánh giá cao với X sao".
+
+        9. CONTENT QUALITY RULES:
+        - Activities MUST be descriptive (minimum 25 words per activity).
         - POI names in activities MUST be wrapped in double quotes ("") for map processing.
-            Example: Buổi sáng, ghé thăm "Bãi biển Mỹ Khê" để tắm biển và thư giãn.
-        - Notes MUST summarize the day’s theme, travel flow, and experience (minimum 25–40 words).
+        - Include specific suggestions based on amenities and description data.
+        - Notes MUST summarize the day's theme (25-40 words).
         - Avoid repetitive phrasing across days.
 
-        5. Balance rules:
-        - Mix categories such as nature, culture, food, sightseeing, relaxation.
-        - CRITICAL: Each day should focus on a specific geographic area.
+        10. GEOGRAPHIC CLUSTERING (HIGHEST PRIORITY):
+        - POIs are PRE-GROUPED into geographic clusters (~2km radius).
+        - Select POIs from the SAME CLUSTER for each day.
+        - Order POIs within a day to minimize travel distance.
+        - Only mix clusters if necessary for category balance.
 
-        6. GEOGRAPHIC CLUSTERING (CRITICAL - HIGHEST PRIORITY):
-        - POIs are PRE-GROUPED into geographic clusters (areas within ~2km radius).
-        - Each cluster is labeled with its center coordinates.
-        - YOU MUST select POIs from the SAME CLUSTER for the same day whenever possible.
-        - This minimizes travel distance and maximizes time at destinations.
-        - Only mix clusters if absolutely necessary for category balance.
-        - Order POIs within a day to minimize total travel distance between them.
+        11. TIME PLANNING:
+        - Sort POIs in logical visiting order.
+        - Estimate realistic visit durations (30min-2hrs based on POI type).
+        - Allow travel time between POIs.
+        - estimated_times format: "HH:MM-HH:MM" for each POI.
+        - You MUST provide "estimated_times" for EVERY POI. Do not omit.
 
-        7. REVIEW-BASED DESTINATION EVALUATION:
-        - Each POI includes review summaries with ratings (Reviews: ...).
-        - Prioritize POIs with:
-            • Higher ratings (★4.5+) for must-visit recommendations
-            • More reviews (indicates popular/verified destinations)
-            • Positive review sentiments
-        - Mention notable experiences from reviews in your activity descriptions when relevant.
-        - Avoid POIs with concerning negative reviews unless they offer unique value.
+        12. MISSING DATA HANDLING:
+        - Do NOT skip POIs due to missing fields.
+        - For missing opening_hours: estimate based on POI type (restaurants: 10:00-22:00, attractions: 08:00-17:00).
+        - For missing pricing: estimate based on category.
+        - Set truly unknown fields to empty string ("").
 
-        8. BUDGET/PRICING EVALUATION:
-        - Each POI shows price level (indicators).
-        - Match POI price levels to user's budget preference:
-            • If budget = "low": Prioritize Free, Budget-friendly options
-            • If budget = "medium": Mix of Budget-friendly and Moderate
-            • If budget = "high"/"luxury": Include Premium and Luxury options
-        - Distribute costs across days to avoid budget spikes.
-        - Note approximate daily costs in estimated_cost_vnd.
-
-        9. Data consistency:
-        - opening_hours and estimated_times MUST align with each POI.
-        - location should represent the central point of the day's activities.
-
-        10. Missing data handling (CRITICAL):
-        - Do NOT skip a POI just because some fields are missing.
-        - If any field is missing or unknown, still include the POI and set that field to null in the JSON output.
-        - Apply this to every field (activities, opening_hours, estimated_times, accommodation fields, etc.) so the array length and poi_ids remain intact.
-
-        11. ACCOMMODATION PLANNING (CRITICAL FOR MULTI-DAY TRIPS):
-        - Each day MUST include accommodation information (except last day if returning home).
-        - Select accommodation from the provided ACCOMMODATIONS list using accommodation_id.
-        - Accommodation selection rules:
-            • Day 1: Choose accommodation closest to first day's POI cluster.
-            • Subsequent days: Keep same accommodation if next day's cluster is within 10km.
-            • Change accommodation if next day's cluster is >10km away from current location.
-        - If accommodation changes:
-            • Set accommodation_changed = true
-            • Provide accommodation_change_reason (e.g., "Di chuyển đến khu vực mới gần các điểm tham quan ngày mai")
-        - Check-in/Check-out times:
-            • check_in_time: Usually "14:00" or "15:00" (Day 1 or when changing)
-            • check_out_time: Usually "11:00" or "12:00" (Last day or when leaving)
-            • Only include check_out_time on days when leaving the accommodation
-        - Match accommodation price level to user's budget preference.
+        13. ACCOMMODATION PLANNING:
+        - Each day MUST include accommodation (except last day if returning home).
+        - Use "accommodation_id" from the ACCOMMODATIONS list.
+        - Keep same accommodation for more day much if possible; do not change frequently; if changing, set accommodation_changed=true and provide reason.
+        - check_in_time: "14:00" or "15:00" (only on arrival days)
+        - check_out_time: "11:00" or "12:00" (only on departure days)
+        - Match accommodation price to user's budget.
 
         ========================
         OUTPUT FORMAT (STRICT)
@@ -267,7 +310,7 @@ class TravelPlannerChain:
         - Internally validate that the output is valid JSON
         - Ensure the array length equals {num_days}
 
-        JSON schema example:
+        JSON schema example (showing how to use POI data in activities):
         [
         {{
             "day": 1,
@@ -276,19 +319,19 @@ class TravelPlannerChain:
             "types": [["beach", "nature"], ["restaurant", "food"], ["cultural", "museum"]],
             "location": [latitude, longitude],
             "activities": [
-            "Buổi sáng, tham quan \"Tên POI 1\" để khám phá và trải nghiệm (12-20 từ).",
-            "Dùng bữa trưa tại \"Tên POI 2\" với các món đặc sản địa phương hấp dẫn.",
-            "Chiều tối, thư giãn tại \"Tên POI 3\" ngắm hoàng hôn tuyệt đẹp."
+            "Buổi sáng, khởi đầu hành trình tại \"Tên POI 1\" (★4.7, 1200+ đánh giá) - nơi được mô tả là [tận dụng description.short]. Địa điểm phù hợp cho gia đình có trẻ nhỏ [từ amenities: good_for_children]. Bạn có thể [hoạt động cụ thể dựa trên category].",
+            "Đến trưa, dừng chân tại \"Tên POI 2\" để thưởng thức ẩm thực địa phương. Nhà hàng có không gian ngoài trời thoáng mát [từ amenities: outdoor_seating], mức giá phải chăng [từ pricing.level]. Nên đặt bàn trước [từ amenities: reservations_required].",
+            "Chiều tối, ghé \"Tên POI 3\" để tìm hiểu về [từ description.long]. Nổi tiếng với [đặc điểm nổi bật]. Có chỗ đỗ xe thuận tiện [từ amenities: parking_available]."
             ],
-            "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
-            "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "opening_hours": ["00:00-23:59", "10:00-22:00", "08:00-17:00"],
+            "estimated_times": ["08:00-10:30", "11:30-13:00", "14:30-17:00"],
             "estimated_cost_vnd": 500000,
             "accommodation_id": "accommodation_poi_id",
             "accommodation_name": "Tên Khách Sạn",
             "accommodation_location": [latitude, longitude],
             "check_in_time": "14:00",
             "accommodation_changed": false,
-            "notes": "Tóm tắt trải nghiệm ngày 1 với dòng chảy tự nhiên và mạch lạc (25-40 từ)..."
+            "notes": "Ngày 1 tập trung khám phá khu vực [tên cluster] với các điểm đến nổi bật phù hợp cho [sở thích user]. Trải nghiệm đa dạng từ biển đến ẩm thực và văn hóa."
         }},
         {{
             "day": 2,
@@ -297,12 +340,12 @@ class TravelPlannerChain:
             "types": [["historical", "landmark"], ["cafe", "food"], ["shopping", "market"]],
             "location": [latitude, longitude],
             "activities": [
-            "Sáng sớm ghé \"Tên POI 4\" để tham quan và chụp ảnh...",
-            "Trưa thưởng thức ẩm thực tại \"Tên POI 5\"...",
-            "Chiều khám phá \"Tên POI 6\" với nhiều hoạt động thú vị..."
+            "Sáng sớm ghé \"Tên POI 4\" (★4.5) - [mô tả từ description]. Điểm đến lịch sử này [thông tin đặc biệt].",
+            "Trưa thưởng thức cà phê tại \"Tên POI 5\", nơi có [đặc điểm từ description]. Quán có wifi miễn phí [từ amenities], lý tưởng để nghỉ ngơi.",
+            "Chiều khám phá \"Tên POI 6\" với nhiều gian hàng thú vị. [Thông tin từ description]. Khu vực này đông vui vào buổi tối."
             ],
-            "opening_hours": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
-            "estimated_times": ["HH:MM-HH:MM", "HH:MM-HH:MM", "HH:MM-HH:MM"],
+            "opening_hours": ["07:00-17:00", "07:00-22:00", "06:00-21:00"],
+            "estimated_times": ["07:30-09:30", "10:00-11:30", "14:00-17:00"],
             "estimated_cost_vnd": 600000,
             "accommodation_id": "new_accommodation_poi_id",
             "accommodation_name": "Tên Khách Sạn Mới",
@@ -311,7 +354,7 @@ class TravelPlannerChain:
             "check_in_time": "15:00",
             "accommodation_changed": true,
             "accommodation_change_reason": "Di chuyển đến khu vực mới gần các điểm tham quan ngày mai",
-            "notes": "Tóm tắt ngày 2 với trải nghiệm phong phú và đa dạng..."
+            "notes": "Ngày 2 khám phá di tích lịch sử và ẩm thực địa phương tại khu vực [tên cluster]. Trải nghiệm văn hóa và mua sắm đa dạng."
         }}
         ]
 

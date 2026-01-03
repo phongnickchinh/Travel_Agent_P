@@ -25,7 +25,7 @@ from typing import List, Dict, Any, Optional
 
 from ..model.mongo.plan import Plan, PlanStatusEnum, PlanCreateRequest, PlanUpdateRequest, PlanPatchRequest
 from ..model.mongo.place_detail import PlaceDetail
-from ..model.mongo.poi import POISearchRequest
+from ..model.mongo.poi import POISearchRequest, CategoryEnum
 from ..repo.mongo.plan_repository import PlanRepository
 from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
@@ -578,7 +578,8 @@ class PlannerService:
                 lat=location.get('latitude'),
                 lng=location.get('longitude'),
                 radius=radius_km,
-                categories=self.ACCOMMODATION_TYPES,
+                # Use canonical CategoryEnum (avoid Google type strings causing validation errors)
+                categories=[CategoryEnum.HOTEL],
                 limit=limit
             )
             
@@ -761,46 +762,36 @@ class PlannerService:
         if not pois:
             return ""
         
-        # Cluster POIs by geographic proximity before formatting
-        # Use 5km radius to group POIs into larger "day-trip" capable areas
-        # Target: Create clusters equal to typical trip duration (inferred from POI count)
-        # Heuristic: ~3-4 POIs per day → target_clusters = max_pois / 4
-        target_clusters = max(3, min(7, max_pois // 4))  # Between 3-7 clusters
+        # Cluster POIs by geographic proximity
+        # Use 1.5km radius for tighter clustering (city center POIs ~1-2km apart)
+        target_clusters = max(3, min(7, max_pois // 4))
         clustered_pois = self._cluster_pois_by_location(
             pois[:max_pois], 
-            radius_km=5.0,
+            radius_km=1.5,
             target_clusters=target_clusters
         )
         
         lines = []
-        lines.append("=== AVAILABLE PLACES OF INTEREST (Grouped by Area) ===\n")
-        lines.append("NOTE: POIs are pre-grouped by geographic proximity (Clusters).")
-        lines.append("      - You can visit multiple clusters in one day if needed to fill the schedule.")
-        lines.append("      - If a cluster is small, combine it with nearby clusters.\n")
+        lines.append("=== POIs BY AREA ===")
         
         poi_index = 1
         for cluster_id, cluster_pois in clustered_pois.items():
             cluster_center = self._calculate_cluster_center(cluster_pois)
-            lines.append(f"\n--- CLUSTER {cluster_id}: Area around ({cluster_center[0]:.4f}, {cluster_center[1]:.4f}) ---")
-            lines.append(f"    Contains {len(cluster_pois)} POIs within ~2km radius\n")
+            lines.append(f"\n[CLUSTER {cluster_id}] ({cluster_center[0]:.4f}, {cluster_center[1]:.4f}) - {len(cluster_pois)} POIs")
             
             for poi in cluster_pois:
                 formatted_poi = self._format_single_poi(poi, poi_index)
                 lines.append(formatted_poi)
                 poi_index += 1
         
-        lines.append(f"\n=== TOTAL: {min(len(pois), max_pois)} places in {len(clustered_pois)} geographic clusters ===")
-        lines.append("\nIMPORTANT:")
-        lines.append("- Prioritize POIs from the same cluster on the same day")
-        lines.append("- Consider review ratings and sentiments when selecting must-visit places")
-        lines.append("- Match price levels to user's budget preference")
+        lines.append(f"\n=== TOTAL: {min(len(pois), max_pois)} POIs in {len(clustered_pois)} clusters ===")
         
         return "\n".join(lines)
-    
+
     def _format_single_poi(self, poi: Dict[str, Any], index: int) -> str:
         """
-        Format a single POI with reviews and pricing info.
-        Excludes google_data to reduce LLM input size.
+        Format a single POI with essential info for LLM decision making.
+        Includes: coordinates, categories, rating, pricing, hours, amenities, contact.
         
         Args:
             poi: POI dict
@@ -811,7 +802,7 @@ class PlannerService:
         """
         name = poi.get('name', 'Unknown')
         categories = poi.get('categories', [])
-        rating = poi.get('ratings', {}).get('average', 'N/A')
+        rating = poi.get('ratings', {}).get('average')
         review_count = poi.get('ratings', {}).get('count', 0)
         description = poi.get('description', {}).get('short', '')
         poi_id = poi.get('poi_id', f'poi_{index}')
@@ -824,38 +815,77 @@ class PlannerService:
         
         # Extract pricing info
         pricing = poi.get('pricing', {})
-        price_level = pricing.get('level', 'N/A')
+        price_level = pricing.get('level')
         avg_cost = pricing.get('average_cost_per_person', {})
-        price_display = self._format_price_level(price_level, avg_cost)
         
-        # Extract reviews from google_data (prioritize) or main ratings
+        # Extract opening hours
+        opening_hours = poi.get('opening_hours', {})
+        
+        # Extract amenities and contact
+        amenities = poi.get('amenities', [])
+        contact = poi.get('contact', {})
+        phone = contact.get('phone')
+        website = contact.get('website')
+        
+        # Extract reviews summary (compact)
         reviews_summary = self._extract_reviews_summary(poi)
         
-        # Build POI line
-        line = f"{index}. [{poi_id}] {name}"
+        # Build POI line - compact format
+        parts = [f"{index}. [{poi_id}] {name}"]
         
         if lat and lng:
-            line += f" @({lat:.5f}, {lng:.5f})"
+            parts.append(f"@({lat:.5f},{lng:.5f})")
         
         if categories:
-            line += f" ({', '.join(categories[:2])})"
+            parts.append(f"({','.join(categories[:3])})")
         
-        if rating and rating != 'N/A':
-            line += f" ★{rating}"
+        if rating:
+            rating_str = f"R:{rating}"
             if review_count:
-                line += f" ({review_count} reviews)"
+                rating_str += f"/{review_count}"
+            parts.append(rating_str)
         
-        # Add pricing
-        if price_display:
-            line += f" | {price_display}"
+        if price_level and price_level != 'N/A':
+            price_map = {'free': '$0', 'cheap': '$', 'moderate': '$$', 'expensive': '$$$', 'luxury': '$$$$'}
+            parts.append(price_map.get(price_level.lower(), price_level))
         
-        # Add description
+        line = " ".join(parts)
+        
+        # Add description if exists
         if description:
-            line += f"\n   📝 {description[:120]}"
+            line += f"\n   Desc: {description[:100]}"
         
-        # Add review highlights
+        # Add opening hours (compact: just today or first available)
+        if opening_hours:
+            # Format opening hours from dict
+            if opening_hours.get('is_24_hours'):
+                hours_str = "24/7"
+            elif opening_hours.get('open_now'):
+                hours_str = "Open now"
+            else:
+                descriptions = opening_hours.get('weekday_descriptions', [])
+                if descriptions:
+                    hours_str = ", ".join(descriptions)
+                else:
+                    hours_str = "Hours not specified"
+            line += f"\n   Hours: {hours_str}"
+        
+        # Add amenities if any (compact list)
+        if amenities:
+            line += f"\n   Amenities: {','.join(amenities[:5])}"
+        
+        # Add contact (phone preferred)
+        if phone:
+            line += f"\n   Tel: {phone}"
+            
+        # Add website if available
+        if website:
+            line += f"\n   Website: {website}"
+            
+        # Add review highlights (compact)
         if reviews_summary:
-            line += f"\n   💬 Reviews: {reviews_summary}"
+            line += f"\n   Reviews: {reviews_summary[:100]}"
+
         
         return line
     
@@ -902,21 +932,21 @@ class PlannerService:
     
     def _format_price_level(self, price_level: str, avg_cost: Optional[Dict] = None) -> str:
         """
-        Format price level to human-readable string.
+        Format price level to compact string for LLM.
         
         Args:
             price_level: Price level enum value
             avg_cost: Average cost dict
             
         Returns:
-            Formatted price string
+            Formatted price string (no icons)
         """
         level_map = {
-            'free': '💰 Free',
-            'inexpensive': '💰 Budget-friendly',
-            'moderate': '💰💰 Moderate',
-            'expensive': '💰💰💰 Premium',
-            'very_expensive': '💰💰💰💰 Luxury'
+            'free': 'Free',
+            'inexpensive': 'Budget',
+            'moderate': 'Moderate',
+            'expensive': 'Premium',
+            'very_expensive': 'Luxury'
         }
         
         display = level_map.get(str(price_level).lower(), '')
@@ -925,7 +955,7 @@ class PlannerService:
             amount = avg_cost.get('amount', 0)
             currency = avg_cost.get('currency', 'VND')
             if amount:
-                display += f" (~{amount:,.0f} {currency}/person)"
+                display += f" (~{amount:,.0f}{currency})"
         
         return display
     
@@ -1388,7 +1418,7 @@ class PlannerService:
                 accommodation_context = "No accommodations found. Please suggest generic accommodation options."
             
             # --- STEP 2: Run LangChain ---
-            logger.info(f"[INFO] view poi_context:\n{poi_context}\n")
+            # logger.info(f"[INFO] view poi_context:\n{poi_context}\n")
             #tôi muốn ghi ra file để đọc chi tiêt
             with open("poi_context_debug.txt", "w", encoding="utf-8") as f:
                 f.write(poi_context)

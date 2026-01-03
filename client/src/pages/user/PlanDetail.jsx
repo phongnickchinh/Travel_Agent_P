@@ -519,6 +519,7 @@ export default function PlanDetail() {
   const allPOIs = useMemo(() => {
     if (!plan?.itinerary) return [];
     const pois = [];
+    const accommodationPOIs = [];
     let globalIndex = 0;
     
     plan.itinerary.forEach((day, dayIndex) => {
@@ -558,9 +559,49 @@ export default function PlanDetail() {
         });
         poiIndexInDay++;
       });
+      
+      // Add accommodation POI if has valid location (GeoJSON format: [lng, lat])
+      if (day.accommodation_location && day.accommodation_location.length === 2) {
+        const [lat, lng] = day.accommodation_location;
+        
+        // Validate coordinates (must be numbers and in valid range)
+        if (typeof lat === 'number' && typeof lng === 'number' && 
+            lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          
+          const accId = day.accommodation_id || `acc_day${dayIndex + 1}`;
+          
+          // Check if already added (avoid duplicates across days)
+          if (!accommodationPOIs.some(acc => acc.accommodationId === accId)) {
+            globalIndex++;
+            accommodationPOIs.push({
+              id: globalIndex, // ✅ USE NUMERIC ID (same as activity POIs)
+              accommodationId: accId, // Store original ID separately
+              dayIndex: dayIndex + 1,
+              name: day.accommodation_name || 'Nơi lưu trú',
+              lat: lat,
+              lng: lng,
+              category: 'accommodation',
+              types: ['accommodation', 'hotel'],
+              markerColor: getMarkerColor('accommodation'), // Purple color
+              rating: null,
+              reviewCount: null,
+              imageUrl: null,
+              isAccommodation: true,
+              address: day.accommodation_address,
+              checkIn: day.check_in_time,
+              checkOut: day.check_out_time,
+              changed: day.accommodation_changed,
+              changeReason: day.accommodation_change_reason
+            });
+          }
+        }
+      }
     });
     
-    return pois;
+    // Merge activity POIs with accommodation POIs
+    console.log("onlypois: ", pois);
+    console.log("accommodationPOIs: ", accommodationPOIs);
+    return [...pois, ...accommodationPOIs];
   }, [plan, googleMapsApiKey]);
 
   // Build global activity index map (for matching activity cards with POIs)
@@ -617,11 +658,26 @@ export default function PlanDetail() {
         totalCost += day.estimated_cost_vnd;
       }
       if (day.accommodation_name && !accommodations.some(a => a.name === day.accommodation_name)) {
+        // Extract and validate location from GeoJSON format [lng, lat]
+        let location = null;
+        if (day.accommodation_location && day.accommodation_location.length === 2) {
+          const [lng, lat] = day.accommodation_location;
+          // Validate coordinates
+          if (typeof lat === 'number' && typeof lng === 'number' && 
+              lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            location = { latitude: lat, longitude: lng };
+          }
+        }
+        
         accommodations.push({
           name: day.accommodation_name,
           address: day.accommodation_address,
           checkIn: day.check_in_time,
-          checkOut: day.check_out_time
+          checkOut: day.check_out_time,
+          location: location,
+          accommodation_id: day.accommodation_id,
+          changed: day.accommodation_changed,
+          changeReason: day.accommodation_change_reason
         });
       }
     });
@@ -1204,7 +1260,27 @@ export default function PlanDetail() {
                                 {tripSummary.accommodations.length > 0 ? (
                                   <div className="space-y-1">
                                     {tripSummary.accommodations.slice(0, 2).map((acc, i) => (
-                                      <p key={i} className="text-sm font-medium text-gray-800 truncate" title={acc.name}>
+                                      <p 
+                                        key={i} 
+                                        className="text-sm font-medium text-gray-800 truncate cursor-pointer hover:text-brand-primary transition-colors" 
+                                        title={acc.name}
+                                        onMouseEnter={() => {
+                                          console.log("acc: ", acc);
+                                          const accPOI = allPOIs.find((poi) => {
+                                            console.log("poi: ", poi);
+                                            if (!isAccommodation(poi.category)) return false;
+                                            
+                                            const matchId = acc.accommodation_id && poi.accommodationId === acc.accommodation_id;
+                                            const matchLocation = acc.location && Math.abs(poi.lat - acc.location[0]) < 1e-6 && Math.abs(poi.lng - acc.location[1]) < 1e-6;
+                                            const matchName = poi.name === acc.name;
+                                            return matchId || matchLocation || matchName;
+                                          });
+                                          if (accPOI) {
+                                            handleActivityHover(accPOI.id);
+                                          }
+                                        }}
+                                        onMouseLeave={handleActivityLeave}
+                                      >
                                         🏨 {acc.name}
                                       </p>
                                     ))}

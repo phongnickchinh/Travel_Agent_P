@@ -515,11 +515,10 @@ export default function PlanDetail() {
     };
   };
 
-  // Extract ALL POIs with coordinates from entire itinerary (continuous numbering)
-  const allPOIs = useMemo(() => {
+  // Extract activity POIs with coordinates from entire itinerary (continuous numbering)
+  const activityPOIs = useMemo(() => {
     if (!plan?.itinerary) return [];
     const pois = [];
-    const accommodationPOIs = [];
     let globalIndex = 0;
     
     plan.itinerary.forEach((day, dayIndex) => {
@@ -559,7 +558,17 @@ export default function PlanDetail() {
         });
         poiIndexInDay++;
       });
-      
+    });
+    
+    return pois;
+  }, [plan, googleMapsApiKey]);
+
+  // Extract accommodation POIs separately (no numbering, separate array)
+  const accommodationPOIs = useMemo(() => {
+    if (!plan?.itinerary) return [];
+    const accommodations = [];
+    
+    plan.itinerary.forEach((day, dayIndex) => {
       // Add accommodation POI if has valid location (GeoJSON format: [lng, lat])
       if (day.accommodation_location && day.accommodation_location.length === 2) {
         const [lat, lng] = day.accommodation_location;
@@ -571,11 +580,10 @@ export default function PlanDetail() {
           const accId = day.accommodation_id || `acc_day${dayIndex + 1}`;
           
           // Check if already added (avoid duplicates across days)
-          if (!accommodationPOIs.some(acc => acc.accommodationId === accId)) {
-            globalIndex++;
-            accommodationPOIs.push({
-              id: globalIndex, // ✅ USE NUMERIC ID (same as activity POIs)
-              accommodationId: accId, // Store original ID separately
+          if (!accommodations.some(acc => acc.accommodationId === accId)) {
+            accommodations.push({
+              id: accId, // Use accommodation_id as unique identifier (not a number)
+              accommodationId: accId,
               dayIndex: dayIndex + 1,
               name: day.accommodation_name || 'Nơi lưu trú',
               lat: lat,
@@ -598,11 +606,8 @@ export default function PlanDetail() {
       }
     });
     
-    // Merge activity POIs with accommodation POIs
-    console.log("onlypois: ", pois);
-    console.log("accommodationPOIs: ", accommodationPOIs);
-    return [...pois, ...accommodationPOIs];
-  }, [plan, googleMapsApiKey]);
+    return accommodations;
+  }, [plan]);
 
   // Build global activity index map (for matching activity cards with POIs)
   const activityIndexMap = useMemo(() => {
@@ -622,10 +627,10 @@ export default function PlanDetail() {
     return map;
   }, [plan]);
 
-  // Map center (first POI with coords or destination location)
+  // Map center (first activity POI with coords or destination location)
   const mapCenter = useMemo(() => {
-    if (allPOIs.length > 0) {
-      return { lat: allPOIs[0].lat, lng: allPOIs[0].lng };
+    if (activityPOIs.length > 0) {
+      return { lat: activityPOIs[0].lat, lng: activityPOIs[0].lng };
     }
     
     const location = plan?.destination_location;
@@ -634,7 +639,7 @@ export default function PlanDetail() {
     }
     
     return { lat: 16.0544, lng: 108.2428 }; // Default: Da Nang
-  }, [allPOIs, plan]);
+  }, [activityPOIs, plan]);
 
   const destinationLocation = useMemo(() => {
     const loc = plan?.destination_location;
@@ -687,10 +692,10 @@ export default function PlanDetail() {
       accommodations,
       preferences: plan.preferences || {},
       numDays,
-      numPOIs: allPOIs.length,
+      numPOIs: activityPOIs.length, // Count only activity POIs (not accommodations)
       playfulBudgetTotal: perDayBudget * numDays
     };
-  }, [plan, allPOIs]);
+  }, [plan, activityPOIs]);
 
   // Format VND currency
   const formatVND = (amount) => {
@@ -710,20 +715,21 @@ export default function PlanDetail() {
   const onMapLoad = useCallback((mapInstance) => {
     mapRef.current = mapInstance;
     
-    // Fit bounds to show all POIs initially
-    if (allPOIs.length > 1) {
+    // Fit bounds to show all POIs (both activities and accommodations) initially
+    const allPOIsForBounds = [...activityPOIs, ...accommodationPOIs];
+    if (allPOIsForBounds.length > 1) {
       const bounds = new window.google.maps.LatLngBounds();
-      allPOIs.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
+      allPOIsForBounds.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
       mapInstance.fitBounds(bounds, { padding: 50 });
       window.google.maps.event.addListenerOnce(mapInstance, 'bounds_changed', () => clampMapZoom(mapInstance));
     } else {
       clampMapZoom(mapInstance);
     }
-  }, [allPOIs, clampMapZoom]);
+  }, [activityPOIs, accommodationPOIs, clampMapZoom]);
 
-  // Handle activity hover - focus on map
+  // Handle activity hover - focus on map (search in both activity and accommodation POIs)
   const handleActivityHover = (globalIndex) => {
-    const poi = allPOIs.find(p => p.id === globalIndex);
+    const poi = activityPOIs.find(p => p.id === globalIndex) || accommodationPOIs.find(p => p.id === globalIndex);
     const map = mapRef.current;
     if (!poi || !map) return;
 
@@ -1026,10 +1032,10 @@ export default function PlanDetail() {
                 onLoad={onMapLoad}
               >
                 {/* Custom Markers for ALL POIs using OverlayView */}
-                {allPOIs.map((poi) => {
+                {/* Render activity POI markers (with numbers 1, 2, 3...) */}
+                {activityPOIs.map((poi) => {
                   const TypeIconComponent = getTypeIcon(poi.category);
                   const isHovered = hoveredPOI === poi.id;
-                  const isAccomm = isAccommodation(poi.category);
                   
                   // Handle marker hover for lazy loading images
                   const handleMarkerEnter = async () => {
@@ -1091,10 +1097,8 @@ export default function PlanDetail() {
                           {/* Centered type icon */}
                           {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
                           
-                          {/* Number badge at top-right */}
-                          <div className={`absolute -top-1 -right-1 w-5 h-5 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white ${
-                            isAccomm ? 'bg-purple-500' : 'bg-gray-900'
-                          }`}>
+                          {/* Number badge at top-right (activity POIs have numbers) */}
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white">
                             {poi.id}
                           </div>
                         </div>
@@ -1117,9 +1121,79 @@ export default function PlanDetail() {
                   );
                 })}
 
-                {/* InfoWindow for hovered POI - Show lazy-loaded image */}
+                {/* Render accommodation POI markers (with hotel emoji 🏨, no numbers) */}
+                {accommodationPOIs.map((poi) => {
+                  const TypeIconComponent = getTypeIcon(poi.category);
+                  const isHovered = hoveredPOI === poi.id;
+                  
+                  return (
+                    <OverlayView
+                      key={poi.id}
+                      position={{ lat: poi.lat, lng: poi.lng }}
+                      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0.85 }}
+                        animate={{ 
+                          scale: isHovered ? 1.08 : 0.95, 
+                          opacity: isHovered ? 1 : 0.9,
+                          zIndex: isHovered ? 100 : 1
+                        }}
+                        transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                        className="relative cursor-pointer flex flex-col items-center"
+                        onMouseEnter={() => setHoveredPOI(poi.id)}
+                        onMouseLeave={() => setHoveredPOI(null)}
+                        style={{ 
+                          position: 'relative', 
+                          zIndex: isHovered ? 100 : 1,
+                          transform: 'translate(-50%, -100%)' // Center marker on coordinates
+                        }}
+                      >
+                        {/* Marker container - Icon-first design */}
+                        <div 
+                          className={`w-11 h-11 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
+                            isHovered 
+                              ? 'border-white ring-3 ring-white/50 shadow-xl' 
+                              : 'border-white shadow-lg'
+                          }`}
+                          style={{
+                            backgroundColor: poi.markerColor,
+                            opacity: isHovered ? 1 : 0.9,
+                            transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                            transition: 'opacity 180ms ease, transform 180ms ease'
+                          }}
+                        >
+                          {/* Centered type icon */}
+                          {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
+                          
+                          {/* Hotel emoji badge at top-right (accommodations show 🏨 instead of numbers) */}
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white">
+                            🏨
+                          </div>
+                        </div>
+                        
+                        {/* POI name label below marker */}
+                        <div 
+                          className={`mt-1 px-2 py-0.5 bg-white rounded-md shadow-sm border transition-all duration-200 max-w-32 ${
+                            isHovered 
+                              ? 'border-gray-300 shadow-md' 
+                              : 'border-gray-200'
+                          }`}
+                          style={{ opacity: isHovered ? 1 : 0.9, transform: isHovered ? 'translateY(-2px)' : 'translateY(0)' }}
+                        >
+                          <p className="text-xs font-semibold text-gray-800 truncate text-center">
+                            {poi.name}
+                          </p>
+                        </div>
+                      </motion.div>
+                    </OverlayView>
+                  );
+                })}
+
+
+                {/* InfoWindow for hovered POI - Show lazy-loaded image (search in both arrays) */}
                 {hoveredPOI && (() => {
-                  const poi = allPOIs.find(p => p.id === hoveredPOI);
+                  const poi = activityPOIs.find(p => p.id === hoveredPOI) || accommodationPOIs.find(p => p.id === hoveredPOI);
                   if (!poi) return null;
                   const isAccomm = isAccommodation(poi.category);
                   const cachedImage = hoveredImageCache[poi.id]; // Get cached image
@@ -1266,12 +1340,11 @@ export default function PlanDetail() {
                                         title={acc.name}
                                         onMouseEnter={() => {
                                           console.log("acc: ", acc);
-                                          const accPOI = allPOIs.find((poi) => {
+                                          const accPOI = accommodationPOIs.find((poi) => {
                                             console.log("poi: ", poi);
-                                            if (!isAccommodation(poi.category)) return false;
                                             
                                             const matchId = acc.accommodation_id && poi.accommodationId === acc.accommodation_id;
-                                            const matchLocation = acc.location && Math.abs(poi.lat - acc.location[0]) < 1e-6 && Math.abs(poi.lng - acc.location[1]) < 1e-6;
+                                            const matchLocation = acc.location && Math.abs(poi.lat - acc.location[1]) < 1e-6 && Math.abs(poi.lng - acc.location[0]) < 1e-6; // GeoJSON: [lng, lat]
                                             const matchName = poi.name === acc.name;
                                             return matchId || matchLocation || matchName;
                                           });

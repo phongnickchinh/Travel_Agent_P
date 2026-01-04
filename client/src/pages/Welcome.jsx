@@ -1,14 +1,22 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, Mail, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/auth/AuthModal';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Welcome() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const currentPath = location.pathname.toLowerCase();
   const mode =

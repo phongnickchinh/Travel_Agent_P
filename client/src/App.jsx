@@ -7,6 +7,8 @@ import Dashboard from './pages/user/Dashboard';
 import PlanDetail from './pages/user/PlanDetail';
 import Trash from './pages/user/Trash';
 import Welcome from './pages/Welcome';
+import ProfileSettings from './pages/user/ProfileSettings';
+import ChangePassword from './pages/user/ChangePassword';
 
 // Search Autocomplete Demo Pages (Week 3 Deliverable)
 import SearchDemo from './components/SearchDemo';
@@ -36,6 +38,8 @@ function App() {
         <Route path="/dashboard/plan/:planId" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
         <Route path="/dashboard/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
 
+        <Route path="/dashboard/settings/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
+        <Route path="/dashboard/settings/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         {/* Legacy routes */}
         <Route path="/dashboard/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/search-demo" element={<ProtectedRoute><SearchDemo /></ProtectedRoute>} />

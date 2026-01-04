@@ -8,14 +8,19 @@ import { useAuth } from '../../contexts/AuthContext';
  * DashboardHeader Component
  * 
  * Top navigation bar with New Plan button and user info
+ * 
+ * @param {Function} onNewPlan - Callback to open create plan modal
+ * @param {Function} onMenuToggle - Callback to toggle mobile sidebar
+ * @param {Function} onOpenProfile - Callback to open profile settings modal
+ * @param {Function} onOpenPassword - Callback to open change password modal
  */
-export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
+export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile, onOpenPassword }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
 
   // Get user avatar - prefer profile_picture (Google), fallback to avatar_url
-  const avatarUrl = user?.profile_picture || user?.avatar_url;
+  const avatarUrl = user?.avatar_url || user?.profile_picture;
   // Get user display name - prefer name, fallback to display_name or email
   const displayName = user?.name || user?.display_name || user?.email?.split('@')[0] || 'User';
 
@@ -29,8 +34,8 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle }) {
   };
 
   const menuItems = [
-    { label: 'Chỉnh sửa hồ sơ', icon: User, action: () => navigate('/dashboard/profile') },
-    { label: 'Đổi mật khẩu', icon: Settings, action: () => navigate('/dashboard/change-password') },
+    { label: 'Chỉnh sửa hồ sơ', icon: User, action: () => onOpenProfile?.() },
+    { label: 'Đổi mật khẩu', icon: Settings, action: () => onOpenPassword?.() },
     { label: 'Đăng xuất', icon: LogOut, action: handleLogout, danger: true },
   ];
 

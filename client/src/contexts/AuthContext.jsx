@@ -104,6 +104,18 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   };
 
+  // Refresh user data (for profile updates)
+  const refreshUser = async () => {
+    try {
+      const userInfo = await getProfileApi();
+      setUser(userInfo);
+      return { success: true, user: userInfo };
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   // Đăng xuất
   const logout = async () => {
     // Optimistic logout: Clear state immediately
@@ -138,7 +150,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, googleLogin, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, googleLogin, logout, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

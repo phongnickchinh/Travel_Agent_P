@@ -2,15 +2,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ChangePasswordModal from '../../components/modals/ChangePasswordModal';
+import ProfileSettingsModal from '../../components/modals/ProfileSettingsModal';
 import DashboardHeader from '../../components/ui/DashboardHeader';
 import DashboardSidebar from '../../components/ui/DashboardSidebar';
 import PlanCard from '../../components/ui/PlanCard';
 import planAPI from '../../services/planApi';
+import CreatePlan from './CreatePlan';
 
 /**
  * Dashboard Component
  * 
- * Main dashboard view with plan grid and pagination
+ * Main dashboard view with plan grid, pagination and modal management
  */
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -22,6 +25,11 @@ export default function Dashboard() {
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
 
   const PLANS_PER_PAGE = 8;
 
@@ -105,9 +113,18 @@ export default function Dashboard() {
     fetchRecentPlans();
   };
 
-  // Navigate to create plan
+  // Open create plan modal
   const handleNewPlan = () => {
-    navigate('/dashboard/create-plan');
+    setShowCreatePlanModal(true);
+  };
+
+  // Handle successful plan creation
+  const handlePlanCreated = () => {
+    setShowCreatePlanModal(false);
+    // Refresh plan lists
+    fetchPlans(1);
+    fetchRecentPlans();
+    setPage(1);
   };
 
   // Navigate to plan detail
@@ -129,6 +146,8 @@ export default function Dashboard() {
         <DashboardHeader
           onNewPlan={handleNewPlan}
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+          onOpenProfile={() => setShowProfileModal(true)}
+          onOpenPassword={() => setShowPasswordModal(true)}
         />
 
         {/* Content Area */}
@@ -220,6 +239,26 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+      
+      {/* Modals */}
+      <ProfileSettingsModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+      
+      <ChangePasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
+      
+      {/* Create Plan Modal */}
+      {showCreatePlanModal && (
+        <CreatePlan
+          isModal={true}
+          onClose={() => setShowCreatePlanModal(false)}
+          onSuccess={handlePlanCreated}
+        />
+      )}
     </div>
   );
 }

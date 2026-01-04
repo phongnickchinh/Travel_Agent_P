@@ -7,6 +7,7 @@
  * - Start date calendar picker
  * - Origin placeholder (future: Google Maps embed)
  * - Preferences: Multi-choice interests + Budget slider
+ * - Supports both modal mode (isModal=true) and route mode
  * 
  * Author: Travel Agent P Team
  */
@@ -74,7 +75,14 @@ const createEmptyForm = () => ({
   },
 });
 
-export default function CreatePlan() {
+/**
+ * CreatePlan Component
+ * 
+ * @param {boolean} isModal - When true, renders as modal overlay without route navigation
+ * @param {Function} onClose - Callback to close modal (required if isModal=true)
+ * @param {Function} onSuccess - Callback after successful creation (optional, for modal mode)
+ */
+export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -400,10 +408,25 @@ export default function CreatePlan() {
 
       if (result.success) {
         setSuccess('Đã tạo kế hoạch! Đang xử lý trong nền...');
-        // Navigate to plan detail or list after short delay
-        setTimeout(() => {
-          navigate(`/dashboard/${user?.username}?plan=${result.data.plan_id}`);
-        }, 1500);
+        
+        // Clear saved draft
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
+        }
+        
+        // Handle modal vs route mode
+        if (isModal) {
+          // In modal mode: call success callback and close
+          setTimeout(() => {
+            onSuccess?.(result.data);
+            onClose?.();
+          }, 1000);
+        } else {
+          // In route mode: navigate to plan detail
+          setTimeout(() => {
+            navigate(`/dashboard/${user?.username}?plan=${result.data.plan_id}`);
+          }, 1500);
+        }
       } else {
         setError(result.errorVi || result.error || 'Không thể tạo kế hoạch');
       }
@@ -431,8 +454,17 @@ export default function CreatePlan() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Handle close action (modal or route)
+  const handleClose = useCallback(() => {
+    if (isModal) {
+      onClose?.();
+    } else {
+      navigate(-1);
+    }
+  }, [isModal, onClose, navigate]);
+
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 md:p-6 dark:bg-black/60" onClick={() => navigate(-1)}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4 md:p-6 dark:bg-black/60" onClick={handleClose}>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -459,7 +491,7 @@ export default function CreatePlan() {
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate(-1)}
+              onClick={handleClose}
               className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-primary/30 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -468,7 +500,7 @@ export default function CreatePlan() {
             <motion.button
               whileHover={{ rotate: 90 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate(-1)}
+              onClick={handleClose}
               aria-label="Đóng"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-gray-700 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
             >

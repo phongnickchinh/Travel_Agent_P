@@ -19,8 +19,8 @@ const categoryIconMap = {
   landmark: 'Landmark',
   temple: 'Church',
   church: 'Church',
-  hotel: 'Bed',
-  accommodation: 'Bed',
+  // hotel: 'Bed',
+  // accommodation: 'Bed',
   spa: 'Sparkles',
   wellness: 'Sparkles',
 };
@@ -101,8 +101,8 @@ const ActivityItem = ({
       ref={setNodeRef}
       {...attributes}
       style={style}
-      className={`group border-l-3 pl-4 pr-2 py-3 rounded-r-lg bg-white shadow-sm transition-all ${
-        isDragging ? 'ring-2 ring-brand-primary/40 bg-brand-muted/50' : 'hover:bg-gray-50'
+      className={`group border-l-3 pl-4 pr-2 py-3 rounded-r-lg bg-white dark:bg-gray-800 shadow-sm dark:shadow-gray-900/20 transition-all ${
+        isDragging ? 'ring-2 ring-brand-primary/40 bg-brand-muted/50 dark:bg-brand-primary/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
       } ${isAccommodation ? 'border-l-purple-400' : 'border-l-brand-primary'}`}
     >
       <div className="flex items-start gap-3">
@@ -110,7 +110,7 @@ const ActivityItem = ({
           <div
             {...dragHandle}
             {...listeners}
-            className={`mt-1 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} text-gray-400 hover:text-gray-600`}
+            className={`mt-1 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300`}
             aria-label="Kéo để sắp xếp"
           >
             <GripVertical className="w-4 h-4" />
@@ -118,17 +118,15 @@ const ActivityItem = ({
         )}
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full ${
-              isAccommodation ? 'bg-purple-500 text-white' : 'bg-brand-primary text-white'
-            }`}>
+            <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full bg-brand-primary text-white">
               {globalIndex}
             </span>
-            {getTypeIcon(category)}
+            <span className="text-gray-500 dark:text-gray-400">{getTypeIcon(category)}</span>
             <span
               className={`font-semibold cursor-pointer transition-all duration-100 ${
                 isNameHovered 
-                  ? (isAccommodation ? 'text-purple-600' : 'text-brand-primary underline')
-                  : (isAccommodation ? 'text-purple-700' : 'text-gray-900')
+                  ? ('text-brand-primary dark:text-brand-secondary underline')
+                  : ('text-gray-900 dark:text-white')
               }`}
               
               onMouseEnter={() => {
@@ -142,24 +140,24 @@ const ActivityItem = ({
             >
               {poiName}
             </span>
-            {localTime && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{localTime}</span>}
+            {localTime && <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{localTime}</span>}
           </div>
 
           {isEditing ? (
             <div className="space-y-2">
-              <label className="block text-xs text-gray-500">Khung giờ (HH:MM-HH:MM)</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400">Khung giờ (HH:MM-HH:MM)</label>
               <input
                 value={localTime}
                 onChange={(e) => setLocalTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 placeholder="09:00-10:30"
                 disabled={disabled}
               />
-              <label className="block text-xs text-gray-500">Mô tả</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400">Mô tả</label>
               <textarea
                 value={description}
                 onChange={(e) => setLocalActivity((prev) => ({ ...prev, description: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 rows={2}
                 disabled={disabled}
               />
@@ -177,7 +175,7 @@ const ActivityItem = ({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsEditing(false)}
-                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm"
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm"
                 >
                   <X className="w-4 h-4" /> Hủy
                 </motion.button>
@@ -185,30 +183,30 @@ const ActivityItem = ({
             </div>
           ) : (
             <div className="space-y-1">
-              {description && <p className="text-sm text-gray-600">{description}</p>}
+              {description && <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>}
               {localActivity.address && (
-                <p className="text-xs text-gray-400">📍 {localActivity.address}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">📍 {localActivity.address}</p>
               )}
             </div>
           )}
 
           {!disabled && !isEditing && (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <button
                 onClick={() => setIsEditing(true)}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <Pencil className="w-3 h-3" /> Chỉnh sửa
               </button>
-              <span className="text-gray-300">•</span>
+              <span className="text-gray-300 dark:text-gray-600">•</span>
               <button
                 onClick={onDelete}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-red-50 text-red-600"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
               >
                 <Trash2 className="w-3 h-3" /> Xóa
               </button>
               {localTime === '' && (
-                <span className="inline-flex items-center gap-1 text-amber-600">
+                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
                   <Clock className="w-3 h-3" /> Thêm khung giờ để sắp xếp tối ưu
                 </span>
               )}

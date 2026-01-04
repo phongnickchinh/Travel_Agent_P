@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Church,
+  Clock,
   Coffee,
   CreditCard,
   Dumbbell,
@@ -32,6 +33,7 @@ import {
   Music,
   Palmtree,
   Plane,
+  Plus,
   Settings2,
   Share2,
   ShoppingBag,
@@ -314,6 +316,7 @@ export default function PlanDetail() {
   const [regenerateLoading, setRegenerateLoading] = useState(false);
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
+  const hoverTimeoutRef = useRef(null); // Timeout for delayed hover (prevent accidental image loading)
 
   // ========== INLINE EDITING HANDLERS ==========
   
@@ -803,10 +806,10 @@ export default function PlanDetail() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 animate-spin text-gray-400" />
-          <p className="text-gray-500 font-medium">Đang tải kế hoạch...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-gray-400 dark:text-gray-500" />
+          <p className="text-gray-500 dark:text-gray-400 font-medium">Đang tải kế hoạch...</p>
         </div>
       </div>
     );
@@ -815,12 +818,12 @@ export default function PlanDetail() {
   // Error state
   if (error || !plan) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error || 'Không tìm thấy kế hoạch'}</p>
+          <p className="text-red-500 dark:text-red-400 mb-4">{error || 'Không tìm thấy kế hoạch'}</p>
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-gray-600 hover:text-gray-900 flex items-center gap-2 mx-auto"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 mx-auto"
           >
             <ArrowLeft className="w-4 h-4" />
             Quay lại Dashboard
@@ -831,21 +834,21 @@ export default function PlanDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
             <div>
               {/* Editable Title - only for owner view */}
               {isPublicView ? (
-                <h1 className="font-poppins font-bold text-xl text-gray-900">
+                <h1 className="font-poppins font-bold text-xl text-gray-900 dark:text-white">
                   {plan.title || plan.destination}
                 </h1>
               ) : (
@@ -855,7 +858,7 @@ export default function PlanDetail() {
                   level="h1"
                 />
               )}
-              <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   {plan.destination}
@@ -883,8 +886,8 @@ export default function PlanDetail() {
                 disabled={regenerateLoading}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                   regenerateLoading
-                    ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'border-brand-primary text-brand-primary bg-white hover:bg-brand-muted'
+                    ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'border-brand-primary text-brand-primary bg-white dark:bg-gray-800 hover:bg-brand-muted dark:hover:bg-brand-primary/10'
                 }`}
               >
                 <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
@@ -900,8 +903,8 @@ export default function PlanDetail() {
                 disabled={shareLoading}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                   shareState.isPublic
-                    ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                    : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 } ${shareLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 <Share2 className="w-4 h-4" />
@@ -918,8 +921,8 @@ export default function PlanDetail() {
               disabled={!shareState.shareUrl}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                 shareState.shareUrl
-                  ? 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                  : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'
               }`}
             >
               <Share2 className="w-4 h-4" />
@@ -934,7 +937,7 @@ export default function PlanDetail() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-73px)]">
         {/* Left: Scrollable Itinerary - All Days */}
-        <main className="w-[40%] overflow-y-auto px-8 py-6 min-w-100 border-r border-gray-200">
+        <main className="w-[40%] overflow-y-auto px-8 py-6 min-w-100 border-r border-gray-200 dark:border-gray-700">
           <div className="max-w-3xl mx-auto space-y-8">
             {plan.itinerary?.map((day, dayIndex) => {
               // Calculate starting index for this day
@@ -948,7 +951,7 @@ export default function PlanDetail() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: dayIndex * 0.1 }}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
                 >
                   {/* Day Header */}
                   <div className="bg-brand-primary text-white px-6 py-4">
@@ -997,28 +1000,28 @@ export default function PlanDetail() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: (plan.itinerary?.length || 0) * 0.1 }}
-                className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6"
+                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6"
               >
-                <h3 className="font-poppins font-bold text-lg text-gray-900 mb-3">
+                <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3">
                   📋 Tổng kết chuyến đi
                 </h3>
-                <p className="text-gray-700">{plan.summary}</p>
+                <p className="text-gray-700 dark:text-gray-300">{plan.summary}</p>
               </motion.div>
             )}
           </div>
         </main>
 
         {/* Right: Sticky Google Map with Info Panels */}
-        <aside className="w-[60%] bg-white shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
+        <aside className="w-[60%] bg-white dark:bg-gray-800 shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
           {loadError && (
-            <div className="flex items-center justify-center h-full text-gray-500">
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
               Lỗi tải Google Maps
             </div>
           )}
           
           {!isLoaded && !loadError && (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400 dark:text-gray-500" />
             </div>
           )}
 
@@ -1037,24 +1040,42 @@ export default function PlanDetail() {
                   const TypeIconComponent = getTypeIcon(poi.category);
                   const isHovered = hoveredPOI === poi.id;
                   
-                  // Handle marker hover for lazy loading images
-                  const handleMarkerEnter = async () => {
-                    setHoveredPOI(poi.id);
-                    
-                    // Lazy load image if not cached (TTL: 3 days for POI featured images)
-                    if (poi.imageUrl && !hoveredImageCache[poi.id]) {
-                      const fullUrl = buildPhotoUrl(poi.imageUrl, googleMapsApiKey);
-                      
-                      preloadAndCacheImage(fullUrl, 'poi_featured')
-                        .then((url) => {
-                          setHoveredImageCache(prev => ({ ...prev, [poi.id]: url }));
-                        })
-                        .catch((err) => {
-                          console.error('Failed to load POI image:', err);
-                          // Fallback: still show the URL even if preload fails
-                          setHoveredImageCache(prev => ({ ...prev, [poi.id]: fullUrl }));
-                        });
+                  // Handle marker hover with delay to prevent accidental image loading
+                  // User must hover for 300ms before image is loaded (saves API costs)
+                  const handleMarkerEnter = () => {
+                    // Clear any existing timeout
+                    if (hoverTimeoutRef.current) {
+                      clearTimeout(hoverTimeoutRef.current);
                     }
+                    
+                    // Set delayed hover - show info window after 300ms
+                    hoverTimeoutRef.current = setTimeout(() => {
+                      setHoveredPOI(poi.id);
+                      
+                      // Lazy load image if not cached (TTL: 3 days for POI featured images)
+                      if (poi.imageUrl && !hoveredImageCache[poi.id]) {
+                        const fullUrl = buildPhotoUrl(poi.imageUrl, googleMapsApiKey);
+                        
+                        preloadAndCacheImage(fullUrl, 'poi_featured')
+                          .then((url) => {
+                            setHoveredImageCache(prev => ({ ...prev, [poi.id]: url }));
+                          })
+                          .catch((err) => {
+                            console.error('Failed to load POI image:', err);
+                            // Fallback: still show the URL even if preload fails
+                            setHoveredImageCache(prev => ({ ...prev, [poi.id]: fullUrl }));
+                          });
+                      }
+                    }, 300); // 300ms delay before showing info window and loading image
+                  };
+                  
+                  // Handle marker leave - cancel pending hover timeout
+                  const handleMarkerLeave = () => {
+                    if (hoverTimeoutRef.current) {
+                      clearTimeout(hoverTimeoutRef.current);
+                      hoverTimeoutRef.current = null;
+                    }
+                    setHoveredPOI(null);
                   };
                   
                   return (
@@ -1073,7 +1094,7 @@ export default function PlanDetail() {
                         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
                         className="relative cursor-pointer flex flex-col items-center"
                         onMouseEnter={handleMarkerEnter}
-                        onMouseLeave={() => setHoveredPOI(null)}
+                        onMouseLeave={handleMarkerLeave}
                         style={{ 
                           position: 'relative', 
                           zIndex: isHovered ? 100 : 1,
@@ -1126,6 +1147,24 @@ export default function PlanDetail() {
                   const TypeIconComponent = getTypeIcon(poi.category);
                   const isHovered = hoveredPOI === poi.id;
                   
+                  // Handle marker hover with delay (same as activity POIs)
+                  const handleAccommodationEnter = () => {
+                    if (hoverTimeoutRef.current) {
+                      clearTimeout(hoverTimeoutRef.current);
+                    }
+                    hoverTimeoutRef.current = setTimeout(() => {
+                      setHoveredPOI(poi.id);
+                    }, 300);
+                  };
+                  
+                  const handleAccommodationLeave = () => {
+                    if (hoverTimeoutRef.current) {
+                      clearTimeout(hoverTimeoutRef.current);
+                      hoverTimeoutRef.current = null;
+                    }
+                    setHoveredPOI(null);
+                  };
+                  
                   return (
                     <OverlayView
                       key={poi.id}
@@ -1141,8 +1180,8 @@ export default function PlanDetail() {
                         }}
                         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
                         className="relative cursor-pointer flex flex-col items-center"
-                        onMouseEnter={() => setHoveredPOI(poi.id)}
-                        onMouseLeave={() => setHoveredPOI(null)}
+                        onMouseEnter={handleAccommodationEnter}
+                        onMouseLeave={handleAccommodationLeave}
                         style={{ 
                           position: 'relative', 
                           zIndex: isHovered ? 100 : 1,
@@ -1191,7 +1230,7 @@ export default function PlanDetail() {
                 })}
 
 
-                {/* InfoWindow for hovered POI - Show lazy-loaded image (search in both arrays) */}
+                {/* InfoWindow for hovered POI - Card-style design with image */}
                 {hoveredPOI && (() => {
                   const poi = activityPOIs.find(p => p.id === hoveredPOI) || accommodationPOIs.find(p => p.id === hoveredPOI);
                   if (!poi) return null;
@@ -1204,67 +1243,108 @@ export default function PlanDetail() {
                       onCloseClick={() => setHoveredPOI(null)}
                       options={{ 
                         disableAutoPan: true, 
-                        pixelOffset: new window.google.maps.Size(0, -60), // Adjusted for larger marker
-                        maxWidth: 240
+                        pixelOffset: new window.google.maps.Size(0, -60),
+                        maxWidth: 280
                       }}
                     >
-                      <div className="p-2 min-w-44 max-w-56">
-                        {/* Lazy-loaded featured image */}
-                        {cachedImage && (
-                          <img 
-                            src={cachedImage}
-                            alt={poi.name}
-                            className="w-full h-20 object-cover rounded mb-2 shadow-sm"
-                          />
-                        )}
+                      <div className="w-60 overflow-hidden -m-2">
+                        {/* Featured image with overlay icons */}
+                        <div className="relative">
+                          {cachedImage ? (
+                            <img 
+                              src={cachedImage}
+                              alt={poi.name}
+                              className="w-full h-32 object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-32 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                              <MapPin className="w-8 h-8 text-gray-400" />
+                            </div>
+                          )}
+                          
+                          {/* Overlay buttons on image */}
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                            <button className="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-colors">
+                              <Heart className="w-3.5 h-3.5 text-gray-600" />
+                            </button>
+                            <button className="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-colors">
+                              <Plus className="w-3.5 h-3.5 text-gray-600" />
+                            </button>
+                          </div>
+                          
+                          {/* Day badge */}
+                          <div className="absolute bottom-2 left-2">
+                            <span className={`text-[10px] font-medium px-2 py-1 rounded-full shadow-sm ${
+                              isAccomm 
+                                ? 'bg-purple-500 text-white' 
+                                : 'bg-brand-primary text-white'
+                            }`}>
+                              Ngày {poi.dayIndex}
+                            </span>
+                          </div>
+                        </div>
                         
-                        {/* POI Name */}
-                        <p className={`font-semibold text-sm leading-tight mb-1 ${
-                          isAccomm ? 'text-purple-700' : 'text-gray-900'
-                        }`}>
-                          {poi.id}. {poi.name}
-                        </p>
-                        
-                        {/* Rating & Reviews */}
-                        {(poi.rating || poi.reviewCount) && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            {poi.rating && (
-                              <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600">
-                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                {poi.rating.toFixed(1)}
-                              </span>
-                            )}
-                            {poi.reviewCount && (
-                              <span className="text-[10px] text-gray-400">
-                                ({poi.reviewCount.toLocaleString()} đánh giá)
+                        {/* Content section */}
+                        <div className="p-3 bg-white">
+                          {/* Location name with icon */}
+                          <div className="flex items-start gap-2">
+                            <MapPin className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                              isAccomm ? 'text-purple-500' : 'text-brand-primary'
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`font-semibold text-sm leading-tight ${
+                                isAccomm ? 'text-purple-700' : 'text-gray-900'
+                              }`}>
+                                {poi.name}
+                              </h4>
+                              {poi.address && (
+                                <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                  {poi.address}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Description or activity info */}
+                          {poi.description && (
+                            <p className="text-xs text-gray-500 mt-2 line-clamp-2">
+                              {poi.description}
+                            </p>
+                          )}
+                          
+                          {/* Rating & Time row */}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                              {poi.rating && (
+                                <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  {poi.rating.toFixed(1)}
+                                </span>
+                              )}
+                              {poi.reviewCount && (
+                                <span className="text-[10px] text-gray-400">
+                                  ({poi.reviewCount.toLocaleString()})
+                                </span>
+                              )}
+                            </div>
+                            
+                            {poi.time && (
+                              <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {poi.time}
                               </span>
                             )}
                           </div>
-                        )}
-                        
-                        {/* Day & Time - single line */}
-                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
-                          <span>Ngày {poi.dayIndex}</span>
-                          {poi.time && (
-                            <>
-                              <span className="text-gray-300">•</span>
-                              <span>{poi.time}</span>
-                            </>
-                          )}
-                          {poi.duration && (
-                            <>
-                              <span className="text-gray-300">•</span>
-                              <span>{formatDuration(poi.duration)}</span>
-                            </>
+                          
+                          {/* Accommodation badge */}
+                          {isAccomm && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                                🏨 Lưu trú
+                              </span>
+                            </div>
                           )}
                         </div>
-                        
-                        {/* Accommodation badge */}
-                        {isAccomm && (
-                          <span className="inline-block mt-1.5 text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">
-                            🏨 Lưu trú
-                          </span>
-                        )}
                       </div>
                     </InfoWindow>
                   );
@@ -1280,20 +1360,20 @@ export default function PlanDetail() {
                     exit={{ opacity: 0, y: 20 }}
                     className="absolute bottom-4 left-4 right-4 z-10"
                   >
-                    <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                       {/* Toggle Header */}
                       <button 
                         onClick={() => setShowInfoPanel(!showInfoPanel)}
-                        className="w-full px-4 py-3 flex items-center justify-between bg-brand-muted hover:bg-brand-muted/80 transition-colors"
+                        className="w-full px-4 py-3 flex items-center justify-between bg-brand-muted dark:bg-brand-primary/20 hover:bg-brand-muted/80 dark:hover:bg-brand-primary/30 transition-colors"
                       >
-                        <span className="font-poppins font-semibold text-brand-primary flex items-center gap-2">
+                        <span className="font-poppins font-semibold text-brand-primary dark:text-brand-muted flex items-center gap-2">
                           <Settings2 className="w-4 h-4" />
                           Thông tin chuyến đi
                         </span>
                         {showInfoPanel ? (
-                          <ChevronDown className="w-5 h-5 text-brand-primary" />
+                          <ChevronDown className="w-5 h-5 text-brand-primary dark:text-brand-muted" />
                         ) : (
-                          <ChevronUp className="w-5 h-5 text-brand-primary" />
+                          <ChevronUp className="w-5 h-5 text-brand-primary dark:text-brand-muted" />
                         )}
                       </button>
 
@@ -1310,24 +1390,24 @@ export default function PlanDetail() {
                             <div className="p-4 grid grid-cols-3 gap-4">
                               {/* Cost Summary */}
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
+                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <CreditCard className="w-3 h-3" />
                                   Chi phí ước tính
                                 </h4>
-                                <p className="text-lg font-bold text-brand-primary">
+                                <p className="text-lg font-bold text-brand-primary dark:text-brand-muted">
                                   {formatVND(tripSummary.totalCost)}
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
                                   ~{formatVND(Math.round(tripSummary.totalCost / tripSummary.numDays))}/ngày
                                 </p>
                                 {tripSummary.playfulBudgetTotal > 0 && (
-                                  <p className="text-xs text-gray-500">Ước tính vui: {formatVND(tripSummary.playfulBudgetTotal)}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Ước tính vui: {formatVND(tripSummary.playfulBudgetTotal)}</p>
                                 )}
                               </div>
 
                               {/* Accommodation Info */}
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
+                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <Bed className="w-3 h-3" />
                                   Lưu trú
                                 </h4>
@@ -1336,7 +1416,7 @@ export default function PlanDetail() {
                                     {tripSummary.accommodations.slice(0, 2).map((acc, i) => (
                                       <p 
                                         key={i} 
-                                        className="text-sm font-medium text-gray-800 truncate cursor-pointer hover:text-brand-primary transition-colors" 
+                                        className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate cursor-pointer hover:text-brand-primary dark:hover:text-brand-muted transition-colors" 
                                         title={acc.name}
                                         onMouseEnter={() => {
                                           console.log("acc: ", acc);
@@ -1358,35 +1438,35 @@ export default function PlanDetail() {
                                       </p>
                                     ))}
                                     {tripSummary.accommodations.length > 2 && (
-                                      <p className="text-xs text-gray-400">
+                                      <p className="text-xs text-gray-400 dark:text-gray-500">
                                         +{tripSummary.accommodations.length - 2} nơi khác
                                       </p>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-gray-400">Chưa có thông tin</p>
+                                  <p className="text-sm text-gray-400 dark:text-gray-500">Chưa có thông tin</p>
                                 )}
                               </div>
 
                               {/* Preferences */}
                               <div className="space-y-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1">
+                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <Settings2 className="w-3 h-3" />
                                   Tùy chọn
                                 </h4>
                                 <div className="space-y-1 text-sm">
                                   {tripSummary.preferences.budget && (
-                                    <p className="text-gray-700">
+                                    <p className="text-gray-700 dark:text-gray-300">
                                       💰 {formatVND(tripSummary.preferences.budget)}
                                     </p>
                                   )}
                                   {tripSummary.preferences.budget_level && (
-                                    <p className="text-gray-700 capitalize">
+                                    <p className="text-gray-700 dark:text-gray-300 capitalize">
                                       📊 {tripSummary.preferences.budget_level}
                                     </p>
                                   )}
                                   {tripSummary.preferences.pace && (
-                                    <p className="text-gray-700 capitalize">
+                                    <p className="text-gray-700 dark:text-gray-300 capitalize">
                                       🚶 {tripSummary.preferences.pace}
                                     </p>
                                   )}
@@ -1395,7 +1475,7 @@ export default function PlanDetail() {
                             </div>
 
                             {/* Quick Stats */}
-                            <div className="px-4 pb-4 flex items-center justify-center gap-6 text-sm text-gray-500">
+                            <div className="px-4 pb-4 flex items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
                                 {tripSummary.numDays} ngày

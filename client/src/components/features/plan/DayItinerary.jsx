@@ -172,11 +172,11 @@ const DayItinerary = ({
     <div className="p-6">
     {/* Day Notes - Editable for owner */}
     <div className="px-6">
-        <div className="border-b border-gray-100 pb-6">
+        <div className="border-b border-gray-100 dark:border-gray-700 pb-6">
             {isPublicView ? (
             // Public view - static display
             day.notes && (
-                <p className="text-sm text-gray-500 italic">
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
                 💡 {day.notes}
                 </p>
             )
@@ -191,7 +191,7 @@ const DayItinerary = ({
         </div>
     </div>
       {estimatedItems.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">Chưa có hoạt động cho ngày này</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center py-4">Chưa có hoạt động cho ngày này</p>
       ) : (
         <DndContext
           collisionDetection={closestCenter}
@@ -226,18 +226,18 @@ const DayItinerary = ({
                 if (!active) return null;
                 const { item, time } = active;
                 return (
-                  <div className="w-full shadow-lg rounded-lg bg-white p-3 pointer-events-none" style={{ transform: 'none' }}>
+                  <div className="w-full shadow-lg rounded-lg bg-white dark:bg-gray-700 p-3 pointer-events-none" style={{ transform: 'none' }}>
                     <div className="flex items-start gap-3">
-                      <div className="mt-1 cursor-grabbing text-gray-600">
+                      <div className="mt-1 cursor-grabbing text-gray-600 dark:text-gray-400">
                         <GripVertical className="w-4 h-4" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold rounded-full bg-brand-primary text-white">•</span>
-                          <span className="font-semibold text-gray-900">{item.poi_name || item.name || item.activity}</span>
-                          {time && <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{time}</span>}
+                          <span className="font-semibold text-gray-900 dark:text-white">{item.poi_name || item.name || item.activity}</span>
+                          {time && <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded-full">{time}</span>}
                         </div>
-                        {item.description && <p className="text-sm text-gray-600 mt-2">{item.description}</p>}
+                        {item.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{item.description}</p>}
                       </div>
                     </div>
                   </div>
@@ -249,7 +249,7 @@ const DayItinerary = ({
       )}
 
     <div className="flex items-center justify-between mt-3">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           {saving && !isPublicView ? 'Đang lưu...' : null}
         </div>
         {!isPublicView && (

@@ -1,14 +1,13 @@
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
 import TailwindTest from './pages/TailwindTest';
+import ChangePassword from './pages/user/ChangePassword';
 import CreatePlan from './pages/user/CreatePlan';
-import CreatePlanNew from './pages/user/CreatePlanNew';
 import Dashboard from './pages/user/Dashboard';
 import PlanDetail from './pages/user/PlanDetail';
+import ProfileSettings from './pages/user/ProfileSettings';
 import Trash from './pages/user/Trash';
 import Welcome from './pages/Welcome';
-import ProfileSettings from './pages/user/ProfileSettings';
-import ChangePassword from './pages/user/ChangePassword';
 
 // Search Autocomplete Demo Pages (Week 3 Deliverable)
 import SearchDemo from './components/SearchDemo';

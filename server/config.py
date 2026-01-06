@@ -152,7 +152,7 @@ class Config:
     # Groq API Configuration (FREE for development)
     # Get free API key at: https://console.groq.com
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-    GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-70b-versatile")
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
     
     # LLM Provider Selection: "groq" (free/fast), "huggingface", "openai"
     LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "groq")

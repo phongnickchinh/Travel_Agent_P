@@ -21,6 +21,14 @@ export default function PlanCard({ plan, onDelete }) {
   // Preload and cache thumbnail on mount
   useEffect(() => {
     if (plan.thumbnail_url) {
+      // TEMP: Disable Google Photo API calls to prevent costs
+      // Check if URL is likely a Google Photo URL
+      if (plan.thumbnail_url.includes('google') || plan.thumbnail_url.startsWith('places/')) {
+        const destName = typeof plan.destination === 'string' ? plan.destination : (plan.destination?.city || 'Plan');
+        setCachedThumbnail(`https://placehold.co/600x400?text=${encodeURIComponent(destName)}`);
+        return;
+      }
+
       // Check if already cached
       const cached = getCachedImage(plan.thumbnail_url);
       if (cached) {
@@ -32,7 +40,7 @@ export default function PlanCard({ plan, onDelete }) {
           .catch(() => setCachedThumbnail(plan.thumbnail_url)); // Fallback to original URL
       }
     }
-  }, [plan.thumbnail_url]);
+  }, [plan.thumbnail_url, plan.destination]);
 
   const handleClick = () => {
     navigate(`/dashboard/plan/${plan.plan_id}`);

@@ -273,6 +273,12 @@ const parseEstimatedTime = (timeSlot) => {
 const buildPhotoUrl = (url, apiKey) => {
   if (!url) return null;
   
+  // TEMPORARY: Disable Google Photos API to check costs
+  if (url.startsWith('places/')) {
+    // console.log('Skipping Google Photo API call for:', url);
+    return 'https://placehold.co/600x400?text=No+Photo+(Cost+Check)'; 
+  }
+  
   let finalUrl = url;
   
   // Build full URL if needed
@@ -1257,7 +1263,7 @@ export default function PlanDetail() {
                               className="w-full h-32 object-cover"
                             />
                           ) : (
-                            <div className="w-full h-32 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                            <div className="w-full h-32 bg-linear-to-br from-gray-200 to-gray-300 flex items-center justify-center">
                               <MapPin className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
@@ -1288,7 +1294,7 @@ export default function PlanDetail() {
                         <div className="p-3 bg-white">
                           {/* Location name with icon */}
                           <div className="flex items-start gap-2">
-                            <MapPin className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            <MapPin className={`w-4 h-4 mt-0.5 shrink-0 ${
                               isAccomm ? 'text-purple-500' : 'text-brand-primary'
                             }`} />
                             <div className="flex-1 min-w-0">

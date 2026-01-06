@@ -297,7 +297,7 @@ class PlannerService:
         self, 
         location: Dict[str, float], 
         interests: List[str],
-        radius_km: float = 15.0,
+        radius_km: float = 50.0,
         limit: int = 30
     ) -> List[Dict[str, Any]]:
         """
@@ -349,7 +349,13 @@ class PlannerService:
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
-        Search POIs from Google Places API.
+        Search POIs from Google Places API using batched multi-type requests.
+        
+        Optimization strategy:
+        - Google charges per request, not per result. max_results=20 is optimal.
+        - Calculate number of requests needed: ceil(limit / 20) + 1
+        - Group types across requests to maximize variety
+        - If interests < num_requests, expand radius by 10km for subsequent passes
         
         Args:
             location: {'latitude': float, 'longitude': float}
@@ -357,21 +363,18 @@ class PlannerService:
             limit: Maximum results
             
         Returns:
-            List of POI dicts
+            List of POI dicts (deduplicated, sorted by rating)
         """
-        results = []
+        import math
         
-        # Default queries if no interests
-        # Use Google Places API (New) valid includedTypes from Table A
-        # Ref: https://developers.google.com/maps/documentation/places/web-service/place-types
+        # Default types if no interests provided
         if not interests:
             interests = ['tourist_attraction', 'restaurant', 'museum', 'park', 'beach']
         
         # Map user-friendly interest IDs to valid Google Place Types (Table A)
-        # Frontend uses these IDs, backend maps to Google types
         # NOTE: 'hotel', 'lodging' are EXCLUDED - those are fetched separately for accommodations
         type_mapping = {
-            # Direct Google types (no mapping needed)
+            # Direct Google types
             'tourist_attraction': 'tourist_attraction',
             'restaurant': 'restaurant',
             'cafe': 'cafe',
@@ -399,41 +402,93 @@ class PlannerService:
             'family': 'amusement_park',
             'photography': 'tourist_attraction',
             'romantic': 'restaurant',
-            # REMOVED: 'hotel': 'lodging', 'lodging': 'lodging' - Fetched separately!
         }
         
-        # Convert interests to valid Google types
+        # Convert interests to valid Google types (dedupe)
         valid_types = []
-        for interest in interests[:5]:  # Limit to 5 types
+        for interest in interests:
             mapped_type = type_mapping.get(interest.lower(), interest)
             if mapped_type not in valid_types:
                 valid_types.append(mapped_type)
         
-        # Search by each type (Google API accepts multiple types but works better with specific ones)
-        for place_type in valid_types:
+        # Calculate number of requests needed: ceil(limit / 20) + 1 for buffer
+        num_requests = math.ceil(limit / 20) + 1
+        num_types = len(valid_types)
+        
+        # Distribute types across requests
+        # If we have more requests than types, we'll repeat types with expanded radius
+        type_groups = []
+        base_radius = 15000  # 15km base
+        radius_increment = 10000  # 10km increment per round
+        
+        if num_types >= num_requests:
+            # Enough types: split evenly across requests
+            types_per_request = math.ceil(num_types / num_requests)
+            for i in range(num_requests):
+                start_idx = i * types_per_request
+                end_idx = min(start_idx + types_per_request, num_types)
+                if start_idx < num_types:
+                    type_groups.append({
+                        'types': valid_types[start_idx:end_idx],
+                        'radius': base_radius
+                    })
+        else:
+            # Fewer types than requests: repeat types with expanded radius
+            current_radius = base_radius
+            requests_made = 0
+            pass_number = 0
+            
+            while requests_made < num_requests:
+                for t in valid_types:
+                    if requests_made >= num_requests:
+                        break
+                    type_groups.append({
+                        'types': [t],
+                        'radius': current_radius
+                    })
+                    requests_made += 1
+                # Expand radius for next pass
+                pass_number += 1
+                current_radius = base_radius + (pass_number * radius_increment)
+        
+        # Execute requests and collect results
+        results = []
+        seen_ids = set()  # For deduplication
+        
+        for group in type_groups:
             try:
-                # Use nearby_search for geo-based results
                 pois = self.google_provider.nearby_search(
                     location=location,
-                    radius=15000,  # 15km
-                    types=[place_type],
-                    max_results=min(limit // len(valid_types) + 1, 20)
+                    radius=group['radius'],
+                    types=group['types'],  # Send multiple types in one request
+                    max_results=20  # Maximize data per request (cost optimization)
                 )
                 
-                # Filter out any accommodation POIs that slip through
-                filtered_pois = [
-                    poi for poi in pois
-                    if not self._is_accommodation_poi(poi)
-                ]
-                results.extend(filtered_pois)
+                # Filter and dedupe
+                for poi in pois:
+                    # Skip accommodations
+                    if self._is_accommodation_poi(poi):
+                        continue
+                    # Dedupe by poi_id
+                    poi_id = poi.get('poi_id') or poi.get('place_id')
+                    if poi_id and poi_id not in seen_ids:
+                        seen_ids.add(poi_id)
+                        results.append(poi)
                 
-                if len(results) >= limit:
-                    break
+                logger.debug(f"[Google] Types {group['types']} radius={group['radius']/1000}km -> {len(pois)} POIs")
+                
+                # Early exit if we have enough (with some buffer)
+                # if len(results) >= limit + 10:
+                #     break
                     
             except Exception as e:
-                logger.warning(f"[Google] Search for '{place_type}' failed: {e}")
+                logger.warning(f"[Google] Search for types {group['types']} failed: {e}")
                 continue
         
+        # Sort by rating (desc), then poi_id for determinism
+        results.sort(key=lambda x: (-x.get('rating', 0), x.get('poi_id', '')))
+        
+        logger.info(f"[Google] Total POIs fetched: {len(results)}, requests made: {len(type_groups)}")
         return results[:limit]
     
     # ============================================
@@ -606,39 +661,44 @@ class PlannerService:
         """
         Search accommodations from Google Places API.
         
-        Uses accommodation-specific types: lodging, hotel, resort_hotel, etc.
+        Uses single request with 'lodging' type (covers hotels, hostels, resorts, etc.)
+        to maximize data per API call (cost optimization).
         
         Args:
             location: {'latitude': float, 'longitude': float}
             limit: Maximum results
             
         Returns:
-            List of accommodation POI dicts
+            List of accommodation POI dicts (sorted by rating, deduplicated)
         """
-        results = []
-        
-        # Search using primary accommodation types
-        primary_types = ['lodging', 'hotel']  # Start with main types
-        
-        for place_type in primary_types:
-            try:
-                pois = self.google_provider.nearby_search(
-                    location=location,
-                    radius=20000,  # 20km for accommodations
-                    types=[place_type],
-                    max_results=min(limit, 10)
-                )
-                
-                results.extend(pois)
-                
-                if len(results) >= limit:
-                    break
-                    
-            except Exception as e:
-                logger.warning(f"[ACCOMMODATION] Google search for '{place_type}' failed: {e}")
-                continue
-        
-        return results[:limit]
+        try:
+            # Single request with 'lodging' type covers all accommodation subtypes
+            # max_results=20 to maximize value per API call
+            pois = self.google_provider.nearby_search(
+                location=location,
+                radius=20000,  # 20km for accommodations
+                types=['lodging'],  # Covers hotel, hostel, resort, etc.
+                max_results=20
+            )
+            
+            # Dedupe by poi_id
+            seen_ids = set()
+            results = []
+            for poi in pois:
+                poi_id = poi.get('poi_id') or poi.get('place_id')
+                if poi_id and poi_id not in seen_ids:
+                    seen_ids.add(poi_id)
+                    results.append(poi)
+            
+            # Sort by rating (desc), then poi_id for determinism
+            results.sort(key=lambda x: (-x.get('rating', 0), x.get('poi_id', '')))
+            
+            logger.info(f"[ACCOMMODATION] Google returned {len(results)} lodging POIs")
+            return results[:limit]
+            
+        except Exception as e:
+            logger.warning(f"[ACCOMMODATION] Google search failed: {e}")
+            return []
     
     def _format_accommodations_for_prompt(self, accommodations: List[Dict[str, Any]]) -> str:
         """

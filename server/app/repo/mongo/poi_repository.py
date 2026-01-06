@@ -426,17 +426,22 @@ class POIRepository(POIRepositoryInterface):
             total = count_result[0]["total"] if count_result else 0
             
             # Sorting
+            # IMPORTANT: Always add "poi_id" as tie-breaker to ensure deterministic ordering
+            # Without this, POIs with same score/rating will have random order between queries
             sort_stage = {}
             if has_text_search:
                 # Only sort by search_score if $text was used
                 sort_stage["search_score"] = -1
+                sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
             elif search_request.lat and search_request.lng:
                 # Geo search: sort by distance
                 sort_stage["distance_km"] = 1
+                sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
             else:
                 # Default: sort by popularity and rating
                 sort_stage["metadata.popularity_score"] = -1
                 sort_stage["ratings.average"] = -1
+                sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
             
             pipeline.append({"$sort": sort_stage})
             

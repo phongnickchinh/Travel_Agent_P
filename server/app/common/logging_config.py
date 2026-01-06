@@ -28,7 +28,7 @@ def setup_logging(app):
     log_dir.mkdir(exist_ok=True)
     
     # Set log level based on environment
-    log_level = logging.DEBUG if app.debug else logging.INFO
+    log_level = logging.DEBUG if app.debug else logging.DEBUG
     log_level_console = logging.WARNING
     
     # Create formatters

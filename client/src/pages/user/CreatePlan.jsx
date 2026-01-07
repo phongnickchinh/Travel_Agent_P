@@ -25,6 +25,7 @@ const INTEREST_OPTIONS = [
   { id: 'beach', label: 'Biển', icon: '🏖️' },
   { id: 'culture', label: 'Văn hóa', icon: '🏛️' },
   { id: 'food', label: 'Ẩm thực', icon: '🍜' },
+  { id: 'cafe', label: 'Cafe', icon: '☕' },
   { id: 'nightlife', label: 'Giải trí đêm', icon: '🌙' },
   { id: 'nature', label: 'Thiên nhiên', icon: '🌿' },
   { id: 'adventure', label: 'Phiêu lưu', icon: '🧗' },
@@ -70,7 +71,7 @@ const createEmptyForm = () => ({
     budget: 3500000,
     budgetLevel: 'medium',
     pace: 'moderate',
-    dietary: '',
+    userNotes: '',
     customInterests: '',
   },
 });
@@ -254,12 +255,14 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
     // Normalize field names from different API sources
     const displayName = suggestion.main_text || suggestion.name_vi || suggestion.name_en || suggestion.name || suggestion.query;
     const suggestionId = suggestion.place_id || suggestion.poi_id || suggestion._id || null;
+    const suggestionTypesList = suggestion.types || suggestion.type || [];
     
     setDestinationQuery(displayName);
     setFormData(prev => ({
       ...prev,
       destination: displayName,
-      destinationId: suggestionId
+      destinationId: suggestionId,
+      destinationTypes: suggestionTypesList
     }));
     setSuggestions([]);
     setShowSuggestions(false);
@@ -383,6 +386,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
         title: formData.title || `Chuyến đi ${formData.destination}`,
         destination_place_id: formData.destinationId,
         destination_name: formData.destination,
+        destination_types: formData.destinationTypes || [],
         num_days: formData.numDays,
         start_date: formData.startDate,
         origin: formData.origin, // null for now
@@ -391,7 +395,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
           budget: formData.preferences.budget,
           budget_level: formData.preferences.budgetLevel,
           pace: formData.preferences.pace,
-          dietary: formData.preferences.dietary || null,
+          user_notes: formData.preferences.userNotes || null,
         }
       };
 
@@ -815,21 +819,21 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Yêu cầu ăn uống <span className="text-gray-400">(tuỳ chọn)</span></label>
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lưu ý của người dùng<span className="text-gray-400"></span></label>
                 <input
                   type="text"
                   className="w-full rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
-                  placeholder="VD: Chay, không gluten, halal..."
-                  value={formData.preferences.dietary}
+                  placeholder="VD: Muốn đi dạo nhiều, ưu tiên món chay, tránh hoạt động ngoài trời..."
+                  value={formData.preferences.userNotes}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    preferences: { ...prev.preferences, dietary: e.target.value },
+                    preferences: { ...prev.preferences, userNotes: e.target.value },
                   }))}
                 />
               </div>
 
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-gray-600 dark:text-gray-300">Có thể chỉnh trước khi gửi cho AI.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300"></p>
                 <motion.button
                   type="submit"
                   whileHover={{ scale: 1.01, y: -1 }}

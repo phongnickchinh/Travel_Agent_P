@@ -15,19 +15,21 @@ import { ChevronDown, ChevronUp, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // Interest options (text-only, no icons)
+// NOTE: These map to backend interests via type_mapping.py: interest → CategoryEnum → Google types
 const INTEREST_OPTIONS = [
   { id: 'beach', label: 'Biển', googleType: 'beach' },
-  { id: 'museum', label: 'Văn hóa', googleType: 'museum' },
-  { id: 'restaurant', label: 'Ẩm thực', googleType: 'restaurant' },
-  { id: 'night_club', label: 'Nightlife', googleType: 'night_club' },
-  { id: 'park', label: 'Thiên nhiên', googleType: 'park' },
-  { id: 'amusement_park', label: 'Vui chơi', googleType: 'amusement_park' },
-  { id: 'shopping_mall', label: 'Mua sắm', googleType: 'shopping_mall' },
-  { id: 'spa', label: 'Thư giãn', googleType: 'spa' },
-  { id: 'historical_landmark', label: 'Lịch sử', googleType: 'historical_landmark' },
-  { id: 'tourist_attraction', label: 'Tham quan', googleType: 'tourist_attraction' },
-  { id: 'zoo', label: 'Gia đình', googleType: 'zoo' },
+  { id: 'culture', label: 'Văn hóa', googleType: 'museum' },
+  { id: 'food', label: 'Ẩm thực', googleType: 'restaurant' },
   { id: 'cafe', label: 'Cafe', googleType: 'cafe' },
+  { id: 'nightlife', label: 'Nightlife', googleType: 'night_club' },
+  { id: 'nature', label: 'Thiên nhiên', googleType: 'park' },
+  { id: 'adventure', label: 'Phiêu lưu', googleType: 'amusement_park' },
+  { id: 'shopping', label: 'Mua sắm', googleType: 'shopping_mall' },
+  { id: 'relaxation', label: 'Thư giãn', googleType: 'spa' },
+  { id: 'history', label: 'Lịch sử', googleType: 'historical_landmark' },
+  { id: 'photography', label: 'Chụp ảnh', googleType: 'tourist_attraction' },
+  { id: 'family', label: 'Gia đình', googleType: 'zoo' },
+  { id: 'romantic', label: 'Lãng mạn', googleType: 'restaurant' },
 ];
 
 // Budget levels
@@ -53,40 +55,63 @@ const RegeneratePlanModal = ({
   isOpen, 
   onClose, 
   onSubmit, 
-  initialPreferences = {}, 
-  loading = false,
+  initialBudget = 3500000,
+  initialPace = 'moderate',
+  initialTypes = [],
+  initUserNotes = '',
+  currentNumDays = 3,
   planTitle = '',
-  currentNumDays = 3  // Current number of days from plan
+  loading = false
 }) => {
-  // Form state (initialized from current plan preferences)
+  console
+  // Save initial values to show "old" vs "new"
+  const [initialValues] = useState({
+    budget: initialBudget,
+    pace: initialPace,
+    types: initialTypes,
+    numDays: currentNumDays,
+    userNotes: initUserNotes
+  });
+
+  // Form state (initialized from props)
   const [numDays, setNumDays] = useState(currentNumDays);
-  const [interests, setInterests] = useState(initialPreferences.interests || initialPreferences.types || []);
-  const [budget, setBudget] = useState(initialPreferences.budget || 3500000);
+  const [interests, setInterests] = useState(initialTypes);
+  const [budget, setBudget] = useState(initialBudget);
   const [budgetPosition, setBudgetPosition] = useState(() => {
-    const initBudget = initialPreferences.budget || 3500000;
     for (let i = BUDGET_MARKS.length - 1; i >= 0; i--) {
-      if (initBudget >= BUDGET_MARKS[i].value) {
+      if (initialBudget >= BUDGET_MARKS[i].value) {
         return BUDGET_MARKS[i].position;
       }
     }
     return 45;
   });
-  const [pace, setPace] = useState(initialPreferences.pace || 'moderate');
-  const [dietary, setDietary] = useState(initialPreferences.dietary || '');
+  const [pace, setPace] = useState(initialPace);
+  const [userNotes, setUserNotes] = useState(initUserNotes);
   
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
   
-  // Reset form when modal opens with new initialPreferences
+  // Reset form when modal opens with new props
   useEffect(() => {
     if (isOpen) {
       setNumDays(currentNumDays);
-      setInterests(initialPreferences.interests || initialPreferences.types || []);
-      setBudget(initialPreferences.budget || 3500000);
-      setPace(initialPreferences.pace || 'moderate');
-      setDietary(initialPreferences.dietary || '');
+      setInterests(initialTypes);
+      setBudget(initialBudget);
+      
+      // Update budget position
+      let newPosition = 45;
+      for (let i = BUDGET_MARKS.length - 1; i >= 0; i--) {
+        if (initialBudget >= BUDGET_MARKS[i].value) {
+          newPosition = BUDGET_MARKS[i].position;
+          break;
+        }
+      }
+      setBudgetPosition(newPosition);
+      
+      setPace(initialPace);
+      setUserNotes(initUserNotes);
     }
-  }, [isOpen, currentNumDays, initialPreferences]);
+  }, [isOpen, currentNumDays, initialBudget, initialPace, initialTypes, initUserNotes]);
 
   // Budget helpers
   const getBudgetFromPosition = useCallback((position) => {
@@ -124,16 +149,18 @@ const RegeneratePlanModal = ({
   };
 
   const handleSubmit = () => {
-    onSubmit({
-      num_days: numDays,
+    const payload = {
       preferences: {
         interests,
         types: interests, // Keep backward compatibility
         budget,
         pace,
-        dietary: dietary.trim() || undefined,
+        userNotes: userNotes.trim() || undefined,
+        num_days: numDays,  // Include num_days in preferences (backend may use it)
       },
-    });
+    };
+    console.log('[RegenerateModal] Submitting:', payload);
+    onSubmit(payload);
   };
 
   return (
@@ -203,9 +230,16 @@ const RegeneratePlanModal = ({
                   <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     Ngân sách / ngày
                   </label>
-                  <span className="text-sm font-bold text-brand-primary dark:text-brand-secondary">
-                    {formatBudget(budget)} VND
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {budget !== initialValues.budget && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 line-through">
+                        {formatBudget(initialValues.budget)}
+                      </span>
+                    )}
+                    <span className="text-sm font-bold text-brand-primary dark:text-brand-secondary">
+                      {formatBudget(budget)} VND
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="relative pt-1">
@@ -266,9 +300,17 @@ const RegeneratePlanModal = ({
 
               {/* Interests Grid */}
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Sở thích ({interests.length} đã chọn)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    Sở thích
+                  </label>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {interests.length !== initialValues.types.length && (
+                      <span className="line-through mr-1">{initialValues.types.length}</span>
+                    )}
+                    <span className="font-medium">{interests.length} đã chọn</span>
+                  </span>
+                </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {INTEREST_OPTIONS.map((option) => {
                     const isActive = interests.includes(option.id);
@@ -316,16 +358,16 @@ const RegeneratePlanModal = ({
                       className="overflow-hidden"
                     >
                       <div className="mt-3 space-y-3">
-                        {/* Dietary Preferences */}
+                        {/* User Notes */}
                         <div className="space-y-1.5">
                           <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Chế độ ăn đặc biệt
+                            Ghi chú người dùng, được ưu tiên trong kế hoạch
                           </label>
                           <input
                             type="text"
-                            value={dietary}
-                            onChange={(e) => setDietary(e.target.value)}
-                            placeholder="VD: Chay, không gluten, halal..."
+                            value={userNotes}
+                            onChange={(e) => setUserNotes(e.target.value)}
+                            placeholder="VD: Ăn chay, dị ứng hải sản, không thích biển..."
                             className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
                           />
                         </div>

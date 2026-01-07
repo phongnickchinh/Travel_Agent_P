@@ -165,13 +165,13 @@ class PlaceDetail(BaseModel):
         is_transformed = 'provider' in place_data
         
         # Get raw_data for original Google response fields
-        raw_data = place_data.get('raw_data', {}) if is_transformed else place_data
+        raw_data = place_data.get('google_data', {}) if is_transformed else place_data
         
         # === Extract place_id ===
         if is_transformed:
-            place_id = place_data.get('provider', {}).get('id', '')
+            place_id = place_data.get('provider', {}).get('place_id', '')
         else:
-            place_id = place_data.get('id') or place_data.get('place_id', '')
+            place_id = place_data.get('place_id') or place_data.get('poi_id', '')
         
         # === Extract name ===
         if is_transformed:
@@ -238,7 +238,7 @@ class PlaceDetail(BaseModel):
         
         # === Extract address components ===
         address_components = []
-        raw_components = raw_data.get('addressComponents', raw_data.get('address_components', []))
+        raw_components = place_data.get('addressComponents', place_data.get('address_components', []))
         for comp in raw_components:
             address_components.append(AddressComponent(
                 long_name=comp.get('longText') or comp.get('longName') or comp.get('long_name', ''),

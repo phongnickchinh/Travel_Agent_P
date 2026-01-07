@@ -72,7 +72,7 @@ class TripPreferences(BaseModel):
         default="moderate",
         description="Travel pace: relaxed, moderate, intensive"
     )
-    dietary: Optional[str] = Field(None, description="Dietary restrictions")
+    user_notes: Optional[str] = Field(None, description="User notes or preferences")
     accessibility: Optional[str] = Field(None, description="Accessibility requirements")
     
     @field_validator('pace')
@@ -394,7 +394,9 @@ class PlanCreateRequest(BaseModel):
                 "preferences": {
                     "interests": ["beach", "culture"],
                     "budget": 5000000,
-                    "pace": "relaxed"
+                    "budget_level": "medium",
+                    "pace": "relaxed",
+                    "user_notes": "Looking for a mix of relaxation and sightseeing."
                 }
             }
         }

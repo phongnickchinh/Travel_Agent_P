@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, ChevronRight, MapPin, Trash2 } from 'lucide-react';
+import { Calendar, ChevronRight, Loader2, MapPin, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import planAPI from '../../services/planApi';
@@ -79,7 +79,7 @@ export default function PlanCard({ plan, onDelete }) {
     return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
   };
 
-  // Get status color
+  // Get status color and text
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-gray-400',
@@ -88,6 +88,16 @@ export default function PlanCard({ plan, onDelete }) {
       failed: 'bg-red-500'
     };
     return colors[status] || 'bg-gray-400';
+  };
+
+  const getStatusText = (status) => {
+    const texts = {
+      pending: 'Đang chờ',
+      processing: 'Đang tạo',
+      completed: 'Hoàn thành',
+      failed: 'Lỗi'
+    };
+    return texts[status] || 'Không rõ';
   };
 
   return (
@@ -129,12 +139,17 @@ export default function PlanCard({ plan, onDelete }) {
           <Trash2 className="w-4 h-4 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400" />
         </motion.button>
 
-        {/* Status Badge */}
-        <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(plan.status)}`}>
-            {plan.status}
-          </span>
-        </div>
+        {/* Status Badge - Only show if not completed */}
+        {plan.status && plan.status !== 'completed' && (
+          <div className="absolute top-3 left-3">
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-white shadow-lg ${getStatusColor(plan.status)}`}>
+              {plan.status === 'processing' && (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              )}
+              {getStatusText(plan.status)}
+            </span>
+          </div>
+        )}
 
         {/* Gradient Overlay on Hover */}
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

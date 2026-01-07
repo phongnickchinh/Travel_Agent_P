@@ -21,7 +21,16 @@ Date: December 24, 2025 - Refactored for clean architecture
 
 import logging
 import time
+import random
 from typing import List, Dict, Any, Optional
+
+# ML Clustering (HDBSCAN)
+try:
+    from .clustering_ml import cluster_pois_ml, POIClustering
+    ML_CLUSTERING_ENABLED = True
+except ImportError:
+    ML_CLUSTERING_ENABLED = False
+    logging.warning("[PLANNER] ML clustering not available. Install: pip install hdbscan scikit-learn")
 
 from ..model.mongo.plan import Plan, PlanStatusEnum, PlanCreateRequest, PlanUpdateRequest, PlanPatchRequest
 from ..model.mongo.place_detail import PlaceDetail
@@ -33,12 +42,63 @@ from ..providers.places.google_places_provider import GooglePlacesProvider
 from ..providers.type_mapping import map_user_interests_to_categories
 from .lc_chain import TravelPlannerChain
 from .cost_usage_service import CostUsageService
-from ..utils.sanitization import sanitize_user_input
 
 logger = logging.getLogger(__name__)
 
 # Target POI count for itinerary generation
 MIN_POI_COUNT = 10
+
+# ============================================
+# DESTINATION TYPE → SEARCH RADIUS MAPPING
+# ============================================
+# Based on Google Places API types (Table A: Geographical Areas, Table B: Additional types)
+# Max 50km for large areas like cities/states, smaller for districts/neighborhoods
+# Country is excluded (too large to handle reasonably)
+
+DESTINATION_TYPE_RADIUS_MAP = {
+    # Geographical Areas (Table A) - Large regions
+    'administrative_area_level_1': 50.0,  # State/Province level (e.g., California, Tokyo)
+    'locality': 50.0,                     # City (e.g., Da Nang, Ho Chi Minh City)
+    'administrative_area_level_2': 20.0,  # County/District (e.g., Son Tra District) - reduced from 40
+    'postal_code': 8.0,                   # Zip code area - reduced from 15
+    'school_district': 5.0,               # School district - reduced from 10
+    
+    # Additional types (Table B) - Smaller regions (significantly reduced)
+    'administrative_area_level_3': 10.0,  # Ward/Commune - reduced from 30
+    'administrative_area_level_4': 5.0,  # Sub-ward - reduced from 20
+    'administrative_area_level_5': 3.0,   # Reduced from 15
+    'administrative_area_level_6': 2.0,   # Reduced from 10
+    'administrative_area_level_7': 1.0,   # Reduced from 8
+    'sublocality': 20.0,                  # Part of a city - reduced from 20
+    'sublocality_level_1': 12.0,          # Reduced from 20
+    'sublocality_level_2': 8.0,           # Reduced from 15
+    'sublocality_level_3': 6.0,           # Reduced from 12
+    'sublocality_level_4': 5.0,           # Reduced from 10
+    'sublocality_level_5': 3.0,           # Reduced from 8
+    'neighborhood': 5.0,                  # Neighborhood (e.g., My Khe area) - reduced from 10
+    'postal_town': 8.0,                   # Reduced from 15
+    'colloquial_area': 8.0,               # Common name for an area - reduced from 15
+    'archipelago': 50.0,                  # Island group - keep at max
+    'natural_feature': 10.0,              # Natural landmark - reduced from 20
+    'premise': 2.0,                       # Building/complex - reduced from 5
+    'subpremise': 1.0,                    # Unit within a building - reduced from 3
+    'town_square': 2.0,                   # Town square/plaza - reduced from 5
+    'point_of_interest': 5.0,             # Reduced from 10
+    'establishment': 5.0,                 # Reduced from 10
+    'geocode': 8.0,                       # Reduced from 15
+    'political': 20.0,                    # Political entity (varies) - reduced from 30
+    'route': 5.0,                         # Named road - reduced from 10
+    'street_address': 2.0,                # Reduced from 5
+    'intersection': 2.0,                  # Reduced from 5
+    'landmark': 5.0,                      # Reduced from 10
+    'plus_code': 2.0,                     # Reduced from 5
+    
+    # Exclude country - too large
+    # 'country': None,  # Excluded - requires special handling
+}
+
+# Default radius when type is unknown or not in mapping
+DEFAULT_SEARCH_RADIUS_KM = 5.0  # Reduced from 10.0 to be more conservative
 
 
 class PlannerService:
@@ -104,6 +164,57 @@ class PlannerService:
     GEOCODE_REQUIRED_TYPES = {'locality', 'political', 'geocode', 'administrative_area_level_1', 
                               'administrative_area_level_2', 'country', 'sublocality'}
     
+    def _get_search_radius_for_destination(self, destination_types: List[str]) -> Dict[str, float]:
+        """
+        Calculate search radius based on destination types.
+        
+        Strategy:
+        - Look up each type in DESTINATION_TYPE_RADIUS_MAP
+        - Return the LARGEST radius found (most encompassing)
+        - Exclude 'country' type (too large)
+        - Default to DEFAULT_SEARCH_RADIUS_KM if no matching type
+        
+        Args:
+            destination_types: List of Google Place types for the destination
+            
+        Returns:
+            Dict with 'mongodb_radius_km' and 'google_radius_km'
+        """
+        if not destination_types:
+            logger.info(f"[RADIUS] No destination types, using default: {DEFAULT_SEARCH_RADIUS_KM}km")
+            return {
+                'mongodb_radius_km': DEFAULT_SEARCH_RADIUS_KM,
+                'google_radius_km': DEFAULT_SEARCH_RADIUS_KM
+            }
+        
+        min_radius = DEFAULT_SEARCH_RADIUS_KM
+        matched_type = None
+        
+        for dtype in destination_types:
+            # Skip country - too large
+            if dtype == 'country':
+                logger.debug(f"[RADIUS] Skipping 'country' type (too large)")
+                continue
+            
+            radius = DESTINATION_TYPE_RADIUS_MAP.get(dtype)
+            if radius and radius < min_radius:
+                min_radius = radius
+                matched_type = dtype
+        
+        # Google API uses meters, MongoDB uses km
+        # Google radius is typically smaller (more focused) - use 30% of MongoDB radius
+        google_radius_km = min(min_radius * 0.3, 15.0)  # Cap at 15km for Google
+        
+        logger.info(
+            f"[RADIUS] Destination types: {destination_types} -> "
+            f"matched='{matched_type}', MongoDB={min_radius}km, Google={google_radius_km}km"
+        )
+        
+        return {
+            'mongodb_radius_km': min_radius,
+            'google_radius_km': google_radius_km
+        }
+    
     def _resolve_destination(self, place_id: str) -> Optional[Dict[str, Any]]:
         """
         Resolve destination place_id to full details with location.
@@ -137,41 +248,59 @@ class PlannerService:
                 logger.warning(f"[RESOLVE] Google API returned no data for {place_id}")
                 return None
             
-            # Step 3: Check if type requires Geocoding API
-            types = google_data.get('types', [])
-            # Also check raw_data for original types
-            raw_types = google_data.get('raw_data', {}).get('types', [])
-            all_types = set(types) | set(raw_types)
+            # Step 3: Check if location has valid coordinates
+            location = google_data.get('location', {})
+            coordinates = location.get('coordinates', [])
             
-            needs_geocoding = bool(all_types & self.GEOCODE_REQUIRED_TYPES)
-            
-            if needs_geocoding:
-                logger.info(f"[RESOLVE] Detected locality/political type {all_types}, calling Geocoding API")
+            # If coordinates are missing or empty, call Geocoding API for precise location
+            if not coordinates or len(coordinates) < 2 or not all(coordinates[:2]):
+                logger.info(f"[RESOLVE] Location coordinates missing/invalid, calling Geocoding API")
+                logger.debug(f"[RESOLVE] Current location data: {location}")
+                
                 geocode_result = self.google_provider.geocode_by_place_id(place_id)
                 
                 if geocode_result:
-                    # Update location in google_data
-                    if 'location' not in google_data:
-                        google_data['location'] = {}
-                    
-                    # Update coordinates from Geocoding API
-                    google_data['location']['coordinates'] = [
-                        geocode_result['longitude'],
-                        geocode_result['latitude']
-                    ]
+                    # Update location in google_data with GeoJSON format
+                    google_data['location'] = {
+                        'type': 'Point',
+                        'coordinates': [
+                            geocode_result['longitude'],
+                            geocode_result['latitude']
+                        ]
+                    }
                     google_data['_geocoded'] = True
-                    logger.info(f"[RESOLVE] Updated coords from Geocoding: {geocode_result}")
+                    logger.info(f"[RESOLVE] ✓ Updated coords from Geocoding: [{geocode_result['longitude']}, {geocode_result['latitude']}]")
                 else:
-                    logger.warning(f"[RESOLVE] Geocoding failed for {place_id}, using Place Details coords")
+                    logger.warning(f"[RESOLVE] Geocoding failed for {place_id}")
+                    # If even geocoding fails, we can't cache this destination
+                    if not coordinates:
+                        logger.error(f"[RESOLVE] Cannot cache destination without coordinates: {place_id}")
+                        return None
             
             # Step 4: Cache to MongoDB
-            # Transform to PlaceDetail model
-            place_detail = PlaceDetail.from_google_response(google_data)
-            self.place_detail_repo.upsert(place_detail)
-            
-            logger.info(f"[RESOLVE] Cached destination: {place_detail.name} ({place_id})")
-            
-            return place_detail.to_dict()
+            try:
+                # Transform to PlaceDetail model
+                place_detail = PlaceDetail.from_google_response(google_data)
+                
+                # Verify place_detail has valid data before caching
+                if not place_detail.place_id or not place_detail.name:
+                    logger.error(f"[RESOLVE] Invalid PlaceDetail: missing place_id or name")
+                    return None
+                
+                # Upsert to MongoDB
+                result = self.place_detail_repo.upsert(place_detail)
+                
+                if result:
+                    logger.info(f"[RESOLVE] ✓ Cached destination to MongoDB: {place_detail.name} ({place_id})")
+                else:
+                    logger.warning(f"[RESOLVE] Failed to cache destination to MongoDB: {place_id}")
+                
+                return place_detail.to_dict()
+                
+            except Exception as cache_error:
+                logger.error(f"[RESOLVE] Error caching to MongoDB: {cache_error}")
+                # Still return google_data even if caching fails
+                return google_data
             
         except Exception as e:
             logger.error(f"[RESOLVE] Failed to resolve destination {place_id}: {e}")
@@ -208,7 +337,7 @@ class PlannerService:
         destination_name = plan.get('destination', 'Unknown')
         preferences = plan.get('preferences', {}) or {}
         interests = preferences.get('interests', [])
-        target_poi_count = num_days*10
+        target_poi_count = max(30, num_days*10) # At least 30 POIs for variety
         print(f"Target POI count: {target_poi_count}")
         
         # Get location from plan or resolve from place_id
@@ -238,31 +367,53 @@ class PlannerService:
         
         logger.info(f"[POI_FETCH] Searching POIs near {destination_name}: {location}")
         
+        # Calculate dynamic search radius based on destination types
+        destination_types = plan.get('destination_types', [])
+        radius_config = self._get_search_radius_for_destination(destination_types)
+        mongodb_radius_km = radius_config['mongodb_radius_km']
+        google_radius_km = radius_config['google_radius_km']
+        
         all_pois = []
         
-        # Step 1: Search MongoDB first
+        # Step 1: Search MongoDB first (with dynamic radius)
         try:
             print(interests)
-            mongo_pois = self._search_pois_mongodb(location, interests, limit=target_poi_count)
+            # Use full random sampling for 1-day trips to increase variety
+            is_one_day = (num_days == 1)
+            mongo_pois = self._search_pois_mongodb(
+                location, interests, 
+                radius_km=mongodb_radius_km, 
+                limit=target_poi_count,
+                full_random=is_one_day
+            )
             all_pois.extend(mongo_pois)
-            logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs")
+            logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs (radius={mongodb_radius_km}km, full_random={is_one_day})")
         except Exception as e:
             logger.warning(f"[MongoDB] POI search failed: {e}")
         
-        # Step 2: If not enough, fetch from Google
+        # Step 2: If not enough, fetch from Google (with dynamic radius)
         if len(all_pois) < target_poi_count:
             needed = target_poi_count - len(all_pois)
-            logger.info(f"[Google] Need {needed} more POIs, calling Google API...")
+            logger.info(f"[Google] Need {needed} more POIs, calling Google API (radius={google_radius_km}km)...")
             
             try:
-                google_pois = self._search_pois_google(location, interests, limit=needed)
+                google_pois = self._search_pois_google(
+                    location, interests, 
+                    radius_km=google_radius_km,
+                    limit=needed
+                )
                 
                 # Cache new POIs to MongoDB
+                cached_count = 0
+                failed_count = 0
                 for poi in google_pois:
-                    self._cache_poi_to_mongodb(poi)
+                    if self._cache_poi_to_mongodb(poi):
+                        cached_count += 1
+                    else:
+                        failed_count += 1
                 
                 all_pois.extend(google_pois)
-                logger.info(f"[Google] Fetched and cached {len(google_pois)} new POIs")
+                logger.info(f"[Google] Fetched {len(google_pois)} POIs, cached: {cached_count}, failed: {failed_count}")
             except Exception as e:
                 logger.warning(f"[Google] POI search failed: {e}")
         
@@ -287,7 +438,7 @@ class PlannerService:
                 poi_cache[acc_id] = acc
         
         # Format for LLM prompt (tourist POIs + accommodations)
-        poi_context = self._format_pois_for_prompt(selected_pois, num_days*10)
+        poi_context = self._format_pois_for_prompt(selected_pois, max_pois=max(30,num_days*10), num_days=num_days)
         accommodation_context = self._format_accommodations_for_prompt(accommodation_pois)
         logger.info(f"[POI_FETCH] Formatted {len(selected_pois)} POIs + {len(accommodation_pois)} accommodations for prompt")
         
@@ -298,7 +449,8 @@ class PlannerService:
         location: Dict[str, float], 
         interests: List[str],
         radius_km: float = 50.0,
-        limit: int = 30
+        limit: int = 30,
+        full_random: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Search POIs from MongoDB cache.
@@ -310,6 +462,7 @@ class PlannerService:
             interests: User interests for filtering (frontend strings like 'photography', 'romantic')
             radius_km: Search radius in kilometers
             limit: Maximum results
+            full_random: If True, 100% random sampling (for 1-day trips). If False, keep 30% top POIs + random fill
             
         Returns:
             List of POI dicts (excluding hotels/lodging)
@@ -319,12 +472,15 @@ class PlannerService:
             # E.g., ['photography', 'romantic', 'beach'] -> [CategoryEnum.LANDMARK, CategoryEnum.RESTAURANT, CategoryEnum.BEACH]
             mapped_categories = map_user_interests_to_categories(interests) if interests else None
             
+            # Fetch larger pool to allow for randomization (3x limit) to increase variety
+            pool_size = limit * 3
+            
             search_request = POISearchRequest(
                 lat=location.get('latitude'),
                 lng=location.get('longitude'),
                 radius=radius_km,
                 categories=mapped_categories,
-                limit=limit
+                limit=pool_size
             )
             
             result = self.poi_repo.search(search_request)
@@ -336,7 +492,30 @@ class PlannerService:
                 if not self._is_accommodation_poi(poi)
             ]
             
-            return filtered_results
+            # Randomize selection to provide variety
+            # This ensures that generating the plan again might result in slightly different POIs
+            if len(filtered_results) > limit:
+                if full_random:
+                    # FULL RANDOM for 1-day trips: 100% random sampling for maximum variety
+                    # No "top tier" preservation - completely randomize to avoid repetitive itineraries
+                    return random.sample(filtered_results, limit)
+                else:
+                    # BALANCED RANDOM for multi-day trips: Keep top 30% as "must-haves" (key landmarks)
+                    # This ensures key landmarks are not missed while providing variety
+                    top_count = int(limit * 0.3)
+                    top_tier = filtered_results[:top_count]
+                    
+                    # Randomly sample the rest from the remaining pool
+                    remaining_pool = filtered_results[top_count:]
+                    fill_needed = limit - top_count
+                    
+                    if len(remaining_pool) >= fill_needed:
+                        random_fill = random.sample(remaining_pool, fill_needed)
+                    filtered_results = top_tier + random_fill
+            else:
+                filtered_results = top_tier + remaining_pool
+            
+            return filtered_results[:limit]
             
         except Exception as e:
             logger.warning(f"[MongoDB] Search failed: {e}")
@@ -346,6 +525,7 @@ class PlannerService:
         self, 
         location: Dict[str, float], 
         interests: List[str],
+        radius_km: float = 15.0,
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
@@ -355,11 +535,12 @@ class PlannerService:
         - Google charges per request, not per result. max_results=20 is optimal.
         - Calculate number of requests needed: ceil(limit / 20) + 1
         - Group types across requests to maximize variety
-        - If interests < num_requests, expand radius by 10km for subsequent passes
+        - If interests < num_requests, expand radius for subsequent passes
         
         Args:
             location: {'latitude': float, 'longitude': float}
             interests: User interests for search query
+            radius_km: Base search radius in kilometers (dynamic based on destination type)
             limit: Maximum results
             
         Returns:
@@ -367,49 +548,20 @@ class PlannerService:
         """
         import math
         
-        # Default types if no interests provided
+        # Default interests if none provided
         if not interests:
-            interests = ['tourist_attraction', 'restaurant', 'museum', 'park', 'beach']
+            interests = ['beach', 'culture', 'food', 'nature']
         
-        # Map user-friendly interest IDs to valid Google Place Types (Table A)
-        # NOTE: 'hotel', 'lodging' are EXCLUDED - those are fetched separately for accommodations
-        type_mapping = {
-            # Direct Google types
-            'tourist_attraction': 'tourist_attraction',
-            'restaurant': 'restaurant',
-            'cafe': 'cafe',
-            'museum': 'museum',
-            'park': 'park',
-            'beach': 'beach',
-            'night_club': 'night_club',
-            'bar': 'bar',
-            'shopping_mall': 'shopping_mall',
-            'spa': 'spa',
-            'historical_landmark': 'historical_landmark',
-            'amusement_park': 'amusement_park',
-            'zoo': 'zoo',
-            'aquarium': 'aquarium',
-            # User-friendly aliases -> Google types
-            'culture': 'museum',
-            'food': 'restaurant',
-            'dining': 'restaurant',
-            'nature': 'park',
-            'nightlife': 'night_club',
-            'shopping': 'shopping_mall',
-            'relaxation': 'spa',
-            'history': 'historical_landmark',
-            'adventure': 'amusement_park',
-            'family': 'amusement_park',
-            'photography': 'tourist_attraction',
-            'romantic': 'restaurant',
-        }
+        # Map user interests to Google Place Types via CategoryEnum intermediate mapping
+        # This provides extended coverage: interest → CategoryEnum → multiple Google types
+        # NOTE: Accommodation types (HOTEL) are EXCLUDED - fetched separately
+        from app.providers.type_mapping import map_user_interests_to_google_types
         
-        # Convert interests to valid Google types (dedupe)
-        valid_types = []
-        for interest in interests:
-            mapped_type = type_mapping.get(interest.lower(), interest)
-            if mapped_type not in valid_types:
-                valid_types.append(mapped_type)
+        valid_types = map_user_interests_to_google_types(interests)
+        
+        # Fallback to default types if mapping returns empty
+        if not valid_types:
+            valid_types = ['tourist_attraction', 'restaurant', 'museum', 'park', 'beach']
         
         # Calculate number of requests needed: ceil(limit / 20) + 1 for buffer
         num_requests = math.ceil(limit / 20) + 1
@@ -418,8 +570,8 @@ class PlannerService:
         # Distribute types across requests
         # If we have more requests than types, we'll repeat types with expanded radius
         type_groups = []
-        base_radius = 15000  # 15km base
-        radius_increment = 10000  # 10km increment per round
+        base_radius = int(radius_km * 1000)  # Convert km to meters (dynamic based on destination)
+        radius_increment = int(base_radius * 0.5)  # 50% increment per round
         
         if num_types >= num_requests:
             # Enough types: split evenly across requests
@@ -777,17 +929,27 @@ class PlannerService:
             poi_id = poi_data.get('poi_id')
             if not poi_id:
                 logger.warning(f"[CACHE] POI missing poi_id, skipping cache: {poi_data.get('name', 'Unknown')}")
+                logger.debug(f"[CACHE] POI data keys: {list(poi_data.keys())}")
                 return False
+            
+            # Log POI being cached
+            logger.debug(f"[CACHE] Attempting to cache POI: {poi_id} - {poi_data.get('name')}")
+            logger.debug(f"[CACHE] POI data keys: {list(poi_data.keys())}")
             
             # Create POI model from dict (this validates the schema)
             try:
                 poi_model = POI(**poi_data)
             except Exception as validation_error:
                 logger.warning(f"[CACHE] POI validation failed for {poi_id}: {validation_error}")
+                logger.debug(f"[CACHE] Failed POI data: {poi_data}")
                 return False
             
             # Upsert to MongoDB (insert new or update if stale)
-            result = self.poi_repo.upsert(poi_model)
+            try:
+                result = self.poi_repo.upsert(poi_model)
+            except Exception as upsert_error:
+                logger.error(f"[CACHE] MongoDB upsert failed for {poi_id}: {upsert_error}")
+                return False
             
             operation = result.get('_operation', 'unknown')
             if operation == 'inserted':
@@ -807,14 +969,16 @@ class PlannerService:
             logger.warning(f"[CACHE] Failed to cache POI: {e}")
             return False
     
-    def _format_pois_for_prompt(self, pois: List[Dict[str, Any]], max_pois: int = 30) -> str:
+    def _format_pois_for_prompt(self, pois: List[Dict[str, Any]], max_pois: int = 30, num_days: int = 3) -> str:
         """
         Format POI list for LLM prompt with coordinates, reviews, and pricing.
         POIs are grouped by geographic clusters for optimal travel planning.
+        Number of clusters = num_days (1 cluster/area per day).
         
         Args:
             pois: List of POI dicts
             max_pois: Maximum POIs to include
+            num_days: Number of days in itinerary (determines number of clusters)
             
         Returns:
             Formatted string for LLM context with clusters, reviews, pricing
@@ -823,19 +987,25 @@ class PlannerService:
             return ""
         
         # Cluster POIs by geographic proximity
+        # Number of clusters = num_days (1 area per day)
         # Use 1.5km radius for tighter clustering (city center POIs ~1-2km apart)
-        target_clusters = max(3, min(7, max_pois // 4))
+        target_clusters = max(num_days, 3)
         clustered_pois = self._cluster_pois_by_location(
             pois[:max_pois], 
             radius_km=1.5,
             target_clusters=target_clusters
         )
         
+        # SHUFFLE clusters to prevent LLM bias toward first cluster
+        # LLM tends to select more POIs from clusters it sees first
+        cluster_items = list(clustered_pois.items())
+        random.shuffle(cluster_items)
+        
         lines = []
         lines.append("=== POIs BY AREA ===")
         
         poi_index = 1
-        for cluster_id, cluster_pois in clustered_pois.items():
+        for cluster_id, cluster_pois in cluster_items:
             cluster_center = self._calculate_cluster_center(cluster_pois)
             lines.append(f"\n[CLUSTER {cluster_id}] ({cluster_center[0]:.4f}, {cluster_center[1]:.4f}) - {len(cluster_pois)} POIs")
             
@@ -1026,7 +1196,74 @@ class PlannerService:
         target_clusters: Optional[int] = None
     ) -> Dict[int, List[Dict]]:
         """
-        Cluster POIs by geographic proximity using BFS + Merge Small Clusters.
+        Cluster POIs by geographic proximity using ML (HDBSCAN) or fallback BFS.
+        
+        ML Clustering (HDBSCAN):
+        - O(n log n) time complexity (faster than BFS O(n²))
+        - Auto-detects optimal cluster count
+        - Handles variable density (city center vs suburbs)
+        - Detects noise/outlier POIs
+        - Uses accurate Haversine distance
+        
+        Fallback (BFS):
+        - Used if hdbscan not installed or ML_CLUSTERING_ENABLED=False
+        - O(n²) but works without dependencies
+        
+        Args:
+            pois: List of POI dicts with location data
+            radius_km: Clustering radius in km (for BFS) or min_cluster_size guide (for ML)
+            target_clusters: Target number of clusters (optional)
+            
+        Returns:
+            Dict of {cluster_id: [POI, POI, ...]}
+        """
+        
+        # Try ML clustering first (HDBSCAN)
+        if ML_CLUSTERING_ENABLED:
+            try:
+                # Calculate min_cluster_size based on POI count
+                # Smaller datasets → smaller clusters allowed
+                min_cluster_size = max(2, min(5, len(pois) // 10))
+                
+                clusters = cluster_pois_ml(
+                    pois,
+                    algorithm='hdbscan',
+                    min_cluster_size=min_cluster_size,
+                    max_clusters=target_clusters,
+                    metric='haversine',
+                    assign_noise_to_nearest=True  # IMPORTANT: Assign outliers to nearest cluster for travel!
+                )
+                
+                # No need to remove noise cluster - it's already assigned to nearest clusters
+                # This preserves distant attractions like Bà Nà Hills, Hội An, etc.
+                
+                if clusters:
+                    logger.info(f"[CLUSTERING] ML (HDBSCAN) created {len(clusters)} clusters from {len(pois)} POIs")
+                    return clusters
+                else:
+                    logger.warning("[CLUSTERING] ML returned empty clusters, falling back to BFS")
+                    
+            except Exception as e:
+                logger.warning(f"[CLUSTERING] ML clustering failed: {e}. Falling back to BFS")
+        
+        # Fallback to BFS clustering
+        return self._cluster_pois_by_location_bfs(pois, radius_km, target_clusters)
+    
+    def _cluster_pois_by_location_bfs(
+        self, 
+        pois: List[Dict[str, Any]], 
+        radius_km: float = 2.0,
+        target_clusters: Optional[int] = None
+    ) -> Dict[int, List[Dict]]:
+        """
+        Cluster POIs using BFS (Breadth-First Search) - FALLBACK METHOD.
+        
+        This is the original clustering method, kept as fallback when:
+        - hdbscan library not installed
+        - ML clustering disabled
+        - ML clustering fails
+        
+        ⚠️ Performance Warning: O(n²) time complexity, slow for n > 100 POIs.
         
         Algorithm:
         1. Build adjacency list of POIs within radius_km
@@ -1034,12 +1271,6 @@ class PlannerService:
         3. If target_clusters specified and actual_clusters > target:
            - Merge smallest cluster with nearest cluster
            - Repeat until len(clusters) == target_clusters
-        
-        Example:
-            POI A at (16.0544, 108.2428)
-            POI B at (16.0548, 108.2430) - 50m from A
-            POI C at (16.0552, 108.2432) - 50m from B, 100m from A
-            With radius=2km → All in same cluster (transitive)
         
         Args:
             pois: List of POI dicts with location data
@@ -1227,12 +1458,18 @@ class PlannerService:
         """
         Calculate the geographic center of a cluster.
         
+        Uses ML clustering helper if available, otherwise falls back to simple average.
+        
         Args:
             cluster_pois: List of POIs in the cluster
             
         Returns:
             Tuple (lat, lng) of cluster center
         """
+        if ML_CLUSTERING_ENABLED:
+            return POIClustering.calculate_cluster_center(cluster_pois)
+        
+        # Fallback implementation
         valid_coords = []
         for poi in cluster_pois:
             location = poi.get('location', {})

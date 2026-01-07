@@ -609,6 +609,7 @@ class GooglePlacesProvider(BaseProvider):
         formatted_address = raw_data.get('formattedAddress', '')
         short_formatted_address = raw_data.get('shortFormattedAddress', '')
         adr_format_address = raw_data.get('adrFormatAddress', '')
+        address_components = raw_data.get('addressComponents', [])
         
         # Types
         types = raw_data.get('types', [])
@@ -924,6 +925,8 @@ class GooglePlacesProvider(BaseProvider):
                 'count': user_rating_count
             },
             
+            # === Adress Components ===
+            'address_components': address_components,
             # === Pricing ===
             'pricing': {
                 'level': price_enum,

@@ -96,6 +96,79 @@ export default function Dashboard() {
     fetchRecentPlans();
   }, []);
 
+  // Auto-refresh status of generating plans (silent update, no full reload)
+  useEffect(() => {
+    const generatingPlans = plans.filter(p => {
+      const status = p.status?.toLowerCase();
+      return status === 'pending' || status === 'processing';
+    });
+
+    if (generatingPlans.length > 0) {
+      console.log('[Dashboard] Found', generatingPlans.length, 'generating plans, starting status polling...');
+      
+      const statusInterval = setInterval(async () => {
+        console.log('[Dashboard] Polling status for generating plans...');
+        
+        try {
+          // Fetch status for each generating plan
+          const updates = await Promise.all(
+            generatingPlans.map(async (plan) => {
+              try {
+                const result = await planAPI.getPlanById(plan.plan_id);
+                if (result.success && result.data) {
+                  const planData = result.data.plan || result.data;
+                  return {
+                    plan_id: plan.plan_id,
+                    status: planData.status,
+                    itinerary: planData.itinerary,
+                    destination: planData.destination,
+                    thumbnail_url: planData.thumbnail_url
+                  };
+                }
+                return null;
+              } catch (err) {
+                console.error(`Error fetching status for plan ${plan.plan_id}:`, err);
+                return null;
+              }
+            })
+          );
+
+          // Update state with new status (merge update, không replace toàn bộ)
+          setPlans(prevPlans => 
+            prevPlans.map(plan => {
+              const update = updates.find(u => u && u.plan_id === plan.plan_id);
+              if (update) {
+                // Chỉ update nếu status thay đổi
+                if (update.status !== plan.status) {
+                  console.log(`[Dashboard] Plan ${plan.plan_id} status: ${plan.status} → ${update.status}`);
+                  return { ...plan, ...update };
+                }
+              }
+              return plan;
+            })
+          );
+
+          // Nếu có plan nào completed/failed, refresh recent plans (sidebar)
+          const hasCompleted = updates.some(u => {
+            const status = u?.status?.toLowerCase();
+            return status === 'completed' || status === 'failed';
+          });
+          if (hasCompleted) {
+            fetchRecentPlans();
+          }
+
+        } catch (error) {
+          console.error('[Dashboard] Error polling status:', error);
+        }
+      }, 3000); // Poll status every 3 seconds (faster than full reload)
+
+      return () => {
+        console.log('[Dashboard] Clearing status polling interval');
+        clearInterval(statusInterval);
+      };
+    }
+  }, [plans]);
+
   // Load more handler
   const handleLoadMore = () => {
     const nextPage = page + 1;

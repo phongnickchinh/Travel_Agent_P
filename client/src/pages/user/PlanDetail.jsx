@@ -480,6 +480,45 @@ export default function PlanDetail() {
     }
   }, [planId, shareToken, isPublicView]);
 
+  // Auto-reload when status is pending/processing (polling every 3 seconds)
+  useEffect(() => {
+    if (!plan || isPublicView) return;
+    
+    const status = plan.status?.toLowerCase();
+    if (status === 'pending' || status === 'processing') {
+      console.log(`[PlanDetail] Plan status is ${status}, starting polling...`);
+      
+      const pollInterval = setInterval(async () => {
+        try {
+          const result = await planAPI.getPlanById(planId);
+          if (result.success && result.data) {
+            const planData = result.data.plan || result.data;
+            const newStatus = planData.status?.toLowerCase();
+            
+            console.log(`[PlanDetail] Poll result: status=${newStatus}`);
+            
+            // Update plan data
+            setPlan(planData);
+            
+            // Stop polling if status changed to completed or failed
+            if (newStatus === 'completed' || newStatus === 'failed') {
+              console.log(`[PlanDetail] Status changed to ${newStatus}, stopping polling`);
+              clearInterval(pollInterval);
+            }
+          }
+        } catch (err) {
+          console.error('[PlanDetail] Polling error:', err);
+        }
+      }, 3000); // Poll every 3 seconds
+      
+      // Cleanup on unmount or when status changes
+      return () => {
+        console.log('[PlanDetail] Clearing polling interval');
+        clearInterval(pollInterval);
+      };
+    }
+  }, [plan?.status, planId, isPublicView]);
+
   // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -821,6 +860,11 @@ export default function PlanDetail() {
     );
   }
 
+  // Check plan generation status
+  const planStatus = plan?.status?.toLowerCase();
+  const isGenerating = planStatus === 'pending' || planStatus === 'processing';
+  const hasFailed = planStatus === 'failed';
+
   // Error state
   if (error || !plan) {
     return (
@@ -841,6 +885,67 @@ export default function PlanDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Generating Overlay - Show when status is pending or processing */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center"
+          >
+            <Loader2 className="w-16 h-16 animate-spin text-brand-primary mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              {planStatus === 'pending' ? 'Đang chuẩn bị...' : 'Đang tạo lịch trình'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {planStatus === 'pending' 
+                ? 'Hệ thống đang xử lý yêu cầu của bạn. Vui lòng đợi trong giây lát...'
+                : 'AI đang phân tích và tạo lịch trình tối ưu cho bạn. Quá trình này có thể mất vài phút...'}
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="animate-pulse">●</div>
+              <div className="animate-pulse delay-75">●</div>
+              <div className="animate-pulse delay-150">●</div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Failed Overlay - Show when generation failed */}
+      {hasFailed && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center"
+          >
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Không thể tạo lịch trình
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Đã xảy ra lỗi khi tạo lịch trình. Vui lòng thử lại hoặc điều chỉnh yêu cầu.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              >
+                Quay lại
+              </button>
+              <button
+                onClick={() => setShowRegenerateModal(true)}
+                className="flex-1 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-secondary"
+              >
+                Thử lại
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-full px-6 py-4 flex items-center justify-between">
@@ -1504,13 +1609,18 @@ export default function PlanDetail() {
       </div>
 
       {!isPublicView && (
+        console.log("plan before regenerate modal: ", plan),
         <RegeneratePlanModal
           isOpen={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}
           onSubmit={handleRegeneratePlan}
-          initialBudget={plan?.budget || plan?.estimated_total_cost}
-          initialPace={plan?.pace || plan?.trip_pace}
-          initialTypes={plan?.preferences?.types || plan?.preferred_types || []}
+          initialBudget={plan?.preferences?.budget || 3500000}
+          initialBudgetLevel={plan?.preferences?.budget_level || plan?.budget_level || 'medium'}
+          initialPace={plan?.preferences?.pace || plan?.pace || 'moderate'}
+          initialTypes={plan?.preferences?.types || plan?.preferences?.interests || plan?.preferences?.types || []}
+          initUserNotes={plan?.preferences?.user_notes || ''}
+          currentNumDays={plan?.num_days || 3}
+          planTitle={plan?.title || ''}
           loading={regenerateLoading}
         />
       )}

@@ -169,7 +169,10 @@ class TravelPlannerChain:
         ========================
         CORE PLANNING RULES
         ========================
-
+        
+        0. preferences.user_notes
+        - if user provided notes, Consider it carefully when selecting POIs and crafting activities.
+        
         1. POI SELECTION
         - Use poi_id EXACTLY as provided (never invent or modify).
         - Prioritize POIs with ratings.average ≥ 4.0 and higher ratings.count.
@@ -450,8 +453,8 @@ class TravelPlannerChain:
         if pace := preferences.get('pace'):
             lines.append(f"- Pace: {escape_for_prompt(str(pace), max_length=20)}")
         
-        if dietary := preferences.get('dietary'):
-            lines.append(f"- Dietary: {escape_for_prompt(str(dietary), max_length=50)}")
+        if user_notes := preferences.get('user_notes'):
+            lines.append(f"- User Notes: {escape_for_prompt(str(user_notes), max_length=50)}")
         
         return '\n'.join(lines) if lines else "- No specific preferences"
     

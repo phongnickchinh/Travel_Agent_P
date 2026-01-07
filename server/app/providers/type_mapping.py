@@ -134,6 +134,7 @@ USER_INTEREST_TO_CATEGORY = {
     "nature": CategoryEnum.NATURE,
     "adventure": CategoryEnum.ADVENTURE,
     "food": CategoryEnum.FOOD,
+    "cafe": CategoryEnum.CAFE,
     "shopping": CategoryEnum.SHOPPING,
     "nightlife": CategoryEnum.NIGHTLIFE,
     "family": CategoryEnum.FAMILY,
@@ -169,3 +170,55 @@ def map_user_interests_to_categories(interests: List[str]) -> List[CategoryEnum]
     # If no valid mappings found, return empty list (not OTHER)
     # This allows MongoDB search to find all categories
     return categories
+
+
+def map_user_interests_to_google_types(interests: List[str]) -> List[str]:
+    """Map frontend user interests to Google Place Types via CategoryEnum intermediate mapping.
+    
+    This function provides extended coverage by:
+    1. Mapping user interests → CategoryEnum (using USER_INTEREST_TO_CATEGORY)
+    2. Mapping CategoryEnum → Google types (reverse lookup of GOOGLE_TYPE_TO_CATEGORY)
+    3. Deduplicating results
+    
+    Args:
+        interests: List of user interest strings from frontend (e.g., ['photography', 'romantic', 'beach', 'cafe'])
+        
+    Returns:
+        List of Google Place Type strings (de-duplicated)
+        
+    Example:
+        >>> map_user_interests_to_google_types(['photography', 'beach', 'cafe'])
+        ['tourist_attraction', 'landmark', 'point_of_interest', 'beach', 'cafe', 'coffee_shop']
+        
+    Note:
+        - Returns multiple Google types per CategoryEnum (e.g., LANDMARK → 'tourist_attraction', 'landmark', 'point_of_interest')
+        - Excludes accommodation types (HOTEL category) - those are fetched separately
+        - Returns empty list if no valid mappings found (fallback handled by caller)
+    """
+    # Step 1: Map interests to CategoryEnum
+    categories = map_user_interests_to_categories(interests)
+    
+    # Step 2: Reverse map CategoryEnum to Google types
+    # Build reverse mapping: CategoryEnum → List[Google types]
+    category_to_google_types = {}
+    for google_type, category in GOOGLE_TYPE_TO_CATEGORY.items():
+        if category not in category_to_google_types:
+            category_to_google_types[category] = []
+        category_to_google_types[category].append(google_type)
+    
+    # Step 3: Collect all Google types for the given categories
+    google_types: List[str] = []
+    seen = set()
+    
+    for category in categories:
+        # Exclude HOTEL category (handled separately for accommodations)
+        if category == CategoryEnum.HOTEL:
+            continue
+            
+        types = category_to_google_types.get(category, [])
+        for t in types:
+            if t not in seen:
+                seen.add(t)
+                google_types.append(t)
+    
+    return google_types

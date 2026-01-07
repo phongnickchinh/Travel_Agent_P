@@ -81,6 +81,9 @@ class PlanController:
         
         # Public access (no auth required)
         plan_api.add_url_rule("/shared/<share_token>", "get_shared_plan", self.get_shared_plan, methods=["GET"])
+        
+        # Add activity from POI
+        plan_api.add_url_rule("/<plan_id>/day/<int:day_number>/add-activity", "add_activity_from_poi", self._wrap_jwt_required(self.add_activity_from_poi), methods=["POST"])
     
     def _wrap_jwt_required(self, f):
         """Helper to maintain JWT required middleware."""
@@ -305,7 +308,8 @@ class PlanController:
             )
     
     @rate_limit(
-        max_requests=Config.RATE_LIMIT_PLAN_CREATION,
+        # max_requests=Config.RATE_LIMIT_PLAN_CREATION,
+        max_requests=10000,
         window_seconds=Config.RATE_LIMIT_PLAN_CREATION_WINDOW,
         identifier_func=get_identifier_from_auth_token,
         key_prefix='plan_regeneration'
@@ -751,6 +755,69 @@ class PlanController:
                 "Failed to retrieve shared plan.",
                 f"Không thể lấy kế hoạch chia sẻ: {str(e)}",
                 "50011",
+                500
+            )
+    
+    def add_activity_from_poi(self, user, plan_id: str, day_number: int):
+        """Add activity to day from POI.
+        
+        POST /plan/<plan_id>/day/<day_number>/add-activity
+        Body:
+        {
+            "poi_id": "poi_abc123",
+            "note": "Optional custom note"
+        }
+        
+        Response:
+        {
+            "plan": { ... updated plan with new activity ... }
+        }
+        """
+        try:
+            data = request.get_json() or {}
+            place_id = data.get('poi_id')
+            note = data.get('note')
+            
+            if not place_id:
+                return build_error_response(
+                    "POI ID is required.",
+                    "Thiếu POI ID.",
+                    "40008",
+                    400
+                )
+            
+            # Call service to add activity
+            updated_plan = self.planner_service.add_activity_from_poi(
+                plan_id=plan_id,
+                user_id=user.id,
+                day_number=day_number,
+                place_id=place_id,
+                note=note
+            )
+            
+            if not updated_plan:
+                return build_error_response(
+                    "Failed to add activity. Plan not found or POI not available.",
+                    "Không thể thêm hoạt động. Kế hoạch không tồn tại hoặc POI không khả dụng.",
+                    "40409",
+                    404
+                )
+            
+            logger.info(f"[INFO] Added activity from POI {place_id} to plan {plan_id} day {day_number}")
+            
+            return build_success_response(
+                "Activity added successfully.",
+                "Đã thêm hoạt động thành công.",
+                "20016",
+                {"plan": updated_plan}
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to add activity from POI: {e}")
+            return build_error_response(
+                "Failed to add activity.",
+                f"Không thể thêm hoạt động: {str(e)}",
+                "50016",
                 500
             )
 

@@ -202,6 +202,32 @@ class POIRepository(POIRepositoryInterface):
         except Exception as e:
             logger.error(f"[ERROR] Failed to get POI {poi_id}: {e}")
             return None
+        
+    def get_by_google_id(self, google_place_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get POI by Google Place ID.
+        
+        Args:
+            google_place_id: Google Place identifier
+            
+        Returns:
+            POI document if found, None otherwise
+            
+        Example:
+            poi = poi_repo.get_by_google_id("ChIJoRyG2RwZQjERWLj1Xw8e9HE")
+            if poi:
+                print(f"Found: {poi['name']}")
+        """
+        if self.collection is None:
+            return None
+        
+        try:
+            poi = self.collection.find_one({"google_data.google_place_id": google_place_id})
+            return poi
+        
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get POI by Google ID {google_place_id}: {e}")
+            return None
     
     def get_by_ids(self, poi_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         """

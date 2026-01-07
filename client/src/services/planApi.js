@@ -78,6 +78,7 @@ class PlanAPI {
   async getPlanById(planId) {
     try {
       const response = await api.get(`/plan/${planId}`);
+      console.log('[DEBUG] getPlanById response:', response);
       return {
         success: true,
         data: response.data.plan || response.data.data?.plan || response.data
@@ -474,6 +475,39 @@ class PlanAPI {
         check_out_time: accommodation.checkOut
       }]
     });
+  }
+
+  /**
+   * Add activity from POI to day
+   * Fetches POI details and adds to activities, poi_ids, types arrays
+   * 
+   * @param {string} planId - Plan ID
+   * @param {number} dayNumber - 1-based day number
+   * @param {string} poiId - POI ID from search/autocomplete
+   * @param {string} note - Optional custom note
+   * @returns {Promise<Object>} - Updated plan
+   */
+  async addActivityFromPOI(planId, dayNumber, poiId, note = null) {
+    console.log('[PlanAPI] addActivityFromPOI called:', { planId, dayNumber, poiId, note });
+    try {
+      const url = `/plan/${planId}/day/${dayNumber}/add-activity`;
+      console.log('[PlanAPI] POST request to:', url, 'Body:', { poi_id: poiId, note });
+      const response = await api.post(url, {
+        poi_id: poiId,
+        note: note
+      });
+      console.log('[PlanAPI] Response:', response.data);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('[PlanAPI] Add activity from POI failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
   }
 }
 

@@ -12,6 +12,7 @@ const DayItinerary = ({
   startIndex,
   isPublicView,
   onSave,
+  onAddActivityFromPOI,
   location,
   onHover,
   onLeave
@@ -156,10 +157,32 @@ const DayItinerary = ({
     handlePersist(nextItems, { sendTimes: false });
   };
 
-  const handleAdd = (activity) => {
-    const nextItems = [...items, activity];
-    // Do not change estimated_times on add unless explicitly edited
-    handlePersist(nextItems, { sendTimes: false });
+  const handleAdd = async (activity) => {
+    // Debug: Log activity and callback availability
+    console.log('[DayItinerary] handleAdd called with activity:', activity);
+    console.log('[DayItinerary] place_id:', activity.place_id);
+    console.log('[DayItinerary] onAddActivityFromPOI exists:', !!onAddActivityFromPOI);
+    
+    // If activity has place_id, use new API endpoint
+    if (activity.place_id && onAddActivityFromPOI) {
+      console.log('[DayItinerary] Using NEW POST API for place_id:', activity.place_id);
+      try {
+        setSaving(true);
+        await onAddActivityFromPOI(dayNumber, activity.place_id, activity.description || activity.note);
+        // Plan will be updated by parent component
+        console.log('[DayItinerary] Successfully added activity via POST API');
+        setSaving(false);
+      } catch (error) {
+        console.error('[DayItinerary] Failed to add activity from POI:', error);
+        alert('Không thể thêm hoạt động. Vui lòng thử lại.');
+        setSaving(false);
+      }
+    } else {
+      // Fallback to old method for manually entered activities
+      console.log('[DayItinerary] Using OLD PATCH method. Reason:', !activity.place_id ? 'No place_id' : 'No callback');
+      const nextItems = [...items, activity];
+      handlePersist(nextItems, { sendTimes: false });
+    }
   };
 
   const isAccommodationCategory = (category) => {

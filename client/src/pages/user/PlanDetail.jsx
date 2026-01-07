@@ -389,13 +389,32 @@ export default function PlanDetail() {
   }, [planId, isPublicView]);
 
   // Save day itinerary (activities + estimated times)
-  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes, poiIds) => {
+  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes, poiIds, types) => {
     if (!planId || isPublicView) return;
-    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds);
+    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds, types);
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
       throw new Error(result.error || 'Lỗi cập nhật hoạt động');
+    }
+  }, [planId, isPublicView]);
+
+  // Add activity from POI search
+  const handleAddActivityFromPOI = useCallback(async (dayNumber, poiId, note) => {
+    console.log('[PlanDetail] handleAddActivityFromPOI called:', { dayNumber, poiId, note });
+    if (!planId || isPublicView) {
+      console.log('[PlanDetail] Skipping - no planId or isPublicView');
+      return;
+    }
+    console.log('[PlanDetail] Calling planAPI.addActivityFromPOI...');
+    const result = await planAPI.addActivityFromPOI(planId, dayNumber, poiId, note);
+    console.log('[PlanDetail] API result:', result);
+    if (result.success && result.data) {
+      const planData = result.data.plan || result.data;
+      setPlan(planData);
+      console.log('[PlanDetail] Plan updated successfully');
+    } else {
+      throw new Error(result.error || 'Lỗi thêm hoạt động');
     }
   }, [planId, isPublicView]);
 
@@ -1097,6 +1116,7 @@ export default function PlanDetail() {
                     startIndex={startIndex}
                     isPublicView={isPublicView}
                     onSave={handleSaveDayItinerary}
+                    onAddActivityFromPOI={handleAddActivityFromPOI}
                     location={destinationLocation}
                     onHover={handleActivityHover}
                     onLeave={handleActivityLeave}

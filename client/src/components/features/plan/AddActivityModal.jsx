@@ -20,9 +20,20 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
 
   const handleAdd = () => {
     if (!selected) return;
+    
+    // Debug: Log selected item to check available fields
+    console.log('[AddActivityModal] Selected item:', selected);
+    console.log('[AddActivityModal] place_id:', selected.place_id);
+    console.log('[AddActivityModal] id:', selected.id);
+    console.log('[AddActivityModal] poi_id:', selected.poi_id);
+    
+    // Extract place_id from multiple possible fields
+    const placeId = selected.place_id || selected.id || selected.poi_id;
+    console.log('[AddActivityModal] Extracted placeId:', placeId);
+    
     const newActivity = {
       poi_name: selected.name || selected.text,
-      poi_id: selected.poi_id || selected.id,
+      place_id: placeId,  // Use extracted place_id
       description: note || selected.description,
       address: selected.address || selected.description,
       category: Array.isArray(selected.types) ? selected.types[0] : selected.primary_type,
@@ -31,6 +42,7 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
         : null),
       rating: selected.rating,
     };
+    console.log('[AddActivityModal] newActivity:', newActivity);
     onAdd(newActivity);
   };
 

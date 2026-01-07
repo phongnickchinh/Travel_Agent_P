@@ -75,7 +75,7 @@ export default function CreatePlanNew() {
       budget: 3500000,
       budgetLevel: 'medium',
       pace: 'moderate',
-      dietary: '',
+      userNotes: '',
       customInterests: '',
     }
   });
@@ -272,7 +272,7 @@ export default function CreatePlanNew() {
           budget: formData.preferences.budget,
           budget_level: formData.preferences.budgetLevel,
           pace: formData.preferences.pace,
-          dietary: formData.preferences.dietary || null,
+          user_notes: formData.preferences.userNotes || null,
         }
       };
 
@@ -645,7 +645,7 @@ export default function CreatePlanNew() {
                   value={formData.preferences.dietary}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    preferences: { ...prev.preferences, dietary: e.target.value }
+                    preferences: { ...prev.preferences, userNotes: e.target.value }
                   }))}
                   placeholder="VD: Chay, không gluten, halal..."
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all"

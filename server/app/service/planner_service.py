@@ -34,7 +34,7 @@ except ImportError:
 
 from ..model.mongo.plan import Plan, PlanStatusEnum, PlanCreateRequest, PlanUpdateRequest, PlanPatchRequest
 from ..model.mongo.place_detail import PlaceDetail
-from ..model.mongo.poi import POISearchRequest, CategoryEnum
+from ..model.mongo.poi import POISearchRequest, CategoryEnum, POI
 from ..repo.mongo.plan_repository import PlanRepository
 from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
@@ -923,7 +923,6 @@ class PlannerService:
             True if POI was cached successfully
         """
         try:
-            from ..model.mongo.poi import POI
             
             # Validate that poi_data has required fields
             poi_id = poi_data.get('poi_id')
@@ -2331,3 +2330,184 @@ class PlannerService:
         if plan.get('itinerary'):
             plan = self._enrich_itinerary_with_poi_locations(plan)
         return plan
+    
+    def add_activity_from_poi(self, plan_id: str, user_id: str, day_number: int, place_id: str, note: str = None):
+        """
+        Add a new activity to a specific day using POI ID.
+        
+        Workflow:
+        1. Verify ownership and get plan
+        2. Validate day_number bounds
+        3. Fetch POI details (MongoDB cache → Google API fallback)
+        4. Construct activity object from POI data
+        5. Append to parallel arrays (activities, poi_ids, types, etc.)
+        6. Update plan in database
+        7. Enrich with location data
+        
+        Args:
+            plan_id: Plan ID
+            user_id: User ID (for ownership check)
+            day_number: Day number (1-indexed)
+            poi_id: POI ID from autocomplete
+            note: Optional custom note (overrides POI description)
+        
+        Returns:
+            Updated plan dict, or None if failed
+        """
+        try:
+            # Step 1: Ownership check
+            plan = self.plan_repo.get_by_id(plan_id)
+            if not plan or plan.get('user_id') != user_id:
+                logger.warning(f"[PLANNER] Plan {plan_id} not found or unauthorized for user {user_id}")
+                return None
+            
+            # Step 2: Validate day bounds
+            num_days = plan.get('num_days', 0)
+            if day_number < 1 or day_number > num_days:
+                logger.warning(f"[PLANNER] Invalid day_number {day_number}, plan has {num_days} days")
+                return None
+            
+            # Step 3: Fetch POI details (cache-first strategy)
+            poi = None
+            
+            # Try MongoDB POI cache first
+            try:
+                poi = self.poi_repo.get_by_google_id(place_id)
+                if poi:
+                    logger.info(f"[PLANNER] Found POI {place_id} in MongoDB cache")
+            except Exception as e:
+                logger.warning(f"[PLANNER] MongoDB POI fetch failed: {e}")
+            
+            # Try PlaceDetail cache
+            if not poi:
+                try:
+                    poi = self.place_detail_repo.get_by_place_id(place_id)
+                    if poi:
+                        logger.info(f"[PLANNER] Found POI {place_id} in PlaceDetail cache")
+                except Exception as e:
+                    logger.warning(f"[PLANNER] PlaceDetail fetch failed: {e}")
+            
+            # Fallback to Google Places API
+            if not poi:
+                try:
+                    logger.info(f"[PLANNER] Fetching POI {place_id} from Google Places API")
+                    google_poi = self.google_provider.get_details(place_id)
+                    if google_poi:
+                        #cache to mongo
+                        try:
+                            self._cache_poi_to_mongodb(google_poi)
+                            poi = self.poi_repo.get_by_google_id(place_id)
+                        except Exception as upsert_error:
+                            logger.error(f"[CACHE] MongoDB upsert failed for {place_id}: {upsert_error}")
+                                
+                        logger.info(f"[PLANNER] Fetched POI {place_id} from Google API")
+                except Exception as e:
+                    logger.error(f"[PLANNER] Google API fetch failed: {e}")
+                    return None
+            
+            if not poi:
+                logger.error(f"[PLANNER] POI {place_id} not found in any source")
+                return None
+            
+            # Step 4: Construct activity object from POI
+            poi_name = poi.get('name') or poi.get('displayName', {}).get('text', 'Unknown Place')
+            types_list = poi.get('categories')
+            
+            # Extract location (handle different formats)
+            location = poi.get('location')
+            if not location and 'geometry' in poi:
+                geometry = poi['geometry']
+                if 'location' in geometry:
+                    location = geometry['location']
+            
+            # Use custom note if provided, else use POI description
+            description = f"\"{poi_name}\" {note}" if note else f"Visit {poi_name}"
+            
+            
+            # Step 5: Append to parallel arrays
+            itinerary = plan.get('itinerary', [])
+            day_idx = day_number - 1
+            
+            if day_idx >= len(itinerary):
+                logger.error(f"[PLANNER] Day index {day_idx} out of bounds for itinerary length {len(itinerary)}")
+                return None
+            
+            day_data = itinerary[day_idx]
+            
+            # Append to activities array
+            if 'activities' not in day_data:
+                day_data['activities'] = []
+            day_data['activities'].append(description)
+            
+            # Append to poi_ids array
+            if 'poi_ids' not in day_data:
+                day_data['poi_ids'] = []
+            day_data['poi_ids'].append(poi.get('poi_id'))
+            
+            # Append to types array
+            if 'types' not in day_data:
+                day_data['types'] = []
+            day_data['types'].append(types_list)
+            
+            # Append to opening_hours array (optional field)
+            # if 'opening_hours' not in day_data:
+            #     day_data['opening_hours'] = []
+            # opening_hours = poi.get('opening_hours') or poi.get('openingHours') or poi.get('regularOpeningHours')
+            # day_data['opening_hours'].append(opening_hours)
+            
+            # Append to featured_images array (optional field)
+            if 'featured_images' not in day_data:
+                day_data['featured_images'] = []
+            
+            # Extract photo reference/name
+            photos = poi.get('images', [])
+            if photos and len(photos) > 0:
+                photo_url = photos[1].get('url', '')
+                day_data['featured_images'].append(photo_url)
+            else:
+                day_data['featured_images'].append(None)
+            
+            # Append placeholder to estimated_times (user can edit later)
+            if 'estimated_times' not in day_data:
+                day_data['estimated_times'] = []
+            #get last estimate_time in list, plus +1h to 
+            time = day_data['estimated_times'][-1]
+            #convert string '17:00-18:30' to start_time and end_time
+            if time:
+                end_time = time.split('-')[1]
+                hour, minute = map(int, end_time.split(':'))
+                hour += 1
+                if hour >= 24:
+                    hour = hour - 24
+                new_time = f"{end_time}-{hour:02d}:{minute:02d}"
+                day_data['estimated_times'].append(new_time)
+            else:
+                day_data['estimated_times'].append(None)
+            
+            # Log array lengths for debugging
+            logger.info(
+                f"[PLANNER] Day {day_number} arrays: "
+                f"activities={len(day_data['activities'])}, "
+                f"poi_ids={len(day_data['poi_ids'])}, "
+                f"types={len(day_data['types'])}"
+            )
+            
+            # Step 6: Update plan
+            self.plan_repo.update(plan_id, {'itinerary': itinerary})
+            
+            # Refresh plan from DB
+            updated_plan = self.plan_repo.get_by_id(plan_id)
+            
+            # Step 7: Enrich with location data
+            if updated_plan and updated_plan.get('itinerary'):
+                updated_plan = self._enrich_itinerary_with_poi_locations(updated_plan)
+            
+            logger.info(f"[PLANNER] Successfully added activity from POI {place_id} to plan {plan_id} day {day_number}")
+            return updated_plan
+            
+        except Exception as e:
+            logger.error(f"[PLANNER] Failed to add activity from POI: {e}")
+            logger.exception("Add activity error")
+            return None
+
+

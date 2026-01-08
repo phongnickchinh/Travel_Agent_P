@@ -1,8 +1,9 @@
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
-import { GripVertical, Plus } from 'lucide-react';
+import { GripVertical, MapPin, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { openDirectionsByName } from '../../../utils/googleMapsHelper';
 import { EditableNotes } from '../../ui/EditableField';
 import { SortableActivityItem } from './ActivityItem';
 import AddActivityModal from './AddActivityModal';
@@ -191,6 +192,31 @@ const DayItinerary = ({
     return catStr.includes('hotel') || catStr.includes('accommodation');
   };
 
+  // Handle Google Maps navigation
+  const handleOpenGoogleMaps = () => {
+    // Get POIs with names from activities
+    const poisWithNames = items
+      .filter(item => item.poi_name || item.name || item.activity)  // Only items with names
+      .map(item => ({
+        poi_name: item.poi_name || item.name || item.activity,
+        address: item.address
+      }));
+    
+    if (poisWithNames.length === 0) {
+      alert('Không có địa điểm nào để dẫn đường');
+      return;
+    }
+    
+    // Extract destination city from day data or location
+    const destination = day.destination || location?.name || '';
+    
+    openDirectionsByName(poisWithNames, { 
+      travelMode: 'driving',
+      destination: destination,  // Helps Google Maps find correct location
+      useCurrentLocation: true   // Start from current location
+    });
+  };
+
   return (
     <div className="p-6">
     {/* Day Notes - Editable for owner */}
@@ -271,20 +297,35 @@ const DayItinerary = ({
         </DndContext>
       )}
 
-    <div className="flex items-center justify-between mt-3">
+    <div className="flex items-center justify-between mt-3 gap-2">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           {saving && !isPublicView ? 'Đang lưu...' : null}
         </div>
-        {!isPublicView && (
-          <motion.button
-            whileHover={{ scale: 1.02, y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-primary text-white text-sm shadow"
-          >
-            <Plus className="w-4 h-4" /> Thêm hoạt động
-          </motion.button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Google Maps button - show if there are POIs with names */}
+          {items.some(item => item.poi_name || item.name || item.activity) && (
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleOpenGoogleMaps}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 text-white text-sm shadow hover:bg-blue-600"
+              title="Mở Google Maps để dẫn đường"
+            >
+              <MapPin className="w-4 h-4" /> Google Maps
+            </motion.button>
+          )}
+          
+          {!isPublicView && (
+            <motion.button
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-primary text-white text-sm shadow"
+            >
+              <Plus className="w-4 h-4" /> Thêm hoạt động
+            </motion.button>
+          )}
+        </div>
     </div>
 
       <AddActivityModal

@@ -1,0 +1,190 @@
+# ========================================
+# GitHub Actions - Backend Deployment
+# Auto-deploy to VPS on push to main
+# ========================================
+
+name: Deploy Backend to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+env:
+  DOCKER_COMPOSE_VERSION: '2.23.0'
+  DEPLOY_PATH: '/opt/travel-agent-p'
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ============= Checkout Code =============
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ============= Setup SSH Key =============
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      # ============= Test SSH Connection =============
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "echo 'SSH connection successful'"
+
+      # ============= Deploy Application =============
+      - name: Deploy to VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+          
+          set -e
+          
+          echo "========================================"
+          echo "Starting Deployment"
+          echo "========================================"
+          
+          # Navigate to deployment directory
+          cd ${{ env.DEPLOY_PATH }}
+          
+          # Pull latest code
+          echo "Pulling latest code from GitHub..."
+          git fetch origin main
+          git reset --hard origin/main
+          
+          # Navigate to server directory
+          cd server
+          
+          # Create .env from secrets if not exists
+          if [ ! -f .env ]; then
+            echo "Creating .env file from template..."
+            cp .env.production.example .env
+            echo "WARNING: Please configure server/.env with production values!"
+          fi
+          
+          # Backup current database (PostgreSQL)
+          echo "Backing up PostgreSQL database..."
+          docker-compose -f docker-compose.production.yml exec -T postgres pg_dump \
+            -U ${POSTGRES_USERNAME:-postgres} \
+            ${POSTGRES_DBNAME:-travel_agent_db} \
+            > ../backups/postgres_$(date +%Y%m%d_%H%M%S).sql || echo "Backup failed (maybe first deployment)"
+          
+          # Stop services
+          echo "Stopping current services..."
+          docker-compose -f docker-compose.production.yml down
+          
+          # Build new images
+          echo "Building Docker images..."
+          docker-compose -f docker-compose.production.yml build --no-cache --pull
+          
+          # Start services
+          echo "Starting services..."
+          docker-compose -f docker-compose.production.yml up -d
+          
+          # Wait for services to be healthy
+          echo "Waiting for services to be healthy..."
+          sleep 30
+          
+          # Check Flask health
+          echo "Checking Flask health..."
+          for i in {1..30}; do
+            if docker-compose -f docker-compose.production.yml exec -T flask-app curl -f http://localhost:5000/health >/dev/null 2>&1; then
+              echo "Flask is healthy!"
+              break
+            fi
+            echo "Waiting for Flask... ($i/30)"
+            sleep 2
+          done
+          
+          # Show running containers
+          echo "Running containers:"
+          docker-compose -f docker-compose.production.yml ps
+          
+          # Show logs (last 50 lines)
+          echo "Recent logs:"
+          docker-compose -f docker-compose.production.yml logs --tail=50
+          
+          echo "========================================"
+          echo "Deployment completed successfully!"
+          echo "========================================"
+          ENDSSH
+
+      # ============= Health Check =============
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment health..."
+          
+          # Wait a bit for services to stabilize
+          sleep 10
+          
+          # Check health endpoint (replace with your domain)
+          HEALTH_URL="http://${{ secrets.VPS_HOST }}/health"
+          
+          for i in {1..10}; do
+            if curl -f -s "$HEALTH_URL" | grep -q "ok"; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Health check attempt $i/10 failed, retrying..."
+            sleep 5
+          done
+          
+          echo "Health check failed after 10 attempts"
+          exit 1
+
+      # ============= Rollback on Failure =============
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, attempting rollback..."
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+          
+          cd ${{ env.DEPLOY_PATH }}
+          
+          # Get previous commit
+          git reset --hard HEAD~1
+          
+          # Rebuild and restart
+          cd server
+          docker-compose -f docker-compose.production.yml down
+          docker-compose -f docker-compose.production.yml up -d --build
+          
+          echo "Rolled back to previous version"
+          ENDSSH
+
+      # ============= Cleanup =============
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+          echo "Cleaned up SSH key"
+
+      # ============= Notify on Success =============
+      - name: Send success notification
+        if: success()
+        run: |
+          echo "Deployment successful!"
+          echo "API URL: http://${{ secrets.VPS_HOST }}"
+          echo "Health: http://${{ secrets.VPS_HOST }}/health"
+
+      # ============= Notify on Failure =============
+      - name: Send failure notification
+        if: failure()
+        run: |
+          echo "Deployment failed!"
+          echo "Check the logs above for details"

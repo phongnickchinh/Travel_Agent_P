@@ -20,7 +20,21 @@ echo "✅ PostgreSQL is ready!"
 
 # Wait for MongoDB to be ready
 echo "Waiting for MongoDB..."
-until mongosh "$MONGODB_URI" --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
+# Use Python to check connection since mongosh might not be installed
+until python -c "
+import os, sys
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+try:
+    uri = os.environ.get('MONGODB_URI')
+    if not uri:
+        print('MONGODB_URI is not set, skipping check.')
+        sys.exit(0)
+    client = MongoClient(uri, serverSelectionTimeoutMS=3000)
+    client.admin.command('ping')
+except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+    sys.exit(1)
+" >/dev/null 2>&1; do
     echo "MongoDB is unavailable - sleeping"
     sleep 2
 done

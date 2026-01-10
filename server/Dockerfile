@@ -10,7 +10,7 @@ LABEL maintainer="Travel Agent P Team"
 LABEL description="Flask REST API + AI Travel Planner"
 
 # Set working directory
-WORKDIR /app
+WORKDIR /server
 
 # Install system dependencies for building Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 FROM python:3.10.11-slim
 
 # Set working directory
-WORKDIR /app
+WORKDIR /server
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,7 +48,7 @@ COPY . .
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /server
 
 # Switch to non-root user
 USER appuser

@@ -72,7 +72,7 @@ echo "✅ Firewall configured"
 
 # Create deployment directory
 echo "📁 Creating deployment directory..."
-DEPLOY_PATH="/opt/travel-agent-p"
+DEPLOY_PATH="/home/travel_project"
 mkdir -p $DEPLOY_PATH
 cd $DEPLOY_PATH
 
@@ -170,14 +170,14 @@ ssh -T git@github.com || echo "⚠️  Note: 'Permission denied' is normal if us
 echo "💾 Creating backup script..."
 cat > /usr/local/bin/backup-travelagent.sh << 'EOF'
 #!/bin/bash
-BACKUP_DIR="/opt/travel-agent-p/backups"
+BACKUP_DIR="/home/travel_project/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 
 # Load environment variables
-source /opt/travel-agent-p/server/.env
+source /home/travel_project/server/.env
 
 # Backup PostgreSQL
-docker-compose -f /opt/travel-agent-p/server/docker-compose.production.yml exec -T postgres \
+docker-compose -f /home/travel_project/server/docker-compose.production.yml exec -T postgres \
     pg_dump -U ${POSTGRES_USERNAME:-postgres} ${POSTGRES_DBNAME:-travel_agent_db} > $BACKUP_DIR/postgres_$DATE.sql
 
 # MongoDB Atlas backup (manual via Atlas dashboard)

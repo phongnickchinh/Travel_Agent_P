@@ -16,7 +16,7 @@ on:
 
 env:
   DOCKER_COMPOSE_VERSION: '2.23.0'
-  DEPLOY_PATH: '/opt/travel-agent-p'
+  DEPLOY_PATH: '/home/travel_project'
 
 jobs:
   deploy:
@@ -34,9 +34,11 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_KEY }}" > ~/.ssh/deploy_key
+          printf "%s\n" "${{ secrets.VPS_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          head -n 1 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       # ============= Test SSH Connection =============
       - name: Test SSH connection

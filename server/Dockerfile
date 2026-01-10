@@ -34,9 +34,12 @@ FROM python:3.10.11-slim
 WORKDIR /server
 
 # Install runtime dependencies
+# THÊM: postgresql-client (để có lệnh psql) và redis-tools (để có lệnh redis-cli)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    postgresql-client \
+    redis-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder

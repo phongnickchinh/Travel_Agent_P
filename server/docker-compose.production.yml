@@ -50,19 +50,16 @@ services:
   # ============= Elasticsearch (Optional) =============
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
-    container_name: travel-agent-elasticsearch
-    restart: unless-stopped
+    container_name: travel_agent_elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - cluster.name=travel-agent-cluster
-      - node.name=travel-agent-node-1
     ports:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
     networks:
       - travel-agent-network
     healthcheck:
@@ -70,8 +67,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - with-elasticsearch
 
   # ============= Flask API Application =============
   flask-app:

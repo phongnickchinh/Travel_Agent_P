@@ -77,12 +77,6 @@ jobs:
             echo "WARNING: Please configure server/.env with production values!"
           fi
           
-          # Backup current database (PostgreSQL)
-          echo "Backing up PostgreSQL database..."
-          docker-compose -f docker-compose.production.yml exec -T postgres pg_dump \
-            -U ${POSTGRES_USERNAME:-postgres} \
-            ${POSTGRES_DBNAME:-travel_agent_db}
-          
           # Stop services
           echo "Stopping current services..."
           docker-compose -f docker-compose.production.yml down

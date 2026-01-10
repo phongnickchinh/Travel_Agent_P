@@ -18,8 +18,13 @@ until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERN
 done
 echo "✅ PostgreSQL is ready!"
 
-# MongoDB Atlas - no wait needed (cloud service)
-echo "⚠️  Using MongoDB Atlas (cloud) - skipping local wait"
+# Wait for MongoDB to be ready
+echo "Waiting for MongoDB..."
+until mongosh "$MONGODB_URI" --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
+    echo "MongoDB is unavailable - sleeping"
+    sleep 2
+done
+echo "✅ MongoDB is ready!"
 
 # Wait for Redis to be ready
 echo "Waiting for Redis..."

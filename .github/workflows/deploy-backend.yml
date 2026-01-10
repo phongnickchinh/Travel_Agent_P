@@ -81,8 +81,7 @@ jobs:
           echo "Backing up PostgreSQL database..."
           docker-compose -f docker-compose.production.yml exec -T postgres pg_dump \
             -U ${POSTGRES_USERNAME:-postgres} \
-            ${POSTGRES_DBNAME:-travel_agent_db} \
-            > ../backups/postgres_$(date +%Y%m%d_%H%M%S).sql || echo "Backup failed (maybe first deployment)"
+            ${POSTGRES_DBNAME:-travel_agent_db}
           
           # Stop services
           echo "Stopping current services..."

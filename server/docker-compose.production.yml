@@ -13,8 +13,10 @@ services:
     container_name: travel-agent-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DBNAME:-travel_agent_db}
-      POSTGRES_USER: ${POSTGRES_USERNAME:-postgres}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DBNAME: ${POSTGRES_DBNAME:-travel_agent_db}
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     ports:

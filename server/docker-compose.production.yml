@@ -6,9 +6,6 @@
 # MongoDB: Uses MongoDB Atlas (cloud)
 # Usage: docker-compose -f docker-compose.production.yml up -d --build
 # ========================================
-
-version: '3.8'
-
 services:
   # ============= PostgreSQL Database =============
   postgres:
@@ -145,8 +142,12 @@ services:
     networks:
       - travel-agent-network
     depends_on:
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      flask-app:
+        condition: service_healthy
     command: celery -A celery_worker.celery worker --loglevel=info --pool=solo
 
   # ============= Celery Beat Scheduler =============
@@ -172,8 +173,12 @@ services:
     networks:
       - travel-agent-network
     depends_on:
-      - redis
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      flask-app:
+        condition: service_healthy
     command: celery -A celery_worker.celery beat --loglevel=info
 
   # ============= Nginx Reverse Proxy =============

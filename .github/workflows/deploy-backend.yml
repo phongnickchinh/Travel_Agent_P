@@ -213,23 +213,52 @@ jobs:
           echo "Verifying deployment health..."
           
           # Wait for services to stabilize
-          sleep 10
+          sleep 15
           
           # Check health endpoint via HTTPS
           HEALTH_URL="https://api.phamphong.id.vn/health"
           
-          for i in {1..10}; do
-            RESPONSE=$(curl -sf "$HEALTH_URL" 2>/dev/null || echo "")
-            if echo "$RESPONSE" | grep -q "ok"; then
+          echo "Testing: $HEALTH_URL"
+          
+          for i in {1..15}; do
+            echo "Health check attempt $i/15..."
+            
+            # Use verbose curl to see what's happening
+            HTTP_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" --connect-timeout 10 --max-time 30 "$HEALTH_URL" 2>/dev/null || echo "000")
+            RESPONSE=$(cat /tmp/health_response.txt 2>/dev/null || echo "")
+            
+            echo "  HTTP Code: $HTTP_CODE"
+            echo "  Response: $RESPONSE"
+            
+            if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE" | grep -q "ok"; then
               echo "✅ Health check passed!"
-              echo "Response: $RESPONSE"
               exit 0
             fi
-            echo "Health check attempt $i/10, retrying in 5s..."
-            sleep 5
+            
+            # If we get a response but not "ok", show details
+            if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "200" ]; then
+              echo "  Got HTTP $HTTP_CODE - server is responding but not healthy yet"
+            fi
+            
+            if [ "$HTTP_CODE" = "000" ]; then
+              echo "  Connection failed - server may still be starting"
+            fi
+            
+            sleep 10
           done
           
-          echo "❌ Health check failed after 10 attempts"
+          echo ""
+          echo "❌ Health check failed after 15 attempts"
+          echo "Last HTTP Code: $HTTP_CODE"
+          echo "Last Response: $RESPONSE"
+          
+          # Try to get more info via SSH
+          echo ""
+          echo "Checking container status on VPS..."
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd /home/travel_project/server && docker compose ps && echo '--- Flask Logs ---' && docker compose logs --tail=30 flask-app"
+          
           exit 1
 
       # ============= Rollback on Failure =============

@@ -54,10 +54,11 @@ def create_app(config_class=Config):
     app.json = MongoJSONProvider(app)
     
     CORS(app, resources={r"/*": {
-        "origins": "*", 
+        "origins": ["https://phamphong.id.vn", "http://localhost:5173", "http://localhost:3000"],
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         "allow_headers": "*",
         "expose_headers": "*"
+        ""
     }})
     
     # Initialize Redis connection

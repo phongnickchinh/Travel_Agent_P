@@ -11,8 +11,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    // Thêm header để giúp CORS
-    'Access-Control-Allow-Origin': '*',
   },
 });
 

@@ -157,7 +157,7 @@ export default function Login({ isModal = false, onClose }) {
           {isModal && onClose && (
             <button
               onClick={onClose}
-              aria-label="Đóng"
+              aria-label="Close"
               className="absolute right-4 top-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
             >
               <X className="h-5 w-5" />
@@ -165,9 +165,9 @@ export default function Login({ isModal = false, onClose }) {
           )}
           <div className="flex items-center justify-center">
             <div className="justify-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Chào mừng trở lại</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/70">Welcome back</p>
               <h1 className="font-poppins font-semibold text-2xl mt-1">Travel Agent P</h1>
-              <p className="text-sm text-white/80">Đăng nhập để tiếp tục hành trình của bạn</p>
+              <p className="text-sm text-white/80">Sign in to continue your journey</p>
             </div>
           </div>
         </div>
@@ -195,7 +195,7 @@ export default function Login({ isModal = false, onClose }) {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
-                  placeholder="Nhập email"
+                  placeholder="Enter email"
                   required
                   className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                 />
@@ -204,7 +204,7 @@ export default function Login({ isModal = false, onClose }) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Mật khẩu</label>
+              <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                 <input
@@ -212,7 +212,7 @@ export default function Login({ isModal = false, onClose }) {
                   name="password"
                   value={form.password}
                   onChange={handleChange}
-                  placeholder="Nhập mật khẩu"
+                  placeholder="Enter password"
                   required
                   className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                 />
@@ -221,7 +221,7 @@ export default function Login({ isModal = false, onClose }) {
             </div>
 
             <div className="text-right text-sm">
-              <Link to="/reset-password" className="text-brand-primary hover:text-brand-secondary dark:text-brand-muted dark:hover:text-white">Quên mật khẩu?</Link>
+              <Link to="/reset-password" className="text-brand-primary hover:text-brand-secondary dark:text-brand-muted dark:hover:text-white">Forgot password?</Link>
             </div>
 
             <motion.button
@@ -232,13 +232,13 @@ export default function Login({ isModal = false, onClose }) {
               className="group flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-white font-semibold shadow-lg transition hover:bg-brand-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-              <span>{loading ? 'Đang đăng nhập...' : 'Đăng nhập'}</span>
+              <span>{loading ? 'Signing in...' : 'Sign In'}</span>
             </motion.button>
           </form>
 
           <div className="flex items-center gap-3 text-xs uppercase tracking-[0.2em] text-gray-400">
             <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-            hoặc
+            or
             <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
           </div>
 
@@ -247,13 +247,13 @@ export default function Login({ isModal = false, onClose }) {
           </div>
 
           <div className="text-center text-sm text-gray-600 dark:text-gray-300">
-            Chưa có tài khoản?
+            Don't have an account?
             <button
               type="button"
               onClick={() => navigate('/register')}
               className="ml-1 font-semibold text-brand-primary hover:text-brand-secondary dark:text-brand-muted dark:hover:text-white"
             >
-              Đăng ký ngay
+              Register now
             </button>
           </div>
         </div>

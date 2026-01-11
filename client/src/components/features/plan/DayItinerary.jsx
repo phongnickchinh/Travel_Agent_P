@@ -175,7 +175,7 @@ const DayItinerary = ({
         setSaving(false);
       } catch (error) {
         console.error('[DayItinerary] Failed to add activity from POI:', error);
-        alert('Không thể thêm hoạt động. Vui lòng thử lại.');
+        alert('Unable to add activity. Please try again.');
         setSaving(false);
       }
     } else {
@@ -203,7 +203,7 @@ const DayItinerary = ({
       }));
     
     if (poisWithNames.length === 0) {
-      alert('Không có địa điểm nào để dẫn đường');
+      alert('No locations to navigate to');
       return;
     }
     
@@ -240,7 +240,7 @@ const DayItinerary = ({
         </div>
     </div>
       {estimatedItems.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-4">Chưa có hoạt động cho ngày này</p>
+        <p className="text-gray-500 dark:text-gray-400 text-center py-4">No activities for this day yet</p>
       ) : (
         <DndContext
           collisionDetection={closestCenter}
@@ -299,7 +299,7 @@ const DayItinerary = ({
 
     <div className="flex items-center justify-between mt-3 gap-2">
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          {saving && !isPublicView ? 'Đang lưu...' : null}
+          {saving && !isPublicView ? 'Saving...' : null}
         </div>
         <div className="flex items-center gap-2">
           {/* Google Maps button - show if there are POIs with names */}
@@ -309,7 +309,7 @@ const DayItinerary = ({
               whileTap={{ scale: 0.98 }}
               onClick={handleOpenGoogleMaps}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 text-white text-sm shadow hover:bg-blue-600"
-              title="Mở Google Maps để dẫn đường"
+              title="Open Google Maps for directions"
             >
               <MapPin className="w-4 h-4" /> Google Maps
             </motion.button>
@@ -322,7 +322,7 @@ const DayItinerary = ({
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-primary text-white text-sm shadow"
             >
-              <Plus className="w-4 h-4" /> Thêm hoạt động
+              <Plus className="w-4 h-4" /> Add activity
             </motion.button>
           )}
         </div>

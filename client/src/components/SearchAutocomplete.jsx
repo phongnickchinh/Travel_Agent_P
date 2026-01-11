@@ -40,7 +40,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import searchAPI from '../services/searchApi';
 
 const SearchAutocomplete = ({ 
-  placeholder = "Tìm địa điểm, nhà hàng, khách sạn...",
+  placeholder = "Search places, restaurants, hotels...",
   onSelect,
   location = null, // {lat, lng} for geo-distance sorting
   className = "",
@@ -371,7 +371,7 @@ const SearchAutocomplete = ({
           {/* Header for recent searches */}
           {showRecent && (
             <div className="dropdown-header">
-              <span>Tìm kiếm gần đây</span>
+              <span>Recent searches</span>
               <button
                 type="button"
                 onClick={() => {
@@ -382,7 +382,7 @@ const SearchAutocomplete = ({
                 }}
                 className="clear-recent-button"
               >
-                Xóa
+                Clear
               </button>
             </div>
           )}
@@ -416,19 +416,19 @@ const SearchAutocomplete = ({
                     {result.name || result.main_text || result.query}
                     {result.source_type && (
                       <span className="source-badge">
-                        {result.source_type === 'admin' ? 'Khu vực' : 
-                         result.source_type === 'region' ? 'Vùng' : 
+                        {result.source_type === 'admin' ? 'Area' : 
+                         result.source_type === 'region' ? 'Region' : 
                          result.source_type === 'es' ? 'ES' :
                          result.source_type === 'google' ? 'Google' : 'POI'}
                       </span>
                     )}
                     {/* Pending status badge */}
                     {result.status === 'pending' && resolvingId !== result.place_id && (
-                      <span className="pending-badge" title="Cần tải thêm chi tiết"><Loader2 className="w-3 h-3" /></span>
+                      <span className="pending-badge" title="Loading more details"><Loader2 className="w-3 h-3" /></span>
                     )}
                     {/* Resolving spinner */}
                     {resolvingId === result.place_id && (
-                      <span className="resolving-spinner" title="Đang tải..."><RefreshCw className="w-3 h-3 animate-spin" /></span>
+                      <span className="resolving-spinner" title="Loading..."><RefreshCw className="w-3 h-3 animate-spin" /></span>
                     )}
                   </div>
                   
@@ -476,7 +476,7 @@ const SearchAutocomplete = ({
       {isOpen && !isLoading && results.length === 0 && query.length >= minLength && (
         <div className="search-dropdown">
           <div className="no-results">
-            Không tìm thấy kết quả cho "{query}"
+            No results found for "{query}"
           </div>
         </div>
       )}

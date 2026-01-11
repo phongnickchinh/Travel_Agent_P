@@ -93,7 +93,7 @@ const ActivityItem = ({
   };
 
   const description = useMemo(() => localActivity.description || localActivity.activity || '', [localActivity]);
-  const poiName = useMemo(() => localActivity.poi_name || localActivity.name || localActivity.poi?.name || 'Địa điểm', [localActivity]);
+  const poiName = useMemo(() => localActivity.poi_name || localActivity.name || localActivity.poi?.name || 'Location', [localActivity]);
   const category = useMemo(() => localActivity.category || localActivity.poi?.category, [localActivity]);
 
   return (
@@ -111,7 +111,7 @@ const ActivityItem = ({
             {...dragHandle}
             {...listeners}
             className={`mt-1 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300`}
-            aria-label="Kéo để sắp xếp"
+            aria-label="Drag to reorder"
           >
             <GripVertical className="w-4 h-4" />
           </div>
@@ -145,7 +145,7 @@ const ActivityItem = ({
 
           {isEditing ? (
             <div className="space-y-2">
-              <label className="block text-xs text-gray-500 dark:text-gray-400">Khung giờ (HH:MM-HH:MM)</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400">Time slot (HH:MM-HH:MM)</label>
               <input
                 value={localTime}
                 onChange={(e) => setLocalTime(e.target.value)}
@@ -153,7 +153,7 @@ const ActivityItem = ({
                 placeholder="09:00-10:30"
                 disabled={disabled}
               />
-              <label className="block text-xs text-gray-500 dark:text-gray-400">Mô tả</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setLocalActivity((prev) => ({ ...prev, description: e.target.value }))}
@@ -169,7 +169,7 @@ const ActivityItem = ({
                   disabled={disabled}
                   className="inline-flex items-center gap-1 px-3 py-2 bg-brand-primary text-white rounded-lg text-sm"
                 >
-                  <Check className="w-4 h-4" /> Lưu
+                  <Check className="w-4 h-4" /> Save
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -177,7 +177,7 @@ const ActivityItem = ({
                   onClick={() => setIsEditing(false)}
                   className="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm"
                 >
-                  <X className="w-4 h-4" /> Hủy
+                  <X className="w-4 h-4" /> Cancel
                 </motion.button>
               </div>
             </div>
@@ -196,18 +196,18 @@ const ActivityItem = ({
                 onClick={() => setIsEditing(true)}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <Pencil className="w-3 h-3" /> Chỉnh sửa
+                <Pencil className="w-3 h-3" /> Edit
               </button>
               <span className="text-gray-300 dark:text-gray-600">•</span>
               <button
                 onClick={onDelete}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400"
               >
-                <Trash2 className="w-3 h-3" /> Xóa
+                <Trash2 className="w-3 h-3" /> Delete
               </button>
               {localTime === '' && (
                 <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                  <Clock className="w-3 h-3" /> Thêm khung giờ để sắp xếp tối ưu
+                  <Clock className="w-3 h-3" /> Add time slot for optimal ordering
                 </span>
               )}
             </div>

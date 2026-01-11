@@ -34,9 +34,9 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
   };
 
   const menuItems = [
-    { label: 'Chỉnh sửa hồ sơ', icon: User, action: () => onOpenProfile?.() },
-    { label: 'Đổi mật khẩu', icon: Settings, action: () => onOpenPassword?.() },
-    { label: 'Đăng xuất', icon: LogOut, action: handleLogout, danger: true },
+    { label: 'Edit Profile', icon: User, action: () => onOpenProfile?.() },
+    { label: 'Change Password', icon: Settings, action: () => onOpenPassword?.() },
+    { label: 'Logout', icon: LogOut, action: handleLogout, danger: true },
   ];
 
   return (

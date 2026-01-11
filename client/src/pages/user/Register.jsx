@@ -234,16 +234,16 @@ export default function Register({ isModal = false, onClose }) {
           {isModal && onClose && (
             <button
               onClick={onClose}
-              aria-label="Đóng"
+              aria-label="Close"
               className="absolute right-4 top-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
             >
               <X className="h-5 w-5" />
             </button>
           )}
           <div className="justify-center">
-            <p className="text-xs uppercase tracking-wide text-white">Tạo tài khoản</p>
+            <p className="text-xs uppercase tracking-wide text-white">Create Account</p>
             <h1 className="font-poppins font-semibold text-2xl mt-1">Travel Agent P</h1>
-            <p className="text-sm text-white/80">Khởi động hành trình khám phá của bạn</p>
+            <p className="text-sm text-white/80">Start your journey of discovery</p>
           </div>
         </div>
 
@@ -265,7 +265,7 @@ export default function Register({ isModal = false, onClose }) {
           {currentStep === 1 && (
             <form onSubmit={handleRegister} className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Họ và tên</label>
+                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
@@ -274,7 +274,7 @@ export default function Register({ isModal = false, onClose }) {
                     value={formData.name}
                     onChange={handleChange}
                     onBlur={() => handleBlur('name')}
-                    placeholder="Nhập họ tên"
+                    placeholder="Enter your full name"
                     required
                     className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                   />
@@ -292,7 +292,7 @@ export default function Register({ isModal = false, onClose }) {
                     value={formData.username}
                     onChange={handleChange}
                     onBlur={() => handleBlur('username')}
-                    placeholder="Chọn username"
+                    placeholder="Choose username"
                     required
                     className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                   />
@@ -319,7 +319,7 @@ export default function Register({ isModal = false, onClose }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Mật khẩu</label>
+                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
@@ -328,7 +328,7 @@ export default function Register({ isModal = false, onClose }) {
                     value={formData.password}
                     onChange={handleChange}
                     onBlur={() => handleBlur('password')}
-                    placeholder="Tạo mật khẩu"
+                    placeholder="Create password"
                     required
                     className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                   />
@@ -337,7 +337,7 @@ export default function Register({ isModal = false, onClose }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Xác nhận mật khẩu</label>
+                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Confirm Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
@@ -346,7 +346,7 @@ export default function Register({ isModal = false, onClose }) {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     onBlur={() => handleBlur('confirmPassword')}
-                    placeholder="Nhập lại mật khẩu"
+                    placeholder="Re-enter password"
                     required
                     className="w-full rounded-xl border border-gray-200 bg-white/90 px-11 py-3 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                   />
@@ -355,7 +355,7 @@ export default function Register({ isModal = false, onClose }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Ngôn ngữ</label>
+                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Language</label>
                 <div className="relative">
                   <Globe2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <select
@@ -371,7 +371,7 @@ export default function Register({ isModal = false, onClose }) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Múi giờ</label>
+                <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Timezone</label>
                 <div className="relative">
                   <Globe2 className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <select
@@ -389,7 +389,7 @@ export default function Register({ isModal = false, onClose }) {
               </div>
 
               <div className="md:col-span-2 rounded-xl bg-brand-muted/60 px-4 py-3 text-sm text-brand-primary flex items-center gap-2">
-                <Info className="w-4 h-4 shrink-0" /> Bạn có thể sử dụng app ngay sau khi đăng ký. Xác minh email giúp tăng bảo mật cho tài khoản.
+                <Info className="w-4 h-4 shrink-0" /> You can use the app immediately after registration. Email verification helps secure your account.
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-3">
@@ -400,13 +400,13 @@ export default function Register({ isModal = false, onClose }) {
                   disabled={loading}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-white font-semibold shadow-lg transition hover:bg-brand-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? 'Đang tạo tài khoản...' : 'Tạo tài khoản'}
+                  {loading ? 'Creating account...' : 'Create Account'}
                   <ArrowRight className="h-5 w-5" />
                 </motion.button>
 
                 <div className="text-center text-sm text-gray-600 dark:text-gray-300">
-                  Đã có tài khoản?
-                  <Link to="/login" className="ml-1 font-semibold text-brand-primary hover:text-brand-secondary dark:text-brand-muted dark:hover:text-white">Đăng nhập</Link>
+                  Already have an account?
+                  <Link to="/login" className="ml-1 font-semibold text-brand-primary hover:text-brand-secondary dark:text-brand-muted dark:hover:text-white">Sign in</Link>
                 </div>
               </div>
             </form>
@@ -417,14 +417,14 @@ export default function Register({ isModal = false, onClose }) {
               <div className="flex items-center gap-3 rounded-xl bg-brand-muted/70 px-4 py-3 text-brand-primary">
                 <CheckCircle2 className="h-6 w-6" />
                 <div>
-                  <h2 className="font-semibold">Xác thực email</h2>
-                  <p className="text-sm text-brand-primary/80">Nhập mã 6 chữ số đã gửi tới {formData.email}</p>
+                  <h2 className="font-semibold">Email Verification</h2>
+                  <p className="text-sm text-brand-primary/80">Enter the 6-digit code sent to {formData.email}</p>
                 </div>
               </div>
 
               <form onSubmit={handleVerification} className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Mã xác thực</label>
+                  <label className="text-sm font-medium text-gray-800 dark:text-gray-100">Verification Code</label>
                   <input
                     type="text"
                     value={verificationCode}
@@ -433,7 +433,7 @@ export default function Register({ isModal = false, onClose }) {
                       setVerificationCode(value);
                       setErrors((prev) => ({ ...prev, verificationCode: '' }));
                     }}
-                    placeholder="Nhập 6 chữ số"
+                    placeholder="Enter 6 digits"
                     maxLength="6"
                     className="w-full rounded-xl border border-gray-200 bg-white/90 px-4 py-3 text-center text-lg font-semibold tracking-[0.4em] text-gray-900 shadow-sm transition focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:border-gray-700 dark:bg-gray-900/80 dark:text-gray-100"
                   />
@@ -447,24 +447,24 @@ export default function Register({ isModal = false, onClose }) {
                   disabled={loading}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-white font-semibold shadow-lg transition hover:bg-brand-secondary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? 'Đang xác thực...' : 'Xác thực email'}
+                  {loading ? 'Verifying...' : 'Verify Email'}
                   <CheckCircle2 className="h-5 w-5" />
                 </motion.button>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
                   <div className="flex items-center gap-2">
-                    <span>Không nhận được mã?</span>
+                    <span>Didn't receive the code?</span>
                     <button
                       type="button"
                       onClick={handleResendCode}
                       disabled={resendCountdown > 0}
                       className="font-semibold text-brand-primary hover:text-brand-secondary disabled:opacity-50"
                     >
-                      Gửi lại
+                      Resend
                     </button>
                   </div>
                   {resendCountdown > 0 && (
-                    <span className="text-xs text-gray-500">Thử lại sau {resendCountdown}s</span>
+                    <span className="text-xs text-gray-500">Retry in {resendCountdown}s</span>
                   )}
                 </div>
 
@@ -476,7 +476,7 @@ export default function Register({ isModal = false, onClose }) {
                     onClick={handleBackToRegister}
                     className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100"
                   >
-                    Quay lại đăng ký
+                    Back to registration
                   </motion.button>
                 </div>
               </form>

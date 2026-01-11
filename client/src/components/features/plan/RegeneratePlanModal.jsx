@@ -17,19 +17,19 @@ import { useCallback, useEffect, useState } from 'react';
 // Interest options (text-only, no icons)
 // NOTE: These map to backend interests via type_mapping.py: interest → CategoryEnum → Google types
 const INTEREST_OPTIONS = [
-  { id: 'beach', label: 'Biển', googleType: 'beach' },
-  { id: 'culture', label: 'Văn hóa', googleType: 'museum' },
-  { id: 'food', label: 'Ẩm thực', googleType: 'restaurant' },
+  { id: 'beach', label: 'Beach', googleType: 'beach' },
+  { id: 'culture', label: 'Culture', googleType: 'museum' },
+  { id: 'food', label: 'Food', googleType: 'restaurant' },
   { id: 'cafe', label: 'Cafe', googleType: 'cafe' },
   { id: 'nightlife', label: 'Nightlife', googleType: 'night_club' },
-  { id: 'nature', label: 'Thiên nhiên', googleType: 'park' },
-  { id: 'adventure', label: 'Phiêu lưu', googleType: 'amusement_park' },
-  { id: 'shopping', label: 'Mua sắm', googleType: 'shopping_mall' },
-  { id: 'relaxation', label: 'Thư giãn', googleType: 'spa' },
-  { id: 'history', label: 'Lịch sử', googleType: 'historical_landmark' },
-  { id: 'photography', label: 'Chụp ảnh', googleType: 'tourist_attraction' },
-  { id: 'family', label: 'Gia đình', googleType: 'zoo' },
-  { id: 'romantic', label: 'Lãng mạn', googleType: 'restaurant' },
+  { id: 'nature', label: 'Nature', googleType: 'park' },
+  { id: 'adventure', label: 'Adventure', googleType: 'amusement_park' },
+  { id: 'shopping', label: 'Shopping', googleType: 'shopping_mall' },
+  { id: 'relaxation', label: 'Relaxation', googleType: 'spa' },
+  { id: 'history', label: 'History', googleType: 'historical_landmark' },
+  { id: 'photography', label: 'Photography', googleType: 'tourist_attraction' },
+  { id: 'family', label: 'Family', googleType: 'zoo' },
+  { id: 'romantic', label: 'Romantic', googleType: 'restaurant' },
 ];
 
 // Budget levels
@@ -46,9 +46,9 @@ const BUDGET_MARKS = [
 
 // Pace options (text-only)
 const PACE_OPTIONS = [
-  { value: 'relaxed', label: 'Thư thả', description: '2-3 địa điểm/ngày' },
-  { value: 'moderate', label: 'Vừa phải', description: '3-4 địa điểm/ngày' },
-  { value: 'intensive', label: 'Khám phá', description: '5+ địa điểm/ngày' },
+  { value: 'relaxed', label: 'Relaxed', description: '2-3 places/day' },
+  { value: 'moderate', label: 'Moderate', description: '3-4 places/day' },
+  { value: 'intensive', label: 'Intensive', description: '5+ places/day' },
 ];
 
 const RegeneratePlanModal = ({ 
@@ -185,7 +185,7 @@ const RegeneratePlanModal = ({
             <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <div>
                 <h3 className="font-poppins font-semibold text-gray-900 dark:text-white">
-                  Tái tạo kế hoạch
+                  Regenerate Plan
                 </h3>
                 {planTitle && (
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">
@@ -210,10 +210,10 @@ const RegeneratePlanModal = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Số ngày
+                    Number of days
                   </label>
                   <span className="text-xs text-gray-400 dark:text-gray-500">
-                    (hiện tại: {currentNumDays} ngày)
+                    (current: {currentNumDays} days)
                   </span>
                 </div>
                 <input
@@ -230,7 +230,7 @@ const RegeneratePlanModal = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Ngân sách / ngày
+                    Budget / day
                   </label>
                   <div className="flex items-center gap-2">
                     {budget !== initialValues.budget && (
@@ -270,7 +270,7 @@ const RegeneratePlanModal = ({
               {/* Pace Selection */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Nhịp độ chuyến đi
+                  Travel Pace
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {PACE_OPTIONS.map((option) => (
@@ -304,13 +304,13 @@ const RegeneratePlanModal = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Sở thích
+                    Interests
                   </label>
                   <span className="text-xs text-gray-400 dark:text-gray-500">
                     {interests.length !== initialValues.types.length && (
                       <span className="line-through mr-1">{initialValues.types.length}</span>
                     )}
-                    <span className="font-medium">{interests.length} đã chọn</span>
+                    <span className="font-medium">{interests.length} selected</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -348,7 +348,7 @@ const RegeneratePlanModal = ({
                   className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  Tùy chọn nâng cao
+                  Advanced options
                 </button>
                 
                 <AnimatePresence>
@@ -363,13 +363,13 @@ const RegeneratePlanModal = ({
                         {/* User Notes */}
                         <div className="space-y-1.5">
                           <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                            Ghi chú người dùng, được ưu tiên trong kế hoạch
+                            User notes, prioritized in planning
                           </label>
                           <input
                             type="text"
                             value={userNotes}
                             onChange={(e) => setUserNotes(e.target.value)}
-                            placeholder="VD: Ăn chay, dị ứng hải sản, không thích biển..."
+                            placeholder="E.g.: Vegetarian, allergic to seafood, don't like beaches..."
                             className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
                           />
                         </div>
@@ -386,10 +386,10 @@ const RegeneratePlanModal = ({
                             />
                             <div className="flex-1">
                               <label htmlFor="deepSearchRegen" className="text-sm font-bold text-gray-900 dark:text-gray-100 cursor-pointer flex items-center gap-1.5">
-                                <Search className="w-4 h-4" /><span>Tìm kiếm sâu</span>
+                                <Search className="w-4 h-4" /><span>Deep Search</span>
                               </label>
                               <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                                Sử dụng dữ liệu mới từ Google Places API
+                                Use fresh data from Google Places API
                               </p>
                               <AnimatePresence>
                                 {deepSearch && (
@@ -401,8 +401,8 @@ const RegeneratePlanModal = ({
                                   >
                                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                                     <div>
-                                      <p className="font-semibold">Lưu ý:</p>
-                                      <p>Thời gian lâu hơn (30-60s) và chi phí cao hơn</p>
+                                      <p className="font-semibold">Note:</p>
+                                      <p>Longer processing time (30-60s) and higher cost</p>
                                     </div>
                                   </motion.div>
                                 )}
@@ -426,7 +426,7 @@ const RegeneratePlanModal = ({
                 disabled={loading}
                 className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                Hủy
+                Cancel
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -438,10 +438,10 @@ const RegeneratePlanModal = ({
                 {loading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Đang tạo...
+                    Creating...
                   </>
                 ) : (
-                  'Tái tạo'
+                  'Regenerate'
                 )}
               </motion.button>
             </div>

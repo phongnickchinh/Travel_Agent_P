@@ -245,7 +245,7 @@ export default function Dashboard() {
               /* Empty State */
               <div className="text-center py-20">
                 <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
-                  Bạn chưa có kế hoạch nào
+                  You don't have any plans yet
                 </p>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -253,7 +253,7 @@ export default function Dashboard() {
                   onClick={handleNewPlan}
                   className="px-8 py-3 bg-brand-primary dark:bg-brand-secondary text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
                 >
-                  Tạo kế hoạch đầu tiên
+                  Create your first plan
                 </motion.button>
               </div>
             ) : (

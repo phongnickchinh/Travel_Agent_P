@@ -44,39 +44,39 @@ import searchAPI from '../../services/searchApi';
 
 // Available interest options with lucide-react icons
 const INTEREST_OPTIONS = [
-  { id: 'beach', label: 'Biển', Icon: Palmtree },
-  { id: 'culture', label: 'Văn hóa', Icon: Landmark },
-  { id: 'food', label: 'Ẩm thực', Icon: Utensils },
+  { id: 'beach', label: 'Beach', Icon: Palmtree },
+  { id: 'culture', label: 'Culture', Icon: Landmark },
+  { id: 'food', label: 'Food', Icon: Utensils },
   { id: 'cafe', label: 'Cafe', Icon: Coffee },
-  { id: 'nightlife', label: 'Giải trí đêm', Icon: Moon },
-  { id: 'nature', label: 'Thiên nhiên', Icon: TreePine },
-  { id: 'adventure', label: 'Phiêu lưu', Icon: Mountain },
-  { id: 'shopping', label: 'Mua sắm', Icon: ShoppingBag },
-  { id: 'relaxation', label: 'Thư giãn', Icon: Sparkles },
-  { id: 'history', label: 'Lịch sử', Icon: Scroll },
-  { id: 'photography', label: 'Chụp ảnh', Icon: Camera },
-  { id: 'family', label: 'Gia đình', Icon: Users },
-  { id: 'romantic', label: 'Lãng mạn', Icon: Heart },
+  { id: 'nightlife', label: 'Nightlife', Icon: Moon },
+  { id: 'nature', label: 'Nature', Icon: TreePine },
+  { id: 'adventure', label: 'Adventure', Icon: Mountain },
+  { id: 'shopping', label: 'Shopping', Icon: ShoppingBag },
+  { id: 'relaxation', label: 'Relaxation', Icon: Sparkles },
+  { id: 'history', label: 'History', Icon: Scroll },
+  { id: 'photography', label: 'Photography', Icon: Camera },
+  { id: 'family', label: 'Family', Icon: Users },
+  { id: 'romantic', label: 'Romantic', Icon: Heart },
 ];
 
 // Budget levels with non-linear values (VND)
 // Slider position 0-100 maps to these budget values
 const BUDGET_MARKS = [
-  { position: 0, value: 500000, label: 'Siêu tiết kiệm', sublabel: '500K' },
-  { position: 15, value: 1000000, label: 'Tiết kiệm', sublabel: '1M' },
-  { position: 30, value: 2000000, label: 'Bình dân', sublabel: '2M' },
-  { position: 45, value: 3500000, label: 'Thoải mái', sublabel: '3.5M' },
-  { position: 60, value: 5000000, label: 'Khá giả', sublabel: '5M' },
-  { position: 75, value: 10000000, label: 'Cao cấp', sublabel: '10M' },
-  { position: 90, value: 20000000, label: 'Sang trọng', sublabel: '20M' },
-  { position: 100, value: 50000000, label: 'Không giới hạn', sublabel: '50M+' },
+  { position: 0, value: 500000, label: 'Super Budget', sublabel: '500K' },
+  { position: 15, value: 1000000, label: 'Budget', sublabel: '1M' },
+  { position: 30, value: 2000000, label: 'Economy', sublabel: '2M' },
+  { position: 45, value: 3500000, label: 'Comfortable', sublabel: '3.5M' },
+  { position: 60, value: 5000000, label: 'Premium', sublabel: '5M' },
+  { position: 75, value: 10000000, label: 'Luxury', sublabel: '10M' },
+  { position: 90, value: 20000000, label: 'Deluxe', sublabel: '20M' },
+  { position: 100, value: 50000000, label: 'Unlimited', sublabel: '50M+' },
 ];
 
 // Pace options
 const PACE_OPTIONS = [
-  { value: 'relaxed', label: 'Thư thả', description: '2-3 địa điểm/ngày' },
-  { value: 'moderate', label: 'Vừa phải', description: '3-4 địa điểm/ngày' },
-  { value: 'intensive', label: 'Khám phá nhiều', description: '5+ địa điểm/ngày' },
+  { value: 'relaxed', label: 'Relaxed', description: '2-3 places/day' },
+  { value: 'moderate', label: 'Moderate', description: '3-4 places/day' },
+  { value: 'intensive', label: 'Intensive', description: '5+ places/day' },
 ];
 
 const LOCAL_STORAGE_KEY = 'ta:create-plan:last-entry';
@@ -179,9 +179,9 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
   // Format currency
   const formatCurrency = (value) => {
     if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}M VNĐ`;
+      return `${(value / 1000000).toFixed(value % 1000000 === 0 ? 0 : 1)}M VND`;
     }
-    return `${(value / 1000).toFixed(0)}K VNĐ`;
+    return `${(value / 1000).toFixed(0)}K VND`;
   };
 
   const estimatedTotalCost = useMemo(() => {
@@ -381,22 +381,22 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
 
     // Validation
     if (!formData.destination.trim()) {
-      setError('Vui lòng chọn điểm đến');
+      setError('Please select a destination');
       return;
     }
 
     if (!formData.destinationId) {
-      setError('Vui lòng chọn điểm đến từ danh sách gợi ý');
+      setError('Please select a destination from the suggestions');
       return;
     }
 
     if (!formData.startDate) {
-      setError('Vui lòng chọn ngày bắt đầu');
+      setError('Please select a start date');
       return;
     }
 
     if (formData.preferences.interests.length === 0) {
-      setError('Vui lòng chọn ít nhất một sở thích');
+      setError('Please select at least one interest');
       return;
     }
 
@@ -405,7 +405,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
     try {
       // Prepare API payload
       const payload = {
-        title: formData.title || `Chuyến đi ${formData.destination}`,
+        title: formData.title || `Trip to ${formData.destination}`,
         destination_place_id: formData.destinationId,
         destination_name: formData.destination,
         destination_types: formData.destinationTypes || [],
@@ -433,7 +433,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
       const result = await planAPI.createPlan(payload);
 
       if (result.success) {
-        setSuccess('Đã tạo kế hoạch! Đang xử lý trong nền...');
+        setSuccess('Plan created! Processing in background...');
         
         // Clear saved draft
         if (typeof window !== 'undefined') {
@@ -454,11 +454,11 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
           }, 1500);
         }
       } else {
-        setError(result.errorVi || result.error || 'Không thể tạo kế hoạch');
+        setError(result.error || 'Unable to create plan');
       }
     } catch (err) {
       console.error('Submit error:', err);
-      setError(err.message || 'Đã xảy ra lỗi');
+      setError(err.message || 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -502,16 +502,16 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
           <div className="space-y-1">
             {/* <div className="inline-flex items-center gap-2 rounded-full bg-brand-muted px-3 py-1 text-xs font-medium text-brand-primary">
               <Sparkles className="h-4 w-4" />
-              <span>Nhập nhanh trên dashboard</span>
+              <span>Quick input on dashboard</span>
             </div> */}
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-inter font-bold text-brand-secondary dark:text-white">Tạo kế hoạch</h1>
+              <h1 className="text-2xl font-inter font-bold text-brand-secondary dark:text-white">Create Plan</h1>
               {/* <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700 shadow-sm">
                 <CheckCircle2 className="h-4 w-4 text-brand-primary" />
-                <span>Tự lưu bản nháp</span>
+                <span>Auto-save draft</span>
               </div> */}
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Bạn yêu cầu, chúng tôi thực hiện</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">You request, we deliver</p>
           </div>
           <div className="flex items-center gap-2">
             <motion.button
@@ -521,13 +521,13 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
               className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-primary/30 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span>Quay lại</span>
+              <span>Back</span>
             </motion.button>
             <motion.button
               whileHover={{ rotate: 90 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleClose}
-              aria-label="Đóng"
+              aria-label="Close"
               className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-gray-700 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
             >
               <X className="h-4 w-4" />
@@ -553,14 +553,14 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
                     <MapPin className="h-4 w-4 text-brand-secondary" />
-                    Điểm đến <span className="text-red-500">*</span>
+                    Destination <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input
                       ref={destinationInputRef}
                       type="text"
                       className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
-                      placeholder="Nhập thành phố hoặc địa điểm"
+                      placeholder="Enter a city or place"
                       value={destinationQuery}
                       onChange={(e) => handleDestinationChange(e.target.value)}
                       onKeyDown={handleKeyDown}
@@ -609,7 +609,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
                     <Calendar className="h-4 w-4 text-brand-secondary" />
-                    Ngày bắt đầu <span className="text-red-500">*</span>
+                    Start Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -626,7 +626,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-gray-800 font-semibold dark:text-gray-100">
                       <Timer className="h-4 w-4 text-brand-secondary" />
-                      <span>Số ngày</span>
+                      <span>Days</span>
                     </div>
                     <input
                       type="number"
@@ -653,17 +653,17 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 </div>
 
                 <div className="rounded-2xl border border-dashed border-brand-primary/30 bg-white/60 p-4 shadow-sm dark:border-brand-primary/40 dark:bg-gray-800/60">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Điểm xuất phát (tùy chọn)</p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Sắp ra mắt: chọn vị trí xuất phát để AI tối ưu quãng đường.</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Starting Point (optional)</p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Coming soon: select your starting location to optimize routes.</p>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">Tên chuyến đi <span className="text-gray-400">(tuỳ chọn)</span></label>
+                <label className="text-sm font-semibold text-gray-800 dark:text-gray-100">Trip Name <span className="text-gray-400">(optional)</span></label>
                 <input
                   type="text"
                   className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
-                  placeholder="VD: Nghỉ dưỡng Đà Nẵng cùng gia đình"
+                  placeholder="e.g., Da Nang Family Vacation"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   maxLength={200}
@@ -674,7 +674,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-gray-900 font-semibold dark:text-gray-100">
                     <PiggyBank className="h-4 w-4 text-brand-secondary" />
-                    <span>Ngân sách / ngày</span>
+                    <span>Budget / day</span>
                   </div>
                   <input
                     type="number"
@@ -696,7 +696,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(formData.preferences.budget)}</span>
                   <span className="dark:text-gray-300">{getBudgetLabel(formData.preferences.budget)}</span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-300">Ước tính tổng: {formatCurrency(estimatedTotalCost)}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">Estimated total: {formatCurrency(estimatedTotalCost)}</p>
                 <input
                   type="range"
                   className="w-full accent-brand-primary"
@@ -716,10 +716,10 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 text-gray-900 font-semibold dark:text-gray-100">
                     <Sparkles className="h-4 w-4 text-brand-secondary" />
-                    <span>Sở thích</span>
+                    <span>Interests</span>
                     <span className="text-red-500">*</span>
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-300">{formData.preferences.interests.length} lựa chọn</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-300">{formData.preferences.interests.length} selected</span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {INTEREST_OPTIONS.map((interest) => {
@@ -746,7 +746,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Thêm từ gợi ý (autocomplete)</label>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Quick search (autocomplete)</label>
                   <div className="relative">
                     <div className="flex items-center gap-2 rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 shadow-sm focus-within:border-brand-primary dark:border-brand-primary/50 dark:bg-gray-900 dark:focus-within:border-white">
                       <Search className="h-4 w-4 text-gray-500 dark:text-gray-300" />
@@ -760,7 +760,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                         onFocus={() => setShowInterestSuggestions(true)}
                         onBlur={() => setTimeout(() => setShowInterestSuggestions(false), 120)}
                         className="w-full bg-transparent text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:text-gray-100 dark:placeholder:text-gray-500"
-                        placeholder="Nhập để tìm nhanh (biển, ẩm thực...)"
+                        placeholder="Type to search (beach, food...)"
                       />
                     </div>
                     {showInterestSuggestions && filteredInterestOptions.length > 0 && (
@@ -789,11 +789,11 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Thêm sở thích khác (tùy chọn)</label>
+                  <label className="text-xs font-medium text-gray-700 dark:text-gray-200">Add other interests (optional)</label>
                   <input
                     type="text"
                     className="w-full rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
-                    placeholder="Cách nhau bằng dấu phẩy"
+                    placeholder="Separate with commas"
                     value={formData.preferences.customInterests}
                     onChange={(e) => setFormData(prev => ({
                       ...prev,
@@ -805,7 +805,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Nhịp độ du lịch</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Travel Pace</p>
                   <select
                     value={formData.preferences.pace}
                     onChange={(e) => handlePaceChange(e.target.value)}
@@ -845,11 +845,11 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">Lưu ý của người dùng<span className="text-gray-400"></span></label>
+                <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">User Notes<span className="text-gray-400"></span></label>
                 <input
                   type="text"
                   className="w-full rounded-xl border border-brand-primary/30 bg-white px-3.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-white"
-                  placeholder="VD: Muốn đi dạo nhiều, ưu tiên món chay, tránh hoạt động ngoài trời..."
+                  placeholder="e.g., Prefer walking, vegetarian food, avoid outdoor activities..."
                   value={formData.preferences.userNotes}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
@@ -868,7 +868,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition disabled:opacity-70 dark:bg-white dark:text-gray-900"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  <span>{isSubmitting ? 'Đang tạo...' : 'Tạo kế hoạch'}</span>
+                  <span>{isSubmitting ? 'Creating...' : 'Create Plan'}</span>
                 </motion.button>
               </div>
             </form>
@@ -878,17 +878,17 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
             <div className="flex items-center gap-3">
               <PiggyBank className="h-5 w-5 text-brand-secondary" />
               <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Ngân sách / ngày</p>
+                <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Budget / day</p>
                 <p className="font-semibold text-gray-900 dark:text-gray-100">{formatCurrency(formData.preferences.budget)}</p>
                 <p className="text-gray-500 dark:text-gray-300">{getBudgetLabel(formData.preferences.budget)}</p>
               </div>
             </div>
             <div className="rounded-xl border border-brand-primary/30 bg-white px-3 py-2 dark:border-brand-primary/50 dark:bg-gray-900/80">
-              <p className="font-semibold text-gray-900 dark:text-gray-100">Tóm tắt nhanh</p>
+              <p className="font-semibold text-gray-900 dark:text-gray-100">Quick Summary</p>
               <ul className="mt-2 space-y-1 text-gray-600 dark:text-gray-300">
-                <li>- {formData.numDays} ngày • {formData.startDate ? 'Khởi hành ' + formData.startDate : 'Chưa chọn ngày'}</li>
-                <li>- {formData.preferences.interests.length} sở thích đã chọn</li>
-                <li>- Nhịp độ: {PACE_OPTIONS.find(p => p.value === formData.preferences.pace)?.label || '...'}</li>
+                <li>- {formData.numDays} days • {formData.startDate ? 'Departure ' + formData.startDate : 'No date selected'}</li>
+                <li>- {formData.preferences.interests.length} interests selected</li>
+                <li>- Pace: {PACE_OPTIONS.find(p => p.value === formData.preferences.pace)?.label || '...'}</li>
               </ul>
             </div>
           </div>

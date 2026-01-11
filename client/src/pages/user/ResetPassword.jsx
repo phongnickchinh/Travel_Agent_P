@@ -3,12 +3,12 @@ import { ArrowLeft, CheckCircle2, KeyRound, Loader2, Lock, Mail, X } from 'lucid
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    requestPasswordResetApi,
-    resendResetCodeApi,
-    resetPasswordApi,
-    validateEmail,
-    validatePassword,
-    validateResetCodeApi
+  requestPasswordResetApi,
+  resendResetCodeApi,
+  resetPasswordApi,
+  validateEmail,
+  validatePassword,
+  validateResetCodeApi
 } from '../../services/authApi';
 
 export default function ResetPassword({ isModal = false, onClose }) {

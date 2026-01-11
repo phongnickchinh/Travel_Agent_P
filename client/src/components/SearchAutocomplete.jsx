@@ -20,19 +20,19 @@
  * - With this component: 1-2 API calls (80-90% savings)
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Beer,
-  Clock,
-  Coffee,
-  Hotel,
-  Landmark,
-  MapPin,
-  Palmtree,
-  ShoppingBag,
-  TreePine,
-  Utensils,
+    Beer,
+    Clock,
+    Coffee,
+    Hotel,
+    Landmark,
+    MapPin,
+    Palmtree,
+    ShoppingBag,
+    TreePine,
+    Utensils,
 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import searchAPI from '../services/searchApi';
 
 const SearchAutocomplete = ({ 

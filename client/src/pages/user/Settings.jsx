@@ -12,19 +12,19 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Camera,
-  Check,
-  Clock,
-  Eye,
-  EyeOff,
-  Globe,
-  Loader2,
-  Lock,
-  Mail,
-  Moon,
-  Palette,
-  Sun,
-  User,
+    Camera,
+    Check,
+    Clock,
+    Eye,
+    EyeOff,
+    Globe,
+    Loader2,
+    Lock,
+    Mail,
+    Moon,
+    Palette,
+    Sun,
+    User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -50,7 +50,7 @@ export default function Settings() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="font-poppins font-bold text-3xl text-gray-900 dark:text-white mb-2">
+          <h1 className="font-inter font-bold text-3xl text-gray-900 dark:text-white mb-2">
             Cài đặt
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -632,11 +632,9 @@ function AppearanceTab() {
               <div className="h-2 w-3/4 bg-gray-200 rounded" />
               <div className="h-2 w-1/2 bg-gray-200 rounded" />
             </div>
-            {!isDark && (
-              <div className="mt-3 flex items-center justify-center gap-1 text-brand-primary text-sm font-medium">
-                <Check className="w-4 h-4" /> Đang dùng
-              </div>
-            )}
+            <div className="mt-3 flex items-center justify-center gap-1 text-brand-primary text-sm font-medium dark:text-white">
+            <Check className="w-4 h-4" /> Đang dùng
+            </div>
           </motion.button>
 
           <motion.button
@@ -650,7 +648,7 @@ function AppearanceTab() {
             }`}
           >
             <div className="flex items-center gap-2 mb-3">
-              <Moon className="w-5 h-5 text-indigo-400" />
+              <Moon className="w-5 h-5 text-brand-secondary" />
               <span className="font-medium text-white">Tối</span>
             </div>
             <div className="space-y-2">
@@ -658,11 +656,9 @@ function AppearanceTab() {
               <div className="h-2 w-3/4 bg-gray-600 rounded" />
               <div className="h-2 w-1/2 bg-gray-600 rounded" />
             </div>
-            {isDark && (
-              <div className="mt-3 flex items-center justify-center gap-1 text-brand-secondary text-sm font-medium">
-                <Check className="w-4 h-4" /> Đang dùng
-              </div>
-            )}
+            <div className="mt-3 flex items-center justify-center gap-1 text-gray-800 dark:text-brand-secondary text-sm font-medium">
+            <Check className="w-4 h-4" /> Đang dùng
+            </div>
           </motion.button>
         </div>
       </div>

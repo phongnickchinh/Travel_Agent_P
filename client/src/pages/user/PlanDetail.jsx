@@ -233,7 +233,7 @@ const getMarkerColor = (category) => {
   return '#2E571C'; // Default brand primary
 };
 
-// Format duration in Vietnamese
+// Format duration in English
 const formatDuration = (minutes) => {
   if (!minutes) return null;
   const numMinutes = typeof minutes === 'string' ? parseInt(minutes) : minutes;
@@ -241,9 +241,9 @@ const formatDuration = (minutes) => {
   if (numMinutes >= 60) {
     const hours = Math.floor(numMinutes / 60);
     const mins = numMinutes % 60;
-    return mins > 0 ? `${hours}h${mins}p` : `${hours} tiếng`;
+    return mins > 0 ? `${hours}h${mins}m` : `${hours} hour${hours > 1 ? 's' : ''}`;
   }
-  return `${numMinutes} phút`;
+  return `${numMinutes} min`;
 };
 
 // Parse estimated time slot (e.g., "09:00-10:30") to get start time and duration in minutes
@@ -338,7 +338,7 @@ export default function PlanDetail() {
     if (result.success) {
       setPlan(prev => ({ ...prev, plan_name: newTitle }));
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật tiêu đề');
+      throw new Error(result.error || 'Failed to update title');
     }
   }, [planId, isPublicView]);
 
@@ -350,7 +350,7 @@ export default function PlanDetail() {
       // Update full plan to get recalculated day dates
       setPlan(result.data);
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật ngày bắt đầu');
+      throw new Error(result.error || 'Failed to update start date');
     }
   }, [planId, isPublicView]);
 
@@ -361,7 +361,7 @@ export default function PlanDetail() {
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật ghi chú');
+      throw new Error(result.error || 'Failed to update notes');
     }
   }, [planId, isPublicView]);
 
@@ -378,7 +378,7 @@ export default function PlanDetail() {
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật hoạt động');
+      throw new Error(result.error || 'Failed to update activities');
     }
   }, [planId, isPublicView]);
 
@@ -389,7 +389,7 @@ export default function PlanDetail() {
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật chỗ ở');
+      throw new Error(result.error || 'Failed to update accommodation');
     }
   }, [planId, isPublicView]);
 
@@ -400,7 +400,7 @@ export default function PlanDetail() {
     if (result.success && result.data) {
       setPlan(result.data);
     } else {
-      throw new Error(result.error || 'Lỗi cập nhật hoạt động');
+      throw new Error(result.error || 'Failed to update itinerary');
     }
   }, [planId, isPublicView]);
 
@@ -419,7 +419,7 @@ export default function PlanDetail() {
       setPlan(planData);
       console.log('[PlanDetail] Plan updated successfully');
     } else {
-      throw new Error(result.error || 'Lỗi thêm hoạt động');
+      throw new Error(result.error || 'Failed to add activity');
     }
   }, [planId, isPublicView]);
 
@@ -429,7 +429,7 @@ export default function PlanDetail() {
     try {
       const updateResult = await planAPI.updatePlan(planId, payload);
       if (!updateResult.success) {
-        throw new Error(updateResult.error || 'Lỗi cập nhật kế hoạch');
+        throw new Error(updateResult.error || 'Failed to update plan');
       }
       const refreshed = await planAPI.getPlanById(planId);
       if (refreshed.success && refreshed.data) {
@@ -489,11 +489,11 @@ export default function PlanDetail() {
             });
           }
         } else {
-          setError(result.error || 'Không tìm thấy kế hoạch');
+          setError(result.error || 'Plan not found');
         }
       } catch (err) {
         console.error('Error fetching plan:', err);
-        setError('Lỗi khi tải kế hoạch');
+        setError('Error loading plan');
       } finally {
         setLoading(false);
       }
@@ -575,7 +575,7 @@ export default function PlanDetail() {
 
     return {
       isString: false,
-      poiName: activity.poi_name || poi.name || 'Địa điểm',
+      poiName: activity.poi_name || poi.name || 'Location',
       description: activity.description || poi.description || activity.activity || '',
       time: activity.time || activity.start_time || null,
       duration: activity.duration || activity.duration_minutes || null,
@@ -657,7 +657,7 @@ export default function PlanDetail() {
               id: accId, // Use accommodation_id as unique identifier (not a number)
               accommodationId: accId,
               dayIndex: dayIndex + 1,
-              name: day.accommodation_name || 'Nơi lưu trú',
+              name: day.accommodation_name || 'Accommodation',
               lat: lat,
               lng: lng,
               category: 'accommodation',
@@ -878,7 +878,7 @@ export default function PlanDetail() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 animate-spin text-gray-400 dark:text-gray-500" />
-          <p className="text-gray-500 dark:text-gray-400 font-medium">Đang tải kế hoạch...</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">Loading plan...</p>
         </div>
       </div>
     );
@@ -894,13 +894,13 @@ export default function PlanDetail() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 dark:text-red-400 mb-4">{error || 'Không tìm thấy kế hoạch'}</p>
+          <p className="text-red-500 dark:text-red-400 mb-4">{error || 'Plan not found'}</p>
           <button
             onClick={() => navigate('/dashboard')}
             className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2 mx-auto"
           >
             <ArrowLeft className="w-4 h-4" />
-            Quay lại Dashboard
+            Back to Dashboard
           </button>
         </div>
       </div>
@@ -919,12 +919,12 @@ export default function PlanDetail() {
           >
             <Loader2 className="w-16 h-16 animate-spin text-brand-primary mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              {planStatus === 'pending' ? 'Đang chuẩn bị...' : 'Đang tạo lịch trình'}
+              {planStatus === 'pending' ? 'Preparing...' : 'Creating itinerary'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {planStatus === 'pending' 
-                ? 'Hệ thống đang xử lý yêu cầu của bạn. Vui lòng đợi trong giây lát...'
-                : 'AI đang phân tích và tạo lịch trình tối ưu cho bạn. Quá trình này có thể mất vài phút...'}
+                ? 'Processing your request. Please wait a moment...'
+                : 'AI is analyzing and creating an optimal itinerary for you. This may take a few minutes...'}
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <div className="animate-pulse">●</div>
@@ -947,23 +947,23 @@ export default function PlanDetail() {
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              Không thể tạo lịch trình
+              Failed to create itinerary
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Đã xảy ra lỗi khi tạo lịch trình. Vui lòng thử lại hoặc điều chỉnh yêu cầu.
+              An error occurred while creating the itinerary. Please try again or adjust your request.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => navigate('/dashboard')}
                 className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
               >
-                Quay lại
+                Go back
               </button>
               <button
                 onClick={() => setShowRegenerateModal(true)}
                 className="flex-1 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-secondary"
               >
-                Thử lại
+                Try again
               </button>
             </div>
           </motion.div>
@@ -1000,7 +1000,7 @@ export default function PlanDetail() {
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {plan.itinerary?.length || 0} ngày
+                  {plan.itinerary?.length || 0} day{(plan.itinerary?.length || 0) !== 1 ? 's' : ''}
                 </span>
               </div>
             </div>
@@ -1009,7 +1009,7 @@ export default function PlanDetail() {
           <div className="flex items-center gap-2">
             {isPublicView && (
               <span className="text-xs font-medium text-brand-primary bg-brand-muted px-3 py-1 rounded-full">
-                Bản chia sẻ công khai
+                Public shared version
               </span>
             )}
 
@@ -1026,7 +1026,7 @@ export default function PlanDetail() {
                 }`}
               >
                 <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-semibold">Tái tạo kế hoạch</span>
+                <span className="text-sm font-semibold">Regenerate plan</span>
               </motion.button>
             )}
 
@@ -1044,7 +1044,7 @@ export default function PlanDetail() {
               >
                 <Share2 className="w-4 h-4" />
                 <span className="text-sm font-semibold">
-                  {shareState.isPublic ? 'Đang công khai' : 'Chỉ mình tôi'}
+                  {shareState.isPublic ? 'Public' : 'Private'}
                 </span>
               </motion.button>
             )}
@@ -1062,7 +1062,7 @@ export default function PlanDetail() {
             >
               <Share2 className="w-4 h-4" />
               <span className="text-sm font-semibold">
-                {shareCopied ? 'Đã sao chép' : 'Sao chép link'}
+                {shareCopied ? 'Copied!' : 'Copy link'}
               </span>
             </motion.button>
           </div>
@@ -1091,11 +1091,11 @@ export default function PlanDetail() {
                   {/* Day Header */}
                   <div className="bg-brand-primary text-white px-6 py-4">
                     <h2 className="font-poppins font-bold text-lg flex items-center flex-wrap gap-2">
-                      <span>Ngày {dayIndex + 1}</span>
+                      <span>Day {dayIndex + 1}</span>
                       {/* Editable start date for Day 1 only (owner view) */}
                       {dayIndex === 0 && !isPublicView ? (
                         <span className="font-normal text-gray-200">
-                          - Bắt đầu từ: 
+                          - Starting from: 
                           <span className="ml-1 inline-block bg-white/10 rounded px-2 py-0.5 hover:bg-white/20 transition-colors">
                             <EditableDate
                               value={day.date || plan.start_date}
@@ -1139,7 +1139,7 @@ export default function PlanDetail() {
                 className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6"
               >
                 <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5" /> Tổng kết chuyến đi
+                  <ClipboardList className="w-5 h-5" /> Trip Summary
                 </h3>
                 <p className="text-gray-700 dark:text-gray-300">{plan.summary}</p>
               </motion.div>
@@ -1151,7 +1151,7 @@ export default function PlanDetail() {
         <aside className="w-[60%] bg-white dark:bg-gray-800 shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
           {loadError && (
             <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-              Lỗi tải Google Maps
+              Error loading Google Maps
             </div>
           )}
           
@@ -1415,7 +1415,7 @@ export default function PlanDetail() {
                                 ? 'bg-purple-500 text-white' 
                                 : 'bg-brand-primary text-white'
                             }`}>
-                              Ngày {poi.dayIndex}
+                              Day {poi.dayIndex}
                             </span>
                           </div>
                         </div>
@@ -1476,7 +1476,7 @@ export default function PlanDetail() {
                           {isAccomm && (
                             <div className="mt-2 flex items-center gap-1.5">
                               <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                                <Bed className="w-3 h-3" /> Lưu trú
+                                <Bed className="w-3 h-3" /> Stay
                               </span>
                             </div>
                           )}
@@ -1504,7 +1504,7 @@ export default function PlanDetail() {
                       >
                         <span className="font-poppins font-semibold text-brand-primary dark:text-brand-muted flex items-center gap-2">
                           <Settings2 className="w-4 h-4" />
-                          Thông tin chuyến đi
+                          Trip Information
                         </span>
                         {showInfoPanel ? (
                           <ChevronDown className="w-5 h-5 text-brand-primary dark:text-brand-muted" />
@@ -1528,16 +1528,16 @@ export default function PlanDetail() {
                               <div className="space-y-2">
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <CreditCard className="w-3 h-3" />
-                                  Chi phí ước tính
+                                  Estimated Cost
                                 </h4>
                                 <p className="text-lg font-bold text-brand-primary dark:text-brand-muted">
                                   {formatVND(tripSummary.totalCost)}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  ~{formatVND(Math.round(tripSummary.totalCost / tripSummary.numDays))}/ngày
+                                  ~{formatVND(Math.round(tripSummary.totalCost / tripSummary.numDays))}/day
                                 </p>
                                 {tripSummary.playfulBudgetTotal > 0 && (
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">Ước tính vui: {formatVND(tripSummary.playfulBudgetTotal)}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Fun estimate: {formatVND(tripSummary.playfulBudgetTotal)}</p>
                                 )}
                               </div>
 
@@ -1545,7 +1545,7 @@ export default function PlanDetail() {
                               <div className="space-y-2">
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <Bed className="w-3 h-3" />
-                                  Lưu trú
+                                  Accommodation
                                 </h4>
                                 {tripSummary.accommodations.length > 0 ? (
                                   <div className="space-y-1">
@@ -1575,12 +1575,12 @@ export default function PlanDetail() {
                                     ))}
                                     {tripSummary.accommodations.length > 2 && (
                                       <p className="text-xs text-gray-400 dark:text-gray-500">
-                                        +{tripSummary.accommodations.length - 2} nơi khác
+                                        +{tripSummary.accommodations.length - 2} more
                                       </p>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-gray-400 dark:text-gray-500">Chưa có thông tin</p>
+                                  <p className="text-sm text-gray-400 dark:text-gray-500">No information</p>
                                 )}
                               </div>
 
@@ -1588,7 +1588,7 @@ export default function PlanDetail() {
                               <div className="space-y-2">
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                                   <Settings2 className="w-3 h-3" />
-                                  Tùy chọn
+                                  Preferences
                                 </h4>
                                 <div className="space-y-1 text-sm">
                                   {tripSummary.preferences.budget && (
@@ -1614,11 +1614,11 @@ export default function PlanDetail() {
                             <div className="px-4 pb-4 flex items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-4 h-4" />
-                                {tripSummary.numDays} ngày
+                                {tripSummary.numDays} day{tripSummary.numDays !== 1 ? 's' : ''}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MapPin className="w-4 h-4" />
-                                {tripSummary.numPOIs} địa điểm
+                                {tripSummary.numPOIs} location{tripSummary.numPOIs !== 1 ? 's' : ''}
                               </span>
                             </div>
                           </motion.div>

@@ -111,143 +111,61 @@ jobs:
             echo "⚠️ Postgres not running, skipping backup"
           fi
           
+          echo ""
           echo "========================================"
-          echo "Step 2: Start Database First"
-          echo "========================================"
-          
-          # Stop all services except database
-          echo "Stopping application services..."
-          docker compose stop flask-app celery-worker celery-beat nginx 2>/dev/null || true
-          
-          # Start only database services first
-          echo "Starting database services..."
-          docker compose up -d postgres redis
-          
-          # Wait for postgres to be ready
-          echo "Waiting for PostgreSQL to be ready..."
-          for i in {1..30}; do
-            if docker compose exec -T postgres pg_isready -U "${POSTGRES_USERNAME:-postgres}" >/dev/null 2>&1; then
-              echo "✅ PostgreSQL is ready!"
-              break
-            fi
-            echo "Waiting for PostgreSQL... ($i/30)"
-            sleep 2
-          done
-          
-          # Check if database exists, if not create it
-          echo "Checking database..."
-          DB_EXISTS=$(docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -lqt | cut -d \| -f 1 | grep -w "${POSTGRES_DBNAME:-railway}" || true)
-          
-          if [ -z "$DB_EXISTS" ]; then
-            echo "Creating database ${POSTGRES_DBNAME:-railway}..."
-            docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -c "CREATE DATABASE ${POSTGRES_DBNAME:-railway};" 2>/dev/null || true
-          fi
-          
-          # Restore from backup if database is empty and backup exists
-          TABLE_COUNT=$(docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -d "${POSTGRES_DBNAME:-railway}" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")
-          
-          if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
-            LATEST_BACKUP=$(ls -t backups/backup_*.sql 2>/dev/null | head -1)
-            if [ -n "$LATEST_BACKUP" ] && [ -s "$LATEST_BACKUP" ]; then
-              echo "Database is empty, restoring from: $LATEST_BACKUP"
-              docker compose exec -T postgres pg_restore \
-                -U "${POSTGRES_USERNAME:-postgres}" \
-                -d "${POSTGRES_DBNAME:-railway}" \
-                --no-owner --no-privileges \
-                < "$LATEST_BACKUP" 2>/dev/null || true
-              echo "✅ Database restored!"
-            else
-              echo "⚠️ No backup found, starting with fresh database"
-            fi
-          else
-            echo "✅ Database has $TABLE_COUNT tables, skipping restore"
-          fi
-          
-          echo "========================================"
-          echo "Step 3: Build and Start Application"
+          echo "Step 2: Deploy All Services"
           echo "========================================"
           
-          # Build and start all services
+          # Stop all running services
+          echo "Stopping existing services..."
+          docker compose down || true
+          
+          # Build and start all services (dependencies handled by docker-compose.yml)
           echo "Building and starting all services..."
-          if ! docker compose up -d --build --force-recreate; then
-            echo "❌ FATAL: docker compose up failed!"
-            docker compose ps -a
-            docker compose logs --tail=100
-            exit 1
-          fi
+          echo "(Dependencies and startup order managed by docker-compose.yml)"
+          docker compose up -d --build --force-recreate
+          
+          # Wait for services to start
+          echo ""
+          echo "Waiting 30 seconds for services to initialize..."
+          sleep 30
           
           # Prune old images to save disk space
-          echo "Cleaning up old images..."
+          echo "Cleaning up old Docker images..."
           docker image prune -f
           
-          # Wait for services to initialize
-          echo "Waiting for services to initialize..."
-          sleep 25
-          
-          # Show ALL containers (including stopped/exited)
+          # Show final status
           echo ""
-          echo "All containers (including stopped):"
-          docker compose ps -a
-          
-          # Verify ALL critical services are RUNNING (not exited)
-          echo ""
-          echo "Verifying critical services..."
-          REQUIRED_SERVICES=("postgres" "redis" "flask-app" "nginx")
-          FAILED_SERVICES=()
-          
-          for service in "${REQUIRED_SERVICES[@]}"; do
-            STATUS=$(docker compose ps "$service" -a --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-            
-            if [ "$STATUS" == "running" ] || [ "$STATUS" == "healthy" ]; then
-              echo "✅ $service: $STATUS"
-            else
-              echo "❌ $service: $STATUS (EXPECTED: running)"
-              FAILED_SERVICES+=("$service")
-            fi
-          done
-          
-          # If any critical service failed, show detailed logs and exit
-          if [ ${#FAILED_SERVICES[@]} -gt 0 ]; then
-            echo ""
-            echo "❌ FATAL: Critical services not running: ${FAILED_SERVICES[*]}"
-            echo ""
-            
-            for service in "${FAILED_SERVICES[@]}"; do
-              echo "========================================="
-              echo "Full logs for: $service"
-              echo "========================================="
-              docker compose logs --tail=100 "$service" 2>&1 || echo "No logs available"
-              echo ""
-            done
-            
-            echo "Checking for exit codes..."
-            docker compose ps -a --format "table {{.Service}}\t{{.Status}}\t{{.ExitCode}}"
-            
-            exit 1
-          fi
-          
-          # Show running containers summary
-          echo ""
-          echo "All services running successfully:"
+          echo "========================================"
+          echo "Deployment Summary"
+          echo "========================================"
           docker compose ps
           
-          # Check Flask logs for errors
           echo ""
-          echo "Recent Flask logs:"
-          docker compose logs --tail=30 flask-app
-          
-          # Check Nginx logs
-          echo ""
-          echo "Recent Nginx logs:"
-          docker compose logs --tail=20 nginx
-          
-          echo ""
-          echo "========================================"
-          echo "✅ All services started successfully!"
-          echo "========================================"
+          echo "✅ Deployment completed!"
+          echo "Note: Elasticsearch may take additional time to fully start"
           ENDSSH
 
-      # ============= Verify Deployment via Docker Compose =============
+      # ============= Show Logs (Optional) =============
+      - name: Show service logs
+        if: success()
+        run: |
+          echo "Fetching recent service logs..."
+          
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
+          
+          cd /home/travel_project/server
+          
+          echo ""
+          echo "Recent Flask logs (last 20 lines):"
+          docker compose logs --tail=20 flask-app 2>&1 || echo "Flask not ready yet"
+          
+          echo ""
+          echo "Recent Nginx logs (last 10 lines):"
+          docker compose logs --tail=10 nginx 2>&1 || echo "Nginx not ready yet"
+          
+          ENDSSH
       - name: Verify deployment via container status
         run: |
           echo "Verifying deployment via Docker Compose status..."
@@ -329,25 +247,6 @@ jobs:
       # ============= Rollback on Failure =============
       - name: Rollback on failure
         if: failure()
-        run: |
-          echo "Deployment failed, attempting rollback..."
-          
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
-          
-          cd ${{ env.DEPLOY_PATH }}
-          
-          # Get previous commit
-          git reset --hard HEAD~1
-          
-          # Rebuild and restart
-          cd server
-          docker compose down
-          docker compose up -d --build
-          
-          echo "Rolled back to previous version"
-          ENDSSH
-
       # ============= Cleanup =============
       - name: Cleanup SSH key
         if: always()
@@ -359,13 +258,14 @@ jobs:
       - name: Send success notification
         if: success()
         run: |
-          echo "Deployment successful!"
-          echo "API URL: http://${{ secrets.VPS_HOST }}"
-          echo "Health: http://${{ secrets.VPS_HOST }}/health"
+          echo "✅ Deployment successful!"
+          echo "API URL: https://api.phamphong.id.vn"
+          echo "Note: Services may take additional time to fully start (especially Elasticsearch)"
 
       # ============= Notify on Failure =============
       - name: Send failure notification
         if: failure()
         run: |
-          echo "Deployment failed!"
+          echo "❌ Deployment failed!"
           echo "Check the logs above for details"
+

@@ -20,7 +20,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const formatDeletedAt = (dateStr) => {
@@ -29,10 +29,10 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) return 'Hôm nay';
-    if (diffDays === 1) return 'Hôm qua';
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const handleRestore = async () => {
@@ -43,11 +43,11 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
       if (result.success) {
         onRestore?.(plan.plan_id);
       } else {
-        alert('Không thể khôi phục kế hoạch. Vui lòng thử lại.');
+        alert('Unable to restore plan. Please try again.');
       }
     } catch (error) {
       console.error('Restore error:', error);
-      alert('Lỗi khôi phục kế hoạch.');
+      alert('Error restoring plan.');
     } finally {
       setIsRestoring(false);
     }
@@ -61,11 +61,11 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
       if (result.success) {
         onPermanentDelete?.(plan.plan_id);
       } else {
-        alert('Không thể xoá vĩnh viễn kế hoạch. Vui lòng thử lại.');
+        alert('Unable to permanently delete plan. Please try again.');
       }
     } catch (error) {
       console.error('Permanent delete error:', error);
-      alert('Lỗi xoá vĩnh viễn kế hoạch.');
+      alert('Error permanently deleting plan.');
     } finally {
       setIsDeleting(false);
       setConfirmDeleteOpen(false);
@@ -101,7 +101,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
           {/* Deleted Badge */}
           <div className="absolute top-3 left-3">
             <span className="px-3 py-1 rounded-full text-xs font-medium text-white bg-red-500 dark:bg-red-600">
-              Đã xoá
+              Deleted
             </span>
           </div>
 
@@ -127,7 +127,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               <MapPin className="w-4 h-4" />
               <span className="line-clamp-1">{plan.destination}</span>
               <span>•</span>
-              <span>{plan.num_days} ngày</span>
+              <span>{plan.num_days} {plan.num_days === 1 ? 'day' : 'days'}</span>
             </div>
 
             {/* Dates */}
@@ -156,7 +156,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               ) : (
                 <RotateCcw className="w-4 h-4" />
               )}
-              Khôi phục
+              Restore
             </motion.button>
 
             {/* Permanent Delete Button */}
@@ -176,10 +176,10 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
       {/* Confirm Permanent Delete Modal */}
       <ConfirmModal
         open={confirmDeleteOpen}
-        title="Xoá vĩnh viễn?"
-        message="Kế hoạch sẽ bị xoá vĩnh viễn và không thể khôi phục. Bạn có chắc chắn?"
-        confirmLabel={isDeleting ? 'Đang xoá...' : 'Xoá vĩnh viễn'}
-        cancelLabel="Huỷ"
+        title="Delete Permanently?"
+        message="This plan will be permanently deleted and cannot be recovered. Are you sure?"
+        confirmLabel={isDeleting ? 'Deleting...' : 'Delete Permanently'}
+        cancelLabel="Cancel"
         onConfirm={handlePermanentDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
         loading={isDeleting}
@@ -285,15 +285,15 @@ export default function Trash() {
             <div className="flex items-center gap-3 mb-2">
               <Trash2 className="w-8 h-8 text-gray-700 dark:text-gray-300" />
               <h1 className="font-poppins font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">
-                Thùng rác
+                Trash
               </h1>
             </div>
             <p className="text-gray-500 dark:text-gray-400">
-              Các kế hoạch đã xoá sẽ được lưu tại đây. Bạn có thể khôi phục hoặc xoá vĩnh viễn.
+              Deleted plans are saved here. You can restore or permanently delete them.
             </p>
             {total > 0 && (
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                {total} kế hoạch trong thùng rác
+                {total} {total === 1 ? 'plan' : 'plans'} in trash
               </p>
             )}
           </div>
@@ -319,10 +319,10 @@ export default function Trash() {
                 <FolderOpen className="w-12 h-12 text-gray-400 dark:text-gray-500" />
               </div>
               <h2 className="font-poppins font-semibold text-xl text-gray-700 dark:text-gray-300 mb-2">
-                Thùng rác trống
+                Trash is Empty
               </h2>
               <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-                Không có kế hoạch nào trong thùng rác. Khi bạn xoá một kế hoạch, nó sẽ xuất hiện ở đây.
+                No plans in trash. When you delete a plan, it will appear here.
               </p>
             </motion.div>
           ) : (
@@ -354,10 +354,10 @@ export default function Trash() {
                     {loadingMore ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Đang tải...
+                        Loading...
                       </>
                     ) : (
-                      'Xem thêm'
+                      'Load More'
                     )}
                   </motion.button>
                 </div>
@@ -375,11 +375,11 @@ export default function Trash() {
               
               <div>
                 <p className="text-amber-800 dark:text-amber-300 font-medium text-sm">
-                  Lưu ý về thùng rác
+                  About Trash
                 </p>
                 <p className="text-amber-700 dark:text-amber-400/80 text-sm mt-1">
-                  Các kế hoạch trong thùng rác sẽ được giữ lại cho đến khi bạn xoá vĩnh viễn. 
-                  Kế hoạch đã xoá vĩnh viễn sẽ không thể khôi phục.
+                  Plans in trash are kept until you permanently delete them. 
+                  Permanently deleted plans cannot be recovered.
                 </p>
               </div>
             </motion.div>

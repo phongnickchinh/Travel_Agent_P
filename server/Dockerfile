@@ -4,7 +4,7 @@
 # ========================================
 
 # ============= Stage 1: Builder ============= 
-FROM python:3.10.11-slim as builder
+FROM python:3.10.11-slim AS builder
 
 LABEL maintainer="Travel Agent P Team"
 LABEL description="Flask REST API + AI Travel Planner"

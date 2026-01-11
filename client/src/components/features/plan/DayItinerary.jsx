@@ -18,7 +18,7 @@ const DayItinerary = ({
   onHover,
   onLeave
 }) => {
-  const mergeActivitiesWithTypes = (activities, types, poiIds, estimatedTimes) => {
+  const mergeActivitiesWithTypes = (activities, types, poiIds, estimatedTimes, featuredImages) => {
     if (!activities) return [];
     return activities.map((activity, index) => {
       let item = typeof activity === 'string' ? { activity } : { ...activity };
@@ -39,11 +39,16 @@ const DayItinerary = ({
       // Attach estimated time locally (does not mean we'll send it on reorder)
       item.estimated_time = (estimatedTimes && estimatedTimes[index]) || '';
 
+      // Merge featured image
+      if (featuredImages && featuredImages[index]) {
+        item.featured_image = featuredImages[index];
+      }
+
       return item;
     });
   };
 
-  const [items, setItems] = useState(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids, day.estimated_times));
+  const [items, setItems] = useState(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids, day.estimated_times, day.featured_images));
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const isPendingUpdate = useRef(false); // Track optimistic updates
@@ -79,7 +84,7 @@ const DayItinerary = ({
     }
     
     console.log('[DayItinerary] Syncing props to state');
-    setItems(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids, day.estimated_times));
+    setItems(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids, day.estimated_times, day.featured_images));
   }, [day]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePersist = async (nextItems, options = { sendTimes: false }) => {
@@ -102,7 +107,11 @@ const DayItinerary = ({
       const nextActivities = nextItems.map(item => item.activity || item.description || '');
       const nextPoiIds = nextItems.map(item => item.poi_id || null);
       const nextTimes = options.sendTimes ? nextItems.map(item => item.estimated_time || '') : undefined;
-      await onSave(dayNumber, nextActivities, nextTimes, nextPoiIds);
+      // Extract types/categories to sync with reordered activities
+      const nextTypes = nextItems.map(item => item.category || null);
+      // Extract featured_images to sync with reordered activities
+      const nextFeaturedImages = nextItems.map(item => item.featured_image || null);
+      await onSave(dayNumber, nextActivities, nextTimes, nextPoiIds, nextTypes, nextFeaturedImages);
       console.log('[DayItinerary] Save successful');
       // Success: keep the optimistic update
     } catch (error) {

@@ -468,6 +468,7 @@ class DayPlanPatch(BaseModel):
     
     # Extended fields for full day update
     poi_ids: Optional[List[str]] = Field(None, description="POI IDs in visit order")
+    types: Optional[List[List[str]]] = Field(None, description="POI types array (one array per POI)")
     opening_hours: Optional[List[str]] = Field(None, description="Opening hours")
     featured_images: Optional[List[str]] = Field(None, description="Featured images")
     viewport: Optional[Dict[str, Dict[str, float]]] = Field(None, description="Map viewport")

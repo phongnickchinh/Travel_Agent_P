@@ -2295,6 +2295,8 @@ class PlannerService:
                 # Extended fields
                 if day_patch.poi_ids is not None:
                     day_data['poi_ids'] = day_patch.poi_ids
+                if day_patch.types is not None:
+                    day_data['types'] = day_patch.types
                 if day_patch.opening_hours is not None:
                     day_data['opening_hours'] = day_patch.opening_hours
                 if day_patch.featured_images is not None:

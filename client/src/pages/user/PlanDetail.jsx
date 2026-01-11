@@ -394,9 +394,9 @@ export default function PlanDetail() {
   }, [planId, isPublicView]);
 
   // Save day itinerary (activities + estimated times)
-  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes, poiIds, types) => {
+  const handleSaveDayItinerary = useCallback(async (dayNumber, activities, estimatedTimes, poiIds, types, featuredImages) => {
     if (!planId || isPublicView) return;
-    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds, types);
+    const result = await planAPI.updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds, types, featuredImages);
     if (result.success && result.data) {
       setPlan(result.data);
     } else {

@@ -441,14 +441,22 @@ class PlanAPI {
    * @param {Array} activities
    * @param {Array<string>} estimatedTimes - Format: "HH:MM-HH:MM"
    * @param {Array<string>} poiIds - Optional: List of POI IDs corresponding to activities
+   * @param {Array<string>} types - Optional: List of types/categories corresponding to activities
+   * @param {Array<string>} featuredImages - Optional: List of featured image URLs corresponding to activities
    */
-  async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds = null) {
+  async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds = null, types = null, featuredImages = null) {
     const update = { day: dayNumber, activities };
     if (typeof estimatedTimes !== 'undefined') {
       update.estimated_times = estimatedTimes;
     }
     if (poiIds) {
       update.poi_ids = poiIds;
+    }
+    if (types) {
+      update.types = types;
+    }
+    if (featuredImages) {
+      update.featured_images = featuredImages;
     }
     return this.patchPlan(planId, {
       itinerary_updates: [update]

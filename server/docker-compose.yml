@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Map app env vars to PostgreSQL expected vars
+      POSTGRES_USER: ${POSTGRES_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DBNAME:-railway}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -21,7 +26,7 @@ services:
     networks:
       - travel-agent-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-postgres} -d ${POSTGRES_DBNAME:-travel_agent_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-postgres} -d ${POSTGRES_DBNAME:-railway}"]
       interval: 10s
       timeout: 5s
       retries: 5

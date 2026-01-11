@@ -9,9 +9,6 @@ import ProfileSettings from './pages/user/ProfileSettings';
 import Trash from './pages/user/Trash';
 import Welcome from './pages/Welcome';
 
-// Search Autocomplete Demo Pages (Week 3 Deliverable)
-import SearchDemo from './components/SearchDemo';
-import SearchExamples from './pages/SearchExamples';
 
 import './App.css';
 
@@ -41,8 +38,6 @@ function App() {
         <Route path="/dashboard/settings/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         {/* Legacy routes */}
         <Route path="/dashboard/:username" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/search-demo" element={<ProtectedRoute><SearchDemo /></ProtectedRoute>} />
-        <Route path="/search-examples" element={<ProtectedRoute><SearchExamples /></ProtectedRoute>} />
 
         {/* Thêm các route yêu cầu auth khác ở đây */}
       </Routes>

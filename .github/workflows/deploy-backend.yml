@@ -74,8 +74,13 @@ jobs:
             exit 1
           fi
           
-          # Load environment variables
+          # Fix Windows line endings (CRLF -> LF) before sourcing
+          sed -i 's/\r$//' .env
+          
+          # Load environment variables (export for subshells)
+          set -a
           source .env
+          set +a
           
           echo "========================================"
           echo "Step 1: Backup Current Database"

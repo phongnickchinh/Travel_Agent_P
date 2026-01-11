@@ -27,12 +27,11 @@ class Config:
     CELERY_PREFETCH_MULTIPLIER = int(os.environ.get("CELERY_PREFETCH_MULTIPLIER", 1))
     CELERY_MAX_TASKS_PER_CHILD = int(os.environ.get("CELERY_MAX_TASKS_PER_CHILD", 100))
 
-    POSTGRES_USERNAME = os.environ.get("POSTGRES_USER")
+    POSTGRES_USERNAME = os.environ.get("POSTGRES_USERNAME")
     POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
     POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
     POSTGRES_PORT = os.environ.get("POSTGRES_PORT", "5432")
-    POSTGRES_DBNAME = os.environ.get("POSTGRES_DB_NAME")
-
+    POSTGRES_DBNAME = os.environ.get("POSTGRES_DBNAME")
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
     if not SQLALCHEMY_DATABASE_URI:
         if POSTGRES_USERNAME and POSTGRES_HOST and POSTGRES_DBNAME:

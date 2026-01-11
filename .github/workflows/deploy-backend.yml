@@ -90,9 +90,13 @@ jobs:
             fi
           fi
           
-          echo "🚀 Deploying services..."
+          echo "🧹 Cleaning Docker cache..."
           docker compose down 2>/dev/null || true
-          docker compose up -d --build --force-recreate
+          docker builder prune -af 2>/dev/null || true
+          docker system prune -f 2>/dev/null || true
+          
+          echo "🚀 Building and deploying..."
+          docker compose up -d --build --force-recreate --no-cache
           
           sleep 30
           docker image prune -f

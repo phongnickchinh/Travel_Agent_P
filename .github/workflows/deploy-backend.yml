@@ -96,8 +96,8 @@ jobs:
           docker system prune -f 2>/dev/null || true
           
           echo "🚀 Building and deploying..."
-          docker compose up -d --build --force-recreate --no-cache
-          
+            docker compose build --no-cache
+            docker compose up -d --force-recreate
           sleep 30
           docker image prune -f
           

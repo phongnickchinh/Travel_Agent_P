@@ -11,6 +11,9 @@ echo "========================================"
 echo "Travel Agent P - Starting Application"
 echo "========================================"
 
+# Normalize DB name for all operations (honor both POSTGRES_DBNAME and POSTGRES_DB)
+DB_NAME="${POSTGRES_DBNAME:-${POSTGRES_DB:-railway}}"
+
 # ============= Database Backup Function =============
 backup_database() {
     echo "📦 Creating database backup..."
@@ -19,16 +22,15 @@ backup_database() {
     BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
     
     mkdir -p "$BACKUP_DIR"
-    
-    PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -F c -b > "$BACKUP_FILE" 2>/dev/null || {
-        echo "⚠️  Backup failed or database 'railway' not exists yet"
+    PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$DB_NAME" -F c -b > "$BACKUP_FILE" 2>/dev/null || {
+        echo "⚠️  Backup failed or database '$DB_NAME' not exists yet"
         return 0
     }
     
     echo "✅ Backup created: $BACKUP_FILE"
     
     # Keep only last 5 backups
-    ls -t "$BACKUP_DIR"/railway_backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm 2>/dev/null || true
+    ls -t "$BACKUP_DIR"/backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm 2>/dev/null || true
 }
 
 # ============= Database Restore Function =============
@@ -42,8 +44,8 @@ restore_database() {
     
     echo "📦 Found backup file, checking if restore needed..."
     
-    # Check if railway database exists and has tables
-    TABLE_COUNT=$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'" 2>/dev/null || echo "0")
+    # Check if target database exists and has tables
+    TABLE_COUNT=$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$DB_NAME" -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'" 2>/dev/null || echo "0")
     TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d '[:space:]')
     
     if [ "$TABLE_COUNT" -gt "0" ]; then
@@ -53,11 +55,11 @@ restore_database() {
     
     echo "🔄 Restoring database from backup..."
     
-    # Create railway database if not exists
-    PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d postgres -c "CREATE DATABASE railway;" 2>/dev/null || true
+    # Create database if not exists
+    PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d postgres -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
     
     # Restore from backup
-    PGPASSWORD=$POSTGRES_PASSWORD pg_restore -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -v --no-owner --no-privileges "$BACKUP_FILE" 2>&1 || {
+    PGPASSWORD=$POSTGRES_PASSWORD pg_restore -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$DB_NAME" -v --no-owner --no-privileges "$BACKUP_FILE" 2>&1 || {
         echo "⚠️  pg_restore completed with warnings (normal for existing objects)"
     }
     
@@ -66,7 +68,7 @@ restore_database() {
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL..."
-until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$POSTGRES_DBNAME" -c '\q' 2>/dev/null; do
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d postgres -c '\q' 2>/dev/null; do
     echo "PostgreSQL is unavailable - sleeping"
     sleep 2
 done

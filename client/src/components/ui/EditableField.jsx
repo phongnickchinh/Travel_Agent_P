@@ -25,7 +25,7 @@ export default function EditableField({
   value,
   onSave,
   type = 'text',
-  placeholder = 'Nhấn để chỉnh sửa...',
+  placeholder = 'Click to edit...',
   disabled = false,
   className = '',
   inputClassName = '',
@@ -89,7 +89,7 @@ export default function EditableField({
       setIsEditing(false);
     } catch (err) {
       console.error('[EditableField] Save error:', err);
-      setError(err.message || 'Lỗi khi lưu');
+      setError(err.message || 'Error saving');
     } finally {
       setIsSaving(false);
     }
@@ -113,10 +113,11 @@ export default function EditableField({
   const renderInput = () => {
     const baseInputClass = `
       w-full px-3 py-2 
-      border border-gray-300 rounded-lg
+      border border-gray-300 dark:border-gray-600 rounded-lg
       focus:ring-2 focus:ring-brand-primary focus:border-brand-primary
       outline-none transition-all
-      text-gray-900 text-sm
+      bg-white dark:bg-gray-800
+      text-gray-900 dark:text-white text-sm
       ${inputClassName}
       ${error ? 'border-red-400 focus:ring-red-400' : ''}
     `;
@@ -211,12 +212,12 @@ export default function EditableField({
                 {isSaving ? (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Đang lưu...
+                    Saving...
                   </>
                 ) : (
                   <>
                     <Check className="w-3 h-3" />
-                    Lưu
+                    Save
                   </>
                 )}
               </motion.button>
@@ -226,15 +227,15 @@ export default function EditableField({
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 <X className="w-3 h-3" />
-                Hủy
+                Cancel
               </motion.button>
 
               {/* Hint */}
               <span className="text-xs text-gray-400 ml-2">
-                {type === 'textarea' ? 'Ctrl+Enter để lưu' : 'Enter để lưu, Esc để hủy'}
+                {type === 'textarea' ? 'Ctrl+Enter to save' : 'Enter to save, Esc to cancel'}
               </span>
             </div>
           </motion.div>
@@ -250,7 +251,7 @@ export default function EditableField({
             className={`
               relative cursor-pointer
               rounded-lg transition-all duration-200
-              ${!disabled && 'hover:bg-gray-50 group-hover:pr-8'}
+              ${!disabled && 'hover:bg-gray-50 dark:hover:bg-gray-700/50 group-hover:pr-8'}
               ${className}
             `}
           >
@@ -288,8 +289,8 @@ export function EditableTitle({ value, onSave, disabled, level = 'h1' }) {
       value={value}
       onSave={onSave}
       disabled={disabled}
-      placeholder="Nhập tiêu đề..."
-      className={`${sizeClasses[level]} text-gray-900 py-1 px-2 -mx-2`}
+      placeholder="Enter title..."
+      className={`${sizeClasses[level]} text-gray-900 dark:text-white py-1 px-2 -mx-2`}
       inputClassName={sizeClasses[level]}
     />
   );
@@ -305,14 +306,14 @@ export function EditableNotes({ value, onSave, disabled, maxLength = 500 }) {
       onSave={onSave}
       type="textarea"
       disabled={disabled}
-      placeholder="Thêm ghi chú..."
+      placeholder="Add notes..."
       maxLength={maxLength}
       rows={3}
-      className="text-sm text-gray-500 italic py-1 px-2 -mx-2"
+      className="text-sm text-gray-500 dark:text-gray-400 italic py-1 px-2 -mx-2"
       renderDisplay={(val) => val ? (
         <span className="flex items-center gap-1"><Lightbulb className="w-4 h-4" /> {val}</span>
       ) : (
-        <span className="text-gray-400 italic">+ Thêm ghi chú...</span>
+        <span className="text-gray-400 dark:text-gray-500 italic">+ Add notes...</span>
       )}
     />
   );

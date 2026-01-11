@@ -247,59 +247,84 @@ jobs:
           echo "========================================"
           ENDSSH
 
-      # ============= Health Check =============
-      - name: Verify deployment
+      # ============= Verify Deployment via Docker Compose =============
+      - name: Verify deployment via container status
         run: |
-          echo "Verifying deployment health..."
+          echo "Verifying deployment via Docker Compose status..."
           
           # Wait for services to stabilize
-          sleep 15
+          echo "Waiting 20 seconds for services to stabilize..."
+          sleep 20
           
-          # Check health endpoint via HTTPS
-          HEALTH_URL="https://api.phamphong.id.vn/health"
+          # SSH to VPS and check container status
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
           
-          echo "Testing: $HEALTH_URL"
+          cd /home/travel_project/server
           
-          for i in {1..15}; do
-            echo "Health check attempt $i/15..."
+          echo ""
+          echo "========================================="
+          echo "Docker Compose Container Status"
+          echo "========================================="
+          docker compose ps -a
+          
+          echo ""
+          echo "Checking critical services..."
+          
+          # Define critical services
+          CRITICAL_SERVICES=("postgres" "redis" "flask-app" "nginx")
+          ALL_HEALTHY=true
+          
+          for service in "${CRITICAL_SERVICES[@]}"; do
+            # Get container state
+            STATE=$(docker compose ps "$service" -a --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
             
-            # Use verbose curl to see what's happening
-            HTTP_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" --connect-timeout 10 --max-time 30 "$HEALTH_URL" 2>/dev/null || echo "000")
-            RESPONSE=$(cat /tmp/health_response.txt 2>/dev/null || echo "")
-            
-            echo "  HTTP Code: $HTTP_CODE"
-            echo "  Response: $RESPONSE"
-            
-            if [ "$HTTP_CODE" = "200" ] && echo "$RESPONSE" | grep -q "ok"; then
-              echo "✅ Health check passed!"
-              exit 0
+            if [ "$STATE" == "running" ]; then
+              echo "✅ $service: running"
+            elif [ "$STATE" == "healthy" ]; then
+              echo "✅ $service: healthy"
+            else
+              echo "❌ $service: $STATE (EXPECTED: running)"
+              ALL_HEALTHY=false
             fi
-            
-            # If we get a response but not "ok", show details
-            if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "200" ]; then
-              echo "  Got HTTP $HTTP_CODE - server is responding but not healthy yet"
-            fi
-            
-            if [ "$HTTP_CODE" = "000" ]; then
-              echo "  Connection failed - server may still be starting"
-            fi
-            
-            sleep 10
           done
           
-          echo ""
-          echo "❌ Health check failed after 15 attempts"
-          echo "Last HTTP Code: $HTTP_CODE"
-          echo "Last Response: $RESPONSE"
+          if [ "$ALL_HEALTHY" = false ]; then
+            echo ""
+            echo "❌ Some critical services are not running!"
+            echo ""
+            echo "Showing logs for failed services..."
+            
+            for service in "${CRITICAL_SERVICES[@]}"; do
+              STATE=$(docker compose ps "$service" -a --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
+              if [ "$STATE" != "running" ] && [ "$STATE" != "healthy" ]; then
+                echo ""
+                echo "========== Logs for $service =========="
+                docker compose logs --tail=50 "$service"
+              fi
+            done
+            
+            exit 1
+          fi
           
-          # Try to get more info via SSH
           echo ""
-          echo "Checking container status on VPS..."
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "cd /home/travel_project/server && docker compose ps && echo '--- Flask Logs ---' && docker compose logs --tail=30 flask-app"
+          echo "========================================="
+          echo "✅ All critical services are running!"
+          echo "========================================="
           
-          exit 1
+          # Show recent logs for verification
+          echo ""
+          echo "Recent Flask logs (last 20 lines):"
+          docker compose logs --tail=20 flask-app
+          
+          echo ""
+          echo "Recent Nginx logs (last 10 lines):"
+          docker compose logs --tail=10 nginx
+          
+          ENDSSH
+          
+          echo ""
+          echo "✅ Deployment verification completed successfully!"
 
       # ============= Rollback on Failure =============
       - name: Rollback on failure

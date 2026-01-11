@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,7 +22,7 @@ const loadGoogleScript = () => {
   });
 };
 
-export default function Login({ isModal = false }) {
+export default function Login({ isModal = false, onClose }) {
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
 
@@ -152,7 +152,17 @@ export default function Login({ isModal = false }) {
         className={cardClasses}
       >
         {/* Header */}
-        <div className="bg-linear-to-br from-brand-primary to-brand-secondary text-white px-6 py-6">
+        <div className="relative bg-linear-to-br from-brand-primary to-brand-secondary text-white px-6 py-6">
+          {/* Close button inside header */}
+          {isModal && onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Đóng"
+              className="absolute right-4 top-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
           <div className="flex items-center justify-center">
             <div className="justify-center">
               <p className="text-xs uppercase tracking-[0.2em] text-white/70">Chào mừng trở lại</p>

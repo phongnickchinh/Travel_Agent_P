@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Globe2, Lock, Mail, Shield, User } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Globe2, Lock, Mail, Shield, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +17,7 @@ import {
   verifyEmailApi
 } from '../../services/authApi';
 
-export default function Register({ isModal = false }) {
+export default function Register({ isModal = false, onClose }) {
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -229,7 +229,17 @@ export default function Register({ isModal = false }) {
   return (
     <div className={`${isModal ? 'w-full' : 'min-h-screen bg-gray-50 dark:bg-gray-950'} flex items-center justify-center px-4 py-10`}>
       <div className={cardClasses}>
-        <div className="bg-linear-to-br from-brand-primary/90 to-brand-secondary/90 text-white px-6 py-6 flex items-center justify-center">
+        <div className="relative bg-linear-to-br from-brand-primary/90 to-brand-secondary/90 text-white px-6 py-6 flex items-center justify-center">
+          {/* Close button inside header */}
+          {isModal && onClose && (
+            <button
+              onClick={onClose}
+              aria-label="Đóng"
+              className="absolute right-4 top-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
           <div className="justify-center">
             <p className="text-xs uppercase tracking-wide text-white">Tạo tài khoản</p>
             <h1 className="font-poppins font-semibold text-2xl mt-1">Travel Agent P</h1>

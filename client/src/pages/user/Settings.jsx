@@ -35,9 +35,9 @@ import userAPI from '../../services/userApi';
 
 // Tab definitions
 const TABS = [
-  { id: 'profile', label: 'Hồ sơ', icon: User },
-  { id: 'password', label: 'Mật khẩu', icon: Lock },
-  { id: 'appearance', label: 'Giao diện', icon: Palette },
+  { id: 'profile', label: 'Profile', icon: User },
+  { id: 'password', label: 'Password', icon: Lock },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
 ];
 
 export default function Settings() {
@@ -62,12 +62,12 @@ export default function Settings() {
             >
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
-            <h1 className="font-poppins font-bold text-3xl text-gray-900 dark:text-white">
-              Cài đặt
+            <h1 className="font-poppins font-bold text-3xl text-brand-primary dark:text-white">
+              Settings
             </h1>
           </div>
           <p className="text-gray-600 dark:text-gray-400 ml-14">
-            Quản lý thông tin cá nhân và tùy chỉnh ứng dụng
+            Manage your account and customize the app
           </p>
         </motion.div>
 
@@ -125,7 +125,7 @@ export default function Settings() {
  * Profile Tab - Edit profile information
  */
 function ProfileTab() {
-  const { user, login } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     name: '',
@@ -148,7 +148,8 @@ function ProfileTab() {
         language: user.language || 'en',
         timezone: user.timezone || 'Asia/Ho_Chi_Minh',
       });
-      setAvatarPreview(user.profile_picture || user.avatar_url || null);
+      setAvatarPreview(user.avatar_url || user.profile_picture || null);
+      setAvatarFile(null);
     }
   }, [user]);
 
@@ -167,11 +168,11 @@ function ProfileTab() {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        setError('Vui lòng chọn file ảnh');
+        setError('Please select an image file');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setError('Kích thước ảnh tối đa 5MB');
+        setError('Image size must be less than 5MB');
         return;
       }
 
@@ -192,42 +193,56 @@ function ProfileTab() {
     setSuccess('');
 
     try {
+      // Prepare profile update data (text fields only)
       const updateData = {};
-      if (formData.username !== user.username) updateData.username = formData.username;
-      if (formData.name !== user.name) updateData.name = formData.name;
-      if (formData.language !== user.language) updateData.language = formData.language;
-      if (formData.timezone !== user.timezone) updateData.timezone = formData.timezone;
+      if (formData.username !== user?.username) updateData.username = formData.username;
+      if (formData.name !== user?.name) updateData.name = formData.name;
+      if (formData.language !== user?.language) updateData.language = formData.language;
+      if (formData.timezone !== user?.timezone) updateData.timezone = formData.timezone;
 
       if (Object.keys(updateData).length === 0 && !avatarFile) {
-        setError('Không có thay đổi nào');
+        setError('No changes to save');
         setLoading(false);
         return;
       }
 
-      const result = await userAPI.updateProfile(updateData, avatarFile);
-
-      if (result.success) {
-        setSuccess('Cập nhật thành công!');
-        const profileResult = await userAPI.getProfile();
-        if (profileResult.success) {
-          const accessToken = localStorage.getItem('access_token');
-          const refreshToken = localStorage.getItem('refresh_token');
-          await login({
-            email: profileResult.data.email,
-            _skipAuth: true,
-            _userData: profileResult.data,
-            _accessToken: accessToken,
-            _refreshToken: refreshToken,
-          });
+      // Update profile text fields first (if any)
+      if (Object.keys(updateData).length > 0) {
+        const profileResult = await userAPI.updateProfile(updateData);
+        
+        if (!profileResult.success) {
+          setError(profileResult.error || 'Failed to update profile');
+          setLoading(false);
+          return;
         }
-        setAvatarFile(null);
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(result.error || 'Cập nhật thất bại');
       }
+
+      // Upload avatar separately (if provided)
+      if (avatarFile) {
+        const avatarResult = await userAPI.uploadAvatar(avatarFile);
+        
+        if (!avatarResult.success) {
+          setError(avatarResult.error || 'Failed to upload avatar');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Refresh user context to get updated data
+      const refreshed = await refreshUser();
+      if (!refreshed?.success) {
+        setError(refreshed?.error || 'Failed to refresh user data');
+        setLoading(false);
+        return;
+      }
+
+      // Success
+      setSuccess('Profile updated successfully!');
+      setAvatarFile(null);
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Profile update error:', err);
-      setError('Đã xảy ra lỗi');
+      setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -240,8 +255,8 @@ function ProfileTab() {
       exit={{ opacity: 0, y: -20 }}
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 lg:p-8"
     >
-      <h2 className="font-poppins font-bold text-xl text-gray-900 dark:text-white mb-6">
-        Thông tin hồ sơ
+      <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white mb-6">
+        Profile Information
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -272,7 +287,7 @@ function ProfileTab() {
               className="hidden"
             />
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Nhấn để thay đổi</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Click to change</p>
         </div>
 
         {/* Email (Read-only) */}
@@ -293,14 +308,14 @@ function ProfileTab() {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <User className="w-4 h-4" />
-            Tên người dùng
+            Username
           </label>
           <input
             type="text"
             name="username"
             value={formData.username}
             onChange={handleInputChange}
-            placeholder="Nhập tên người dùng"
+            placeholder="Enter username"
             className="w-full px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-primary dark:focus:ring-brand-secondary focus:border-transparent text-gray-900 dark:text-white transition"
           />
         </div>
@@ -308,14 +323,14 @@ function ProfileTab() {
         {/* Full Name */}
         <div>
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
-            Họ và tên
+            Full Name
           </label>
           <input
             type="text"
             name="name"
             value={formData.name}
             onChange={handleInputChange}
-            placeholder="Nhập họ và tên"
+            placeholder="Enter full name"
             className="w-full px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-brand-primary dark:focus:ring-brand-secondary focus:border-transparent text-gray-900 dark:text-white transition"
           />
         </div>
@@ -325,7 +340,7 @@ function ProfileTab() {
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Globe className="w-4 h-4" />
-              Ngôn ngữ
+              Language
             </label>
             <select
               name="language"
@@ -340,7 +355,7 @@ function ProfileTab() {
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Clock className="w-4 h-4" />
-              Múi giờ
+              Timezone
             </label>
             <select
               name="timezone"
@@ -373,12 +388,12 @@ function ProfileTab() {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Đang lưu...
+              Saving...
             </>
           ) : (
             <>
               <Check className="w-5 h-5" />
-              Lưu thay đổi
+              Save Changes
             </>
           )}
         </motion.button>
@@ -412,19 +427,19 @@ function PasswordTab() {
 
   const validateForm = () => {
     if (!formData.oldPassword || !formData.newPassword || !formData.confirmPassword) {
-      setError('Vui lòng điền tất cả các trường');
+      setError('Please fill in all fields');
       return false;
     }
     if (formData.newPassword.length < 6 || formData.newPassword.length > 20) {
-      setError('Mật khẩu mới phải từ 6-20 ký tự');
+      setError('New password must be 6-20 characters');
       return false;
     }
     if (formData.newPassword !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError('Passwords do not match');
       return false;
     }
     if (formData.oldPassword === formData.newPassword) {
-      setError('Mật khẩu mới phải khác mật khẩu cũ');
+      setError('New password must be different from old password');
       return false;
     }
     return true;
@@ -442,15 +457,15 @@ function PasswordTab() {
       const result = await userAPI.changePassword(formData.oldPassword, formData.newPassword);
 
       if (result.success) {
-        setSuccess(result.message || 'Đổi mật khẩu thành công!');
+        setSuccess(result.message || 'Password changed successfully!');
         setFormData({ oldPassword: '', newPassword: '', confirmPassword: '' });
         setTimeout(() => setSuccess(''), 5000);
       } else {
-        setError(result.error || 'Đổi mật khẩu thất bại');
+        setError(result.error || 'Failed to change password');
       }
     } catch (err) {
       console.error('Password change error:', err);
-      setError('Đã xảy ra lỗi');
+      setError('An error occurred');
     } finally {
       setLoading(false);
     }
@@ -458,10 +473,10 @@ function PasswordTab() {
 
   const getPasswordStrength = () => {
     const len = formData.newPassword.length;
-    if (len >= 15) return { label: 'Mạnh', color: 'bg-green-500', bars: 3 };
-    if (len >= 10) return { label: 'Tốt', color: 'bg-yellow-500', bars: 2 };
-    if (len >= 6) return { label: 'Yếu', color: 'bg-red-500', bars: 1 };
-    return { label: 'Quá ngắn', color: 'bg-gray-300', bars: 0 };
+    if (len >= 15) return { label: 'Strong', color: 'bg-green-500', bars: 3 };
+    if (len >= 10) return { label: 'Good', color: 'bg-yellow-500', bars: 2 };
+    if (len >= 6) return { label: 'Weak', color: 'bg-red-500', bars: 1 };
+    return { label: 'Too short', color: 'bg-gray-300', bars: 0 };
   };
 
   const strength = getPasswordStrength();
@@ -478,11 +493,11 @@ function PasswordTab() {
           <Lock className="w-6 h-6 text-brand-primary dark:text-brand-secondary" />
         </div>
         <div>
-          <h2 className="font-poppins font-bold text-xl text-gray-900 dark:text-white">
-            Đổi mật khẩu
+          <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white">
+            Change Password
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Cập nhật mật khẩu để bảo vệ tài khoản
+            Update your password to keep your account secure
           </p>
         </div>
       </div>
@@ -490,24 +505,24 @@ function PasswordTab() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Old Password */}
         <PasswordField
-          label="Mật khẩu hiện tại"
+          label="Current Password"
           name="oldPassword"
           value={formData.oldPassword}
           onChange={handleInputChange}
           show={showOldPassword}
           onToggle={() => setShowOldPassword(!showOldPassword)}
-          placeholder="Nhập mật khẩu hiện tại"
+          placeholder="Enter current password"
         />
 
         {/* New Password */}
         <PasswordField
-          label="Mật khẩu mới"
+          label="New Password"
           name="newPassword"
           value={formData.newPassword}
           onChange={handleInputChange}
           show={showNewPassword}
           onToggle={() => setShowNewPassword(!showNewPassword)}
-          placeholder="Nhập mật khẩu mới (6-20 ký tự)"
+          placeholder="Enter new password (6-20 characters)"
         />
 
         {/* Password Strength */}
@@ -529,13 +544,13 @@ function PasswordTab() {
 
         {/* Confirm Password */}
         <PasswordField
-          label="Xác nhận mật khẩu mới"
+          label="Confirm New Password"
           name="confirmPassword"
           value={formData.confirmPassword}
           onChange={handleInputChange}
           show={showConfirmPassword}
           onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-          placeholder="Nhập lại mật khẩu mới"
+          placeholder="Re-enter new password"
         />
 
         {/* Messages */}
@@ -553,12 +568,12 @@ function PasswordTab() {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Đang đổi...
+              Changing...
             </>
           ) : (
             <>
               <Lock className="w-5 h-5" />
-              Đổi mật khẩu
+              Change Password
             </>
           )}
         </motion.button>
@@ -581,8 +596,8 @@ function AppearanceTab() {
       exit={{ opacity: 0, y: -20 }}
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 lg:p-8"
     >
-      <h2 className="font-poppins font-bold text-xl text-gray-900 dark:text-white mb-6">
-        Giao diện
+      <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white mb-6">
+        Appearance
       </h2>
 
       <div className="space-y-6">
@@ -595,9 +610,9 @@ function AppearanceTab() {
               <Sun className="w-6 h-6 text-amber-500" />
             )}
             <div className="text-left">
-              <p className="font-medium text-gray-900 dark:text-white">Chế độ tối</p>
+              <p className="font-medium text-gray-900 dark:text-white">Dark Mode</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isDark ? 'Đang bật chế độ tối' : 'Đang dùng chế độ sáng'}
+                {isDark ? 'Dark mode is enabled' : 'Using light mode'}
               </p>
             </div>
           </div>
@@ -638,7 +653,7 @@ function AppearanceTab() {
           >
             <div className="flex items-center gap-2 mb-3">
               <Sun className="w-5 h-5 text-amber-500" />
-              <span className="font-medium text-gray-900">Sáng</span>
+              <span className="font-medium text-gray-900">Light</span>
             </div>
             <div className="space-y-2">
               <div className="h-2 w-full bg-gray-200 rounded" />
@@ -646,7 +661,7 @@ function AppearanceTab() {
               <div className="h-2 w-1/2 bg-gray-200 rounded" />
             </div>
             <div className="mt-3 flex items-center justify-center gap-1 text-brand-primary text-sm font-medium dark:text-white">
-            <Check className="w-4 h-4" /> Đang dùng
+            <Check className="w-4 h-4" /> Active
             </div>
           </motion.button>
 
@@ -662,7 +677,7 @@ function AppearanceTab() {
           >
             <div className="flex items-center gap-2 mb-3">
               <Moon className="w-5 h-5 text-brand-secondary" />
-              <span className="font-medium text-white">Tối</span>
+              <span className="font-medium text-white">Dark</span>
             </div>
             <div className="space-y-2">
               <div className="h-2 w-full bg-gray-600 rounded" />
@@ -670,7 +685,7 @@ function AppearanceTab() {
               <div className="h-2 w-1/2 bg-gray-600 rounded" />
             </div>
             <div className="mt-3 flex items-center justify-center gap-1 text-gray-800 dark:text-brand-secondary text-sm font-medium">
-            <Check className="w-4 h-4" /> Đang dùng
+            <Check className="w-4 h-4" /> Active
             </div>
           </motion.button>
         </div>

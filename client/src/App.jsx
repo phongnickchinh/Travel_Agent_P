@@ -6,6 +6,7 @@ import CreatePlan from './pages/user/CreatePlan';
 import Dashboard from './pages/user/Dashboard';
 import PlanDetail from './pages/user/PlanDetail';
 import ProfileSettings from './pages/user/ProfileSettings';
+import Settings from './pages/user/Settings';
 import Trash from './pages/user/Trash';
 import Welcome from './pages/Welcome';
 
@@ -34,6 +35,7 @@ function App() {
         <Route path="/dashboard/plan/:planId" element={<ProtectedRoute><PlanDetail /></ProtectedRoute>} />
         <Route path="/dashboard/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
 
+        <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/dashboard/settings/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
         <Route path="/dashboard/settings/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         {/* Legacy routes */}

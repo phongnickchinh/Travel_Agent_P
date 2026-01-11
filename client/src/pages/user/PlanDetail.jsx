@@ -1022,7 +1022,7 @@ export default function PlanDetail() {
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                   regenerateLoading
                     ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'border-brand-primary text-brand-primary bg-white dark:bg-gray-800 hover:bg-brand-muted dark:hover:bg-brand-primary/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />

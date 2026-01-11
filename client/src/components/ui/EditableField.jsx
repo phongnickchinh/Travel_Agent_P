@@ -18,7 +18,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Loader2, Pencil, X } from 'lucide-react';
+import { Calendar, Check, Lightbulb, Loader2, Pencil, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function EditableField({
@@ -310,7 +310,7 @@ export function EditableNotes({ value, onSave, disabled, maxLength = 500 }) {
       rows={3}
       className="text-sm text-gray-500 italic py-1 px-2 -mx-2"
       renderDisplay={(val) => val ? (
-        <span>💡 {val}</span>
+        <span className="flex items-center gap-1"><Lightbulb className="w-4 h-4" /> {val}</span>
       ) : (
         <span className="text-gray-400 italic">+ Thêm ghi chú...</span>
       )}
@@ -349,7 +349,7 @@ export function EditableDate({ value, onSave, disabled, variant = 'light' }) {
       className={`text-sm py-1 px-2 -mx-2 ${isDark ? 'text-white' : 'text-gray-600'}`}
       renderDisplay={(val) => (
         <span className="flex items-center gap-1 cursor-pointer hover:underline">
-          📅 {formatDisplayDate(val) || 'Chọn ngày...'}
+          <Calendar className="w-4 h-4" /> {formatDisplayDate(val) || 'Chọn ngày...'}
         </span>
       )}
     />

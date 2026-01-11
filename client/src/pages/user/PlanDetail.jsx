@@ -12,18 +12,22 @@
 import { GoogleMap, InfoWindow, OverlayView, useJsApiLoader } from '@react-google-maps/api';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  AlertTriangle,
   ArrowLeft,
+  BarChart3,
   Bed,
   Calendar,
   Camera,
   ChevronDown,
   ChevronUp,
   Church,
+  ClipboardList,
   Clock,
   Coffee,
   CreditCard,
   Dumbbell,
   Film,
+  Footprints,
   Heart,
   Hospital,
   Landmark,
@@ -43,6 +47,7 @@ import {
   TreePine,
   Utensils,
   UtensilsCrossed,
+  Wallet,
   Wine
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -939,7 +944,7 @@ export default function PlanDetail() {
             className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl max-w-md mx-4 text-center"
           >
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">⚠️</span>
+              <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
               Không thể tạo lịch trình
@@ -1133,8 +1138,8 @@ export default function PlanDetail() {
                 transition={{ delay: (plan.itinerary?.length || 0) * 0.1 }}
                 className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6"
               >
-                <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3">
-                  📋 Tổng kết chuyến đi
+                <h3 className="font-poppins font-bold text-lg text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5" /> Tổng kết chuyến đi
                 </h3>
                 <p className="text-gray-700 dark:text-gray-300">{plan.summary}</p>
               </motion.div>
@@ -1587,18 +1592,18 @@ export default function PlanDetail() {
                                 </h4>
                                 <div className="space-y-1 text-sm">
                                   {tripSummary.preferences.budget && (
-                                    <p className="text-gray-700 dark:text-gray-300">
-                                      💰 {formatVND(tripSummary.preferences.budget)}
+                                    <p className="text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                                      <Wallet className="w-4 h-4" /> {formatVND(tripSummary.preferences.budget)}
                                     </p>
                                   )}
                                   {tripSummary.preferences.budget_level && (
-                                    <p className="text-gray-700 dark:text-gray-300 capitalize">
-                                      📊 {tripSummary.preferences.budget_level}
+                                    <p className="text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
+                                      <BarChart3 className="w-4 h-4" /> {tripSummary.preferences.budget_level}
                                     </p>
                                   )}
                                   {tripSummary.preferences.pace && (
-                                    <p className="text-gray-700 dark:text-gray-300 capitalize">
-                                      🚶 {tripSummary.preferences.pace}
+                                    <p className="text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
+                                      <Footprints className="w-4 h-4" /> {tripSummary.preferences.pace}
                                     </p>
                                   )}
                                 </div>

@@ -11,7 +11,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, ChevronDown, ChevronUp, Loader2, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // Interest options (text-only, no icons)
@@ -386,7 +386,7 @@ const RegeneratePlanModal = ({
                             />
                             <div className="flex-1">
                               <label htmlFor="deepSearchRegen" className="text-sm font-bold text-gray-900 dark:text-gray-100 cursor-pointer flex items-center gap-1.5">
-                                <span>🔍 Tìm kiếm sâu</span>
+                                <Search className="w-4 h-4" /><span>Tìm kiếm sâu</span>
                               </label>
                               <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                                 Sử dụng dữ liệu mới từ Google Places API

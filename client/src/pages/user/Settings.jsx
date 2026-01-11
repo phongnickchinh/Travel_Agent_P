@@ -12,6 +12,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+    ArrowLeft,
     Camera,
     Check,
     Clock,
@@ -27,6 +28,7 @@ import {
     User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import userAPI from '../../services/userApi';
@@ -40,20 +42,31 @@ const TABS = [
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile');
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Header with Back Button */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="font-inter font-bold text-3xl text-gray-900 dark:text-white mb-2">
-            Cài đặt
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-4 mb-2">
+            <motion.button
+              whileHover={{ scale: 1.05, x: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/dashboard')}
+              className="p-2 rounded-xl bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all text-gray-700 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-muted"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </motion.button>
+            <h1 className="font-poppins font-bold text-3xl text-gray-900 dark:text-white">
+              Cài đặt
+            </h1>
+          </div>
+          <p className="text-gray-600 dark:text-gray-400 ml-14">
             Quản lý thông tin cá nhân và tùy chỉnh ứng dụng
           </p>
         </motion.div>

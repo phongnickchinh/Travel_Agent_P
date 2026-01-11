@@ -1,7 +1,7 @@
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
-import { GripVertical, MapPin, Plus } from 'lucide-react';
+import { GripVertical, Lightbulb, MapPin, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { openDirectionsByName } from '../../../utils/googleMapsHelper';
 import { EditableNotes } from '../../ui/EditableField';
@@ -225,8 +225,8 @@ const DayItinerary = ({
             {isPublicView ? (
             // Public view - static display
             day.notes && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                💡 {day.notes}
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic flex items-center gap-1">
+                <Lightbulb className="w-4 h-4" /> {day.notes}
                 </p>
             )
             ) : (

@@ -26,11 +26,15 @@ import {
     Coffee,
     Hotel,
     Landmark,
+    Loader2,
     MapPin,
     Palmtree,
+    RefreshCw,
+    Search,
     ShoppingBag,
     TreePine,
     Utensils,
+    X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import searchAPI from '../services/searchApi';
@@ -335,12 +339,12 @@ const SearchAutocomplete = ({
         
         {/* Search Icon */}
         {!isLoading && (
-          <span className="search-icon">🔍</span>
+          <span className="search-icon"><Search className="w-4 h-4" /></span>
         )}
 
         {/* Loading Spinner */}
         {isLoading && (
-          <span className="loading-spinner">⏳</span>
+          <span className="loading-spinner"><Loader2 className="w-4 h-4 animate-spin" /></span>
         )}
 
         {/* Clear Button */}
@@ -356,7 +360,7 @@ const SearchAutocomplete = ({
             className="clear-button"
             aria-label="Clear search"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -420,11 +424,11 @@ const SearchAutocomplete = ({
                     )}
                     {/* Pending status badge */}
                     {result.status === 'pending' && resolvingId !== result.place_id && (
-                      <span className="pending-badge" title="Cần tải thêm chi tiết">⏳</span>
+                      <span className="pending-badge" title="Cần tải thêm chi tiết"><Loader2 className="w-3 h-3" /></span>
                     )}
                     {/* Resolving spinner */}
                     {resolvingId === result.place_id && (
-                      <span className="resolving-spinner" title="Đang tải...">🔄</span>
+                      <span className="resolving-spinner" title="Đang tải..."><RefreshCw className="w-3 h-3 animate-spin" /></span>
                     )}
                   </div>
                   

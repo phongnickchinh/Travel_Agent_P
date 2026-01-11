@@ -369,6 +369,7 @@ class PlanController:
                 )
             
             # Trigger Celery task
+            #TODO: Generation task need move to service, do not call in controller
             generate_plan_task.delay(plan_id)
             
             return build_success_response(

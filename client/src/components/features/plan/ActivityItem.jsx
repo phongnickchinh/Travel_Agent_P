@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { Check, Clock, GripVertical, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Clock, GripVertical, MapPin, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const categoryIconMap = {
@@ -185,7 +185,7 @@ const ActivityItem = ({
             <div className="space-y-1">
               {description && <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>}
               {localActivity.address && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">📍 {localActivity.address}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {localActivity.address}</p>
               )}
             </div>
           )}

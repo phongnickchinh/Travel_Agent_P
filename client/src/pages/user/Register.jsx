@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, Globe2, Lock, Mail, User, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Globe2, Info, Lock, Mail, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -388,8 +388,8 @@ export default function Register({ isModal = false, onClose }) {
                 </div>
               </div>
 
-              <div className="md:col-span-2 rounded-xl bg-brand-muted/60 px-4 py-3 text-sm text-brand-primary">
-                ℹ️ Bạn có thể sử dụng app ngay sau khi đăng ký. Xác minh email giúp tăng bảo mật cho tài khoản.
+              <div className="md:col-span-2 rounded-xl bg-brand-muted/60 px-4 py-3 text-sm text-brand-primary flex items-center gap-2">
+                <Info className="w-4 h-4 shrink-0" /> Bạn có thể sử dụng app ngay sau khi đăng ký. Xác minh email giúp tăng bảo mật cho tài khoản.
               </div>
 
               <div className="md:col-span-2 flex flex-col gap-3">

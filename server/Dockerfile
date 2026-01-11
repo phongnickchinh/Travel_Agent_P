@@ -34,12 +34,17 @@ FROM python:3.10.11-slim
 WORKDIR /server
 
 # Install runtime dependencies
-# THÊM: postgresql-client (để có lệnh psql) và redis-tools (để có lệnh redis-cli)
+# postgresql-client-18 from PGDG repo (supports pg_restore format 1.16)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
-    postgresql-client \
+    gnupg \
+    lsb-release \
     redis-tools \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python packages from builder

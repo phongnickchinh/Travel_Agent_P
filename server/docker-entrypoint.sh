@@ -55,12 +55,10 @@ restore_database() {
     
     echo "🔄 Restoring database from backup..."
     
-    # Create database if not exists
-    PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d postgres -c "CREATE DATABASE \"$DB_NAME\";" 2>/dev/null || true
-    
-    # Restore from backup (plain SQL dump)
-    PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$DB_NAME" -f "$BACKUP_FILE" -v ON_ERROR_STOP=1 2>&1 || {
-        echo "⚠️  psql restore completed with warnings (normal if objects already exist)"
+    # Restore from custom format backup (-C creates database from dump)
+    # Using postgres as target to allow CREATE DATABASE from dump
+    PGPASSWORD=$POSTGRES_PASSWORD pg_restore -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -C -d postgres --no-owner --no-privileges "$BACKUP_FILE" 2>&1 || {
+        echo "⚠️  pg_restore completed with warnings (normal if objects already exist)"
     }
     
     echo "✅ Database restore completed!"

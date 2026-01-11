@@ -57,42 +57,27 @@ jobs:
           echo "Starting Deployment - $(date)"
           echo "========================================"
           
-          # Navigate to deployment directory
           cd ${{ env.DEPLOY_PATH }}
           
-          # Pull latest code
-          echo "Pulling latest code from GitHub..."
+          echo "📦 Pulling latest code..."
           git fetch origin main
           git reset --hard origin/main
           
-          # Navigate to server directory
           cd server
           
-          # Verify .env exists
           if [ ! -f .env ]; then
-            echo "ERROR: .env file not found! Please configure manually first."
+            echo "❌ .env file not found!"
             exit 1
           fi
           
-          # Fix Windows line endings (CRLF -> LF) before sourcing
           sed -i 's/\r$//' .env
+          set -a; source .env; set +a
           
-          # Load environment variables (export for subshells)
-          set -a
-          source .env
-          set +a
-          
-          echo "========================================"
-          echo "Step 1: Backup Current Database"
-          echo "========================================"
-          
-          # Create backup directory
+          echo "💾 Backing up database..."
           mkdir -p backups
           BACKUP_FILE="backups/backup_$(date +%Y%m%d_%H%M%S).sql"
           
-          # Check if postgres container is running
           if docker compose ps postgres 2>/dev/null | grep -q "running"; then
-            echo "Backing up current database..."
             docker compose exec -T postgres pg_dump \
               -U "${POSTGRES_USERNAME:-postgres}" \
               -d "${POSTGRES_DBNAME:-railway}" \
@@ -100,172 +85,53 @@ jobs:
               > "$BACKUP_FILE" 2>/dev/null || true
             
             if [ -s "$BACKUP_FILE" ]; then
-              echo "✅ Database backup saved to: $BACKUP_FILE"
-              # Keep only last 5 backups
+              echo "✅ Backup saved"
               ls -t backups/backup_*.sql 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
-            else
-              echo "⚠️ No data to backup (new deployment or empty database)"
-              rm -f "$BACKUP_FILE"
             fi
-          else
-            echo "⚠️ Postgres not running, skipping backup"
           fi
           
-          echo ""
-          echo "========================================"
-          echo "Step 2: Deploy All Services"
-          echo "========================================"
-          
-          # Stop all running services
-          echo "Stopping existing services..."
-          docker compose down || true
-          
-          # Build and start all services (dependencies handled by docker-compose.yml)
-          echo "Building and starting all services..."
-          echo "(Dependencies and startup order managed by docker-compose.yml)"
+          echo "🚀 Deploying services..."
+          docker compose down 2>/dev/null || true
           docker compose up -d --build --force-recreate
           
-          # Wait for services to start
-          echo ""
-          echo "Waiting 30 seconds for services to initialize..."
           sleep 30
-          
-          # Prune old images to save disk space
-          echo "Cleaning up old Docker images..."
           docker image prune -f
           
-          # Show final status
-          echo ""
-          echo "========================================"
-          echo "Deployment Summary"
-          echo "========================================"
+          echo "📊 Status:"
           docker compose ps
           
-          echo ""
-          echo "✅ Deployment completed!"
-          echo "Note: Elasticsearch may take additional time to fully start"
+          echo "✅ Deployment complete!"
           ENDSSH
 
-      # ============= Show Logs (Optional) =============
+      # ============= Show Logs =============
       - name: Show service logs
         if: success()
         run: |
-          echo "Fetching recent service logs..."
-          
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
-          
           cd /home/travel_project/server
           
-          echo ""
-          echo "Recent Flask logs (last 20 lines):"
-          docker compose logs --tail=20 flask-app 2>&1 || echo "Flask not ready yet"
+          echo "Flask:"
+          docker compose logs --tail=10 flask-app 2>&1 | tail -5
           
-          echo ""
-          echo "Recent Nginx logs (last 10 lines):"
-          docker compose logs --tail=10 nginx 2>&1 || echo "Nginx not ready yet"
-          
+          echo "Nginx:"
+          docker compose logs --tail=10 nginx 2>&1 | tail -5
           ENDSSH
-      - name: Verify deployment via container status
-        run: |
-          echo "Verifying deployment via Docker Compose status..."
-          
-          # Wait for services to stabilize
-          echo "Waiting 20 seconds for services to stabilize..."
-          sleep 20
-          
-          # SSH to VPS and check container status
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'ENDSSH'
-          
-          cd /home/travel_project/server
-          
-          echo ""
-          echo "========================================="
-          echo "Docker Compose Container Status"
-          echo "========================================="
-          docker compose ps -a
-          
-          echo ""
-          echo "Checking critical services..."
-          
-          # Define critical services
-          CRITICAL_SERVICES=("postgres" "redis" "flask-app" "nginx")
-          ALL_HEALTHY=true
-          
-          for service in "${CRITICAL_SERVICES[@]}"; do
-            # Get container state
-            STATE=$(docker compose ps "$service" -a --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-            
-            if [ "$STATE" == "running" ]; then
-              echo "✅ $service: running"
-            elif [ "$STATE" == "healthy" ]; then
-              echo "✅ $service: healthy"
-            else
-              echo "❌ $service: $STATE (EXPECTED: running)"
-              ALL_HEALTHY=false
-            fi
-          done
-          
-          if [ "$ALL_HEALTHY" = false ]; then
-            echo ""
-            echo "❌ Some critical services are not running!"
-            echo ""
-            echo "Showing logs for failed services..."
-            
-            for service in "${CRITICAL_SERVICES[@]}"; do
-              STATE=$(docker compose ps "$service" -a --format json 2>/dev/null | grep -o '"State":"[^"]*"' | head -1 | cut -d'"' -f4)
-              if [ "$STATE" != "running" ] && [ "$STATE" != "healthy" ]; then
-                echo ""
-                echo "========== Logs for $service =========="
-                docker compose logs --tail=50 "$service"
-              fi
-            done
-            
-            exit 1
-          fi
-          
-          echo ""
-          echo "========================================="
-          echo "✅ All critical services are running!"
-          echo "========================================="
-          
-          # Show recent logs for verification
-          echo ""
-          echo "Recent Flask logs (last 20 lines):"
-          docker compose logs --tail=20 flask-app
-          
-          echo ""
-          echo "Recent Nginx logs (last 10 lines):"
-          docker compose logs --tail=10 nginx
-          
-          ENDSSH
-          
-          echo ""
-          echo "✅ Deployment verification completed successfully!"
 
-      # ============= Rollback on Failure =============
-      - name: Rollback on failure
-        if: failure()
       # ============= Cleanup =============
       - name: Cleanup SSH key
         if: always()
         run: |
           rm -f ~/.ssh/deploy_key
-          echo "Cleaned up SSH key"
 
-      # ============= Notify on Success =============
-      - name: Send success notification
-        if: success()
+      # ============= Notify =============
+      - name: Notify
+        if: always()
         run: |
-          echo "✅ Deployment successful!"
-          echo "API URL: https://api.phamphong.id.vn"
-          echo "Note: Services may take additional time to fully start (especially Elasticsearch)"
-
-      # ============= Notify on Failure =============
-      - name: Send failure notification
-        if: failure()
-        run: |
-          echo "❌ Deployment failed!"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment successful"
+          else
+            echo "❌ Deployment failed"
+          fi
           echo "Check the logs above for details"
 

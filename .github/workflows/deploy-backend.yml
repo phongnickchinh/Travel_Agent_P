@@ -169,41 +169,69 @@ jobs:
           
           # Build and start all services
           echo "Building and starting all services..."
-          docker compose up -d --build --force-recreate
+          if ! docker compose up -d --build --force-recreate; then
+            echo "❌ FATAL: docker compose up failed!"
+            docker compose ps
+            docker compose logs --tail=50
+            exit 1
+          fi
           
           # Prune old images to save disk space
           echo "Cleaning up old images..."
           docker image prune -f
           
           # Wait for services to be healthy
-          echo "Waiting for services to be healthy..."
-          sleep 15
+          echo "Waiting for services to start..."
+          sleep 20
           
-          # Check Flask container health
-          echo "Checking Flask container..."
-          for i in {1..30}; do
-            FLASK_STATUS=$(docker compose ps flask-app --format json 2>/dev/null | grep -o '"Status":"[^"]*"' | head -1 || echo "")
-            if echo "$FLASK_STATUS" | grep -q "healthy\|running"; then
-              echo "Flask container is running!"
-              break
+          # Verify ALL critical services are running
+          echo ""
+          echo "Verifying critical services..."
+          REQUIRED_SERVICES=("postgres" "redis" "flask-app" "nginx")
+          MISSING_SERVICES=()
+          
+          for service in "${REQUIRED_SERVICES[@]}"; do
+            if ! docker compose ps "$service" --format json 2>/dev/null | grep -q "running\|healthy"; then
+              echo "❌ Service '$service' is NOT running!"
+              MISSING_SERVICES+=("$service")
+            else
+              echo "✅ Service '$service' is running"
             fi
-            echo "Waiting for Flask... ($i/30)"
-            sleep 3
           done
+          
+          if [ ${#MISSING_SERVICES[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ FATAL: Missing critical services: ${MISSING_SERVICES[*]}"
+            echo ""
+            echo "Container status:"
+            docker compose ps
+            echo ""
+            echo "Logs from failed services:"
+            for service in "${MISSING_SERVICES[@]}"; do
+              echo "======== $service logs ========"
+              docker compose logs --tail=50 "$service" 2>&1 || echo "No logs available"
+            done
+            exit 1
+          fi
           
           # Show running containers
           echo ""
-          echo "Running containers:"
+          echo "All running containers:"
           docker compose ps
           
-          # Quick log check for errors
+          # Check Flask logs for errors
           echo ""
-          echo "Checking for startup errors..."
-          docker compose logs --tail=20 flask-app 2>&1 | grep -i "error\|exception\|failed" || echo "No errors found in recent logs"
+          echo "Recent Flask logs:"
+          docker compose logs --tail=30 flask-app
+          
+          # Check Nginx logs
+          echo ""
+          echo "Recent Nginx logs:"
+          docker compose logs --tail=20 nginx
           
           echo ""
           echo "========================================"
-          echo "Deployment completed successfully!"
+          echo "✅ All services started successfully!"
           echo "========================================"
           ENDSSH
 

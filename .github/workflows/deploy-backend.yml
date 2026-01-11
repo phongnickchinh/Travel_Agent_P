@@ -79,15 +79,15 @@ jobs:
           
           # Stop services
           echo "Stopping current services..."
-          docker compose -f docker-compose.production.yml down
+          docker compose down
           
           # Build new images
           echo "Building Docker images..."
-          docker compose -f docker-compose.production.yml build --no-cache --pull
+          docker compose build --no-cache --pull
           
           # Start services
           echo "Starting services..."
-          docker compose -f docker-compose.production.yml up -d
+          docker compose up -d
           
           # Wait for services to be healthy
           echo "Waiting for services to be healthy..."
@@ -96,7 +96,7 @@ jobs:
           # Check Flask health
           echo "Checking Flask health..."
           for i in {1..30}; do
-            if docker compose -f docker-compose.production.yml exec -T flask-app curl -f http://localhost:5000/health >/dev/null 2>&1; then
+            if docker compose exec -T flask-app curl -f http://localhost:5000/health >/dev/null 2>&1; then
               echo "Flask is healthy!"
               break
             fi
@@ -106,11 +106,11 @@ jobs:
           
           # Show running containers
           echo "Running containers:"
-          docker compose -f docker-compose.production.yml ps
+          docker compose ps
           
           # Show logs (last 50 lines)
           echo "Recent logs:"
-          docker compose -f docker-compose.production.yml logs --tail=50
+          docker compose logs --tail=50
           
           echo "========================================"
           echo "Deployment completed successfully!"
@@ -156,8 +156,8 @@ jobs:
           
           # Rebuild and restart
           cd server
-          docker compose -f docker-compose.production.yml down
-          docker compose -f docker-compose.production.yml up -d --build
+          docker compose down
+          docker compose up -d --build
           
           echo "Rolled back to previous version"
           ENDSSH

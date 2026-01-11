@@ -1,0 +1,198 @@
+=== POIs BY AREA ===
+
+[CLUSTER 1] (21.0321, 105.7709) - 15 POIs
+1. [poi_volumeclub_w7epwu7] Volume Club @(21.02950,105.77018) (cafe,nightlife,bar) R:4.4/1856 $$
+   Desc: Volume Club - Quán bar
+   Hours: 24/7
+   Amenities: serves_beer,serves_wine,serves_cocktails,dine_in,takeout
+   Tel: 0969 491 991
+   Reviews: (5.0★) Tụi mình hay đi karaoke ở nhiều nơi, mà chốt lại thì Royal Club là ngon nhất khu... | (5.0★) 
+2. [poi_thecornerfooddrink_w7epwv1] The Corner - Food & Drink @(21.03367,105.76759) (cafe,restaurant,landmark) R:4.1/968 $$
+   Desc: The Corner - Food & Drink - Quán cà phê
+   Hours: Thứ Hai: 07:00–23:00, Thứ Ba: 07:00–23:00, Thứ Tư: 07:00–23:00, Thứ Năm: 07:00–23:00, Thứ Sáu: 07:00–23:00, Thứ Bảy: 07:00–23:00, Chủ Nhật: 07:00–23:00
+   Amenities: serves_breakfast,serves_brunch,serves_lunch,serves_dessert,serves_coffee
+   Tel: 0981 182 002
+   Reviews: (5.0★) Chỗ ngồi thoáng đãng, ấm cúng và khá sang trọng. Bên ngoài cũng có nhiều chỗ ngồ... | (5.0★) 
+3. [poi_aquariarestaurant_w7epwfc] Aquaria Restaurant @(21.02107,105.76762) (restaurant,cafe,bar) R:4.1/2654 $$
+   Desc: Nhà hàng thoáng mát có chỗ ngồi ngoài vườn, khu sảnh tiệc thời thượng, nước giải khát và đặc sản biể
+   Hours: Thứ Hai: 07:00–22:00, Thứ Ba: 07:00–22:00, Thứ Tư: 07:00–22:00, Thứ Năm: 07:00–22:00, Thứ Sáu: 07:00–22:00, Thứ Bảy: 07:00–22:00, Chủ Nhật: 07:00–22:00
+   Amenities: serves_breakfast,serves_brunch,serves_lunch,serves_dinner,serves_dessert
+   Tel: 024 2263 3399
+   Website: http://aquaria.vn/
+   Reviews: (5.0★) Mình vào đây lần đầu, ngày 5/8/2025 dự sinh nhật 10 năm Alibabaa English VietNam... | (2.0★) 
+4. [poi_aventuscoffeehamnghi_w7epwv1] Aventus Coffee Hàm Nghi @(21.03465,105.76692) (cafe,landmark) R:4.0/84 $$
+   Desc: Aventus Coffee Hàm Nghi - Quán cà phê
+   Hours: Thứ Hai: 07:00–23:30, Thứ Ba: 07:00–23:30, Thứ Tư: 07:00–23:30, Thứ Năm: 07:00–23:30, Thứ Sáu: 07:00–23:30, Thứ Bảy: 07:00–23:30, Chủ Nhật: 07:00–23:30
+   Amenities: serves_coffee,dine_in,takeout,delivery,outdoor_seating
+   Tel: 0917 849 656
+   Reviews: (5.0★) Không gian quán thoáng lắm, đồ uống ngon, đa dạng. Nay quán decor Trung Thu xinh... | (4.0★) 
+5. [poi_phuclongteacoffee_w7epwtm] Phuc Long tea & coffee @(21.03598,105.76216) (cafe,landmark) R:4.0/164 $$
+   Desc: Phuc Long tea & coffee - Quán cà phê
+   Hours: Thứ Hai: 07:00–22:00, Thứ Ba: 07:00–22:00, Thứ Tư: 07:00–22:00, Thứ Năm: 07:00–22:00, Thứ Sáu: 07:00–22:00, Thứ Bảy: 07:00–22:00, Chủ Nhật: 07:00–22:00
+   Amenities: serves_dessert,serves_coffee,dine_in,takeout,good_for_children
+   Tel: 028 7100 1968
+   Website: http://phuclong.com.vn/
+   Reviews: (5.0★) Quán có 3 tầng rất rộng rãi thoáng mát, Nvs sạch sẽ, NV thân thiện, ngồi lâu cũn... | (1.0★) 
+6. [poi_starbucksgoldenfield_w7epwv2] Starbucks Golden Field @(21.03483,105.76562) (cafe,landmark) R:4.7/215 $$$
+   Desc: Chuỗi quán cà phê có trụ sở tại Seattle, nổi tiếng với các loại cà phê rang xay đặc trưng, đồ ăn nhẹ
+   Hours: Thứ Hai: 07:00–22:00, Thứ Ba: 07:00–22:00, Thứ Tư: 07:00–22:00, Thứ Năm: 07:00–22:00, Thứ Sáu: 07:00–22:00, Thứ Bảy: 07:00–22:00, Chủ Nhật: 07:00–22:00
+   Amenities: serves_breakfast,serves_dessert,serves_coffee,dine_in,takeout
+   Tel: 024 3201 3401
+   Website: https://starbucks.vn/
+   Reviews: (5.0★) nhân viên siêu cutii nhất là bạn gái hay có kẹp tóc, đồ uống siuu ngon không gia... | (5.0★) 
+7. [poi_hotranbinh_w7epwvr] Hồ Trần Bình @(21.03526,105.77620) (nature,landmark) R:4.8/5 $$
+   Desc: Hồ Trần Bình - Công viên
+   Hours: Hours not specified
+   Amenities: good_for_children
+   Reviews: (5.0★) Có mấy hàng nước trà đá, ngồi cũng thoải mái vì có view nhìn ra hồ, mà không hiể...
+8. [poi_congviencachoangtu_w7epwup] Công viên các hoàng tử @(21.02891,105.77580) (nature,landmark) R:5.0/1 $$
+   Desc: Công viên các hoàng tử - Công viên
+   Hours: Hours not specified
+9. [poi_highlandscoffeehamnghi_w7epwtm] Highlands Coffee Hàm Nghi @(21.03606,105.76184) (cafe,landmark) R:4.2/1004 $$
+   Desc: Highlands Coffee Hàm Nghi - Quán cà phê
+   Hours: Thứ Hai: 07:00–23:00, Thứ Ba: 07:00–23:00, Thứ Tư: 07:00–23:00, Thứ Năm: 07:00–23:00, Thứ Sáu: 07:00–23:00, Thứ Bảy: 07:00–23:00, Chủ Nhật: 07:00–23:00
+   Amenities: serves_brunch,serves_dessert,serves_coffee,dine_in,takeout
+   Tel: 024 3200 6270
+   Reviews: (5.0★) Không gian quán có 2 tầng, khá rộng rãi, nhân viên, dịch vụ khá ổn, cảm giác quá... | (1.0★) 
+10. [poi_highlandscoffeefivimartmydinh_w7epwu4] Highlands Coffee Fivimart My Dinh @(21.02812,105.76873) (cafe,landmark) R:4.0/260 $$
+   Desc: Highlands Coffee Fivimart My Dinh - Quán cà phê
+   Hours: Thứ Hai: 07:00–22:00, Thứ Ba: 07:00–22:00, Thứ Tư: 07:00–22:00, Thứ Năm: 07:00–22:00, Thứ Sáu: 07:00–22:00, Thứ Bảy: 07:00–22:00, Chủ Nhật: 07:00–22:00
+   Amenities: serves_breakfast,serves_dessert,serves_coffee,dine_in,takeout
+   Tel: 024 3200 6447
+   Website: https://www.highlandscoffee.com.vn/
+   Reviews: (1.0★) ở vinmart có ghi biển to đùng là do Q Nam Từ Liêm quản lý - đô thị văn minh .
+Nh... | (1.0★) 
+11. [poi_highlandscoffeedolphinplaza_w7epxh2] Highlands Coffee Dolphin Plaza @(21.02984,105.77649) (cafe,landmark) R:4.1/434 $$
+   Desc: Highlands Coffee Dolphin Plaza - Quán cà phê
+   Hours: Thứ Hai: 07:00–22:00, Thứ Ba: 07:00–22:00, Thứ Tư: 07:00–22:00, Thứ Năm: 07:00–22:00, Thứ Sáu: 07:00–22:00, Thứ Bảy: 07:00–22:00, Chủ Nhật: 07:00–22:00
+   Amenities: serves_breakfast,serves_dessert,serves_coffee,dine_in,takeout
+   Website: http://highlandscoffee.com.vn/
+   Reviews: (1.0★) mình là sinh viên muốn vào đây học bài, thì mình có gọi 1 cốc cafe lúc 7h45 27/1... | (1.0★) 
+12. [poi_metavndienmaygiacuctot_w7epxht] META.vn - Điện Máy Giá Cực Tốt @(21.03101,105.78457) (shopping,landmark) R:3.9/109 $$
+   Desc: META.vn - Điện Máy Giá Cực Tốt - Trung tâm mua sắm
+   Hours: Thứ Hai: 08:00–19:00, Thứ Ba: 08:00–19:00, Thứ Tư: 08:00–19:00, Thứ Năm: 08:00–19:00, Thứ Sáu: 08:00–19:00, Thứ Bảy: 08:00–17:30, Chủ Nhật: 08:00–17:30
+   Tel: 024 3568 6969
+   Website: https://meta.vn/
+   Reviews: (5.0★) Mua hàng có nhân viên gọi xác nhận và tư vấn thêm nhiệt tình, sản phẩm dùng tốt ... | (1.0★) 
+13. [poi_congvienhodieuhoamaidich_w7epwvf] Công viên hồ điều hòa Mai Dịch @(21.03849,105.76930) (nature,landmark) R:3.9/34 $$
+   Desc: Công viên hồ điều hòa Mai Dịch - Công viên
+   Hours: 24/7
+   Amenities: good_for_children
+   Reviews: (4.0★) Gần nhà, hay qua đây đi bộ. Chụp đôi bạn trẻ từ mấy năm trc, k biết là ai, kb 2 ... | (3.0★) 
+14. [poi_vuonhongnguyennguyet_w7epwe5] Vườn Hồng Nguyễn Nguyệt @(21.02331,105.75983) (nature,landmark) $$
+   Desc: Vườn Hồng Nguyễn Nguyệt - Vườn thảo mộc
+   Hours: 24/7
+   Tel: 0974 041 111
+15. [poi_jollibeetohieu_w7epxq6] Jollibee Tô Hiệu @(21.04150,105.79069) (restaurant,landmark) R:4.2/3597 $$
+   Desc: Popular Philippines-based chain globally known for its famed fried chicken, spaghetti & burgers.
+   Hours: Thứ Hai: 09:00–21:30, Thứ Ba: 09:00–21:30, Thứ Tư: 09:00–21:30, Thứ Năm: 09:00–21:30, Thứ Sáu: 09:00–21:30, Thứ Bảy: 09:00–21:30, Chủ Nhật: 09:00–21:30
+   Amenities: serves_lunch,serves_dinner,serves_dessert,serves_coffee,dine_in
+   Tel: 0343 222 108
+   Website: http://jollibee.com.vn/
+   Reviews: (2.0★) - Đồ ăn phổ thông giống các quán gà rán khác, khá ít cơ sở nên lượng khách tụ lạ... | (4.0★) 
+
+[CLUSTER 0] (21.0082, 105.7863) - 15 POIs
+16. [poi_intercontinentalhanoilandmark72_w7epx1v] InterContinental Hanoi Landmark72 @(21.01684,105.78430) (hotel,landmark) R:4.9/7777 $$
+   Desc: Khách sạn cao tầng sang trọng có 2 nhà hàng, quầy bar thời thượng ở sảnh và phòng ốc hiện đại.
+   Hours: Hours not specified
+   Amenities: good_for_children
+   Tel: 024 3698 8888
+   Website: https://www.ihg.com/intercontinental/hotels/us/en/hanoi/hanha/hoteldetail?cm_mmc=GoogleMaps-_-IC-_-VN-_-HANHA
+   Reviews: (5.0★) Mình thỉnh thoảng đến InterContinental Hanoi Landmark72 để dùng trà chiều tại Th... | (5.0★) 
+17. [poi_ahacoffee_w7epx4c] Aha Coffee @(21.02129,105.77872) (cafe,landmark) R:4.0/186 $$
+   Desc: Aha Coffee - Quán cà phê
+   Hours: Thứ Hai: 07:00–23:00, Thứ Ba: 07:00–23:00, Thứ Tư: 07:00–23:00, Thứ Năm: 07:00–23:00, Thứ Sáu: 07:00–23:00, Thứ Bảy: 07:00–23:00, Chủ Nhật: 07:00–23:00
+   Amenities: serves_dessert,serves_coffee,dine_in,takeout,outdoor_seating
+   Tel: 0944 008 991
+   Website: https://ahacafe.vn/
+   Reviews: (5.0★) Không gian quán khá rộng, mở 24/24. Nhưng hơi ồn vì là gần mặt đường Phạm Hùng x... | (5.0★) 
+18. [poi_kingmassage_w7epwfr] King Massage @(21.01836,105.77592) (wellness,nature,landmark) R:4.7/233 $$
+   Desc: King Massage - Spa
+   Hours: Thứ Hai: 10:00–00:00, Thứ Ba: 10:00–00:00, Thứ Tư: 10:00–00:00, Thứ Năm: 10:00–00:00, Thứ Sáu: 10:00–00:00, Thứ Bảy: 10:00–00:00, Chủ Nhật: 10:00–00:00
+   Tel: 0965 429 019
+   Reviews: (5.0★) ⭐️⭐️⭐️⭐️⭐️ Trải Nghiệm Thư Giãn Tuyệt Vời!
+Không gian quán sang trọng. Kỹ thuật ... | (5.0★) 
+19. [poi_funnygamesvincomsmartcity_w7epqqy] Funny Games Vincom Smart City @(20.99928,105.75216) (entertainment,landmark) R:1.0/1 $$
+   Desc: Funny Games Vincom Smart City - Công viên giải trí
+   Hours: Thứ Hai: 10:00–22:00, Thứ Ba: 10:00–22:00, Thứ Tư: 10:00–22:00, Thứ Năm: 10:00–22:00, Thứ Sáu: 10:00–22:00, Thứ Bảy: 09:30–22:00, Chủ Nhật: 09:30–22:00
+   Amenities: good_for_children
+   Website: https://funnykids.com.vn/
+   Reviews: (1.0★) Thật lãng phí tiền bạc. Máy móc nào cũng hỏng. Tôi không hiểu họ kinh doanh kiểu...
+20. [poi_baosoninternationalhotel_w7epxg2] Bao Son International Hotel @(21.02448,105.81048) (hotel,restaurant,landmark) R:4.1/1408 $$
+   Desc: Khách sạn cao cấp có phòng ốc bài trí tinh tế, nhà hàng sang trọng, bể bơi trong nhà và khu spa.
+   Hours: Hours not specified
+   Amenities: good_for_children
+   Tel: 024 3835 3536
+   Website: http://baosonhotels.com/
+   Reviews: (5.0★) Mình đánh giá Khách sạn Bảo Sơn dựa trên trải nghiệm thực tế vì BNI Hero Chapter... | (5.0★) 
+21. [poi_macplaza_w7epr7f] MAC Plaza @(20.98351,105.79144) (shopping,landmark) R:4.4/1279 $$
+   Desc: MAC Plaza - Trung tâm mua sắm
+   Hours: Thứ Hai: 09:00–22:00, Thứ Ba: 09:00–22:00, Thứ Tư: 09:00–22:00, Thứ Năm: 09:00–22:00, Thứ Sáu: 09:00–22:00, Thứ Bảy: 09:00–22:00, Chủ Nhật: 09:00–22:00
+   Tel: 0986 720 684
+   Website: http://macplaza.vn/
+   Reviews: (5.0★) Mọi người hãy trải nghiệm thêm ở Thị Trấn Mai Châu . Con người thật thà , thân t... | (4.0★) 
+22. [poi_haidilaovincomtranduyhung_w7epx2j] Haidilao Vincom Trần Duy Hưng @(21.00614,105.79500) (restaurant,landmark) R:4.9/10465 $$
+   Desc: Haidilao Vincom Trần Duy Hưng - Nhà hàng
+   Hours: Thứ Hai: 10:00–03:00, Thứ Ba: 10:00–03:00, Thứ Tư: 10:00–03:00, Thứ Năm: 10:00–03:00, Thứ Sáu: 10:00–03:00, Thứ Bảy: 10:00–03:00, Chủ Nhật: 10:00–03:00
+   Amenities: serves_lunch,serves_dinner,serves_dessert,serves_beer,serves_wine
+   Tel: 024 3919 8822
+   Website: https://www.facebook.com/HaidilaoVietnam
+   Reviews: (5.0★) Quán lẩu tuyệt nhất mình từng ghé
+Trước hết là không gian ấm cúng, được thiết kế... | (5.0★) 
+23. [poi_grandplazahotelhanoi_w7epx2q] Grand Plaza Hotel Hanoi @(21.00743,105.79682) (hotel,restaurant,landmark) R:4.2/4641 $$
+   Desc: Khách sạn cao tầng và hiện đại, có phòng ốc trang nhã cùng nhà hàng, spa và khu mua sắm.
+   Hours: 24/7
+   Amenities: good_for_children
+   Tel: 024 3555 1000
+   Website: http://www.grandplazahanoi.com/
+   Reviews: (1.0★) Trong quá trình lưu trú, tôi gặp một số trải nghiệm chưa hài lòng:
+•	Khi check-i... | (1.0★) 
+24. [poi_congviencaugiay_w7epxk4] Công viên Cầu Giấy @(21.02820,105.79083) (nature,landmark) R:4.4/11619 $$
+   Desc: Công viên cảnh quan có hồ, các đài phun nước, lớp học thể dục, tuyến đường chạy bộ và khu vui chơi.
+   Hours: Hours not specified
+   Amenities: good_for_children,allows_dogs
+   Tel: 0858 585 769
+   Website: http://www.congviencaugiay.com/
+   Reviews: (5.0★) Sau khi sửa sang lại, phải nói là công viên Cầu Giấy thay đổi rõ rệt, nhìn đẹp v... | (5.0★) 
+25. [poi_aeonmallhadong_w7epqmn] Aeon Mall Hà Đông @(20.98970,105.75172) (shopping,landmark) R:4.6/13425 $$
+   Desc: Aeon Mall Hà Đông - Trung tâm mua sắm
+   Hours: Thứ Hai: 10:00–22:00, Thứ Ba: 10:00–22:00, Thứ Tư: 10:00–22:00, Thứ Năm: 10:00–22:00, Thứ Sáu: 10:00–22:00, Thứ Bảy: 09:00–22:00, Chủ Nhật: 09:00–22:00
+   Amenities: serves_beer,dine_in,reservable
+   Tel: 024 3757 6999
+   Website: https://s.shopee.vn/7plQCkCZd5
+   Reviews: (5.0★) Địa điểm mua sắm rất tốt nhé mọi người. Rộng rãi, nhiều chỗ đỗ xe miễn phí (ngoà... | (5.0★) 
+26. [poi_nhahangchotinhsapa_w7epxb7] Nhà Hàng Chợ Tình Sa Pa @(21.00826,105.81350) (restaurant,landmark) R:4.5/2235 $$
+   Desc: Nhà hàng sặc sỡ, mang đậm phong cách nhiệt đới và chuyên phục vụ ẩm thực truyền thống của vùng Tây B
+   Hours: Thứ Hai: 09:00–23:00, Thứ Ba: 09:00–23:00, Thứ Tư: 09:00–23:00, Thứ Năm: 09:00–23:00, Thứ Sáu: 09:00–23:00, Thứ Bảy: 09:00–23:00, Chủ Nhật: 09:00–23:00
+   Amenities: serves_brunch,serves_lunch,serves_dinner,serves_dessert,serves_beer
+   Tel: 0965 536 886
+   Website: https://nhahangchotinhsapa.vn/
+   Reviews: (5.0★) Mình đến đây trong chuyến công tác và được giới thiệu quán này. Thật sự bất ngờ ... | (3.0★) 
+27. [poi_hlcstarryskyartmuseumvincomroyalcity_w7eprze] HLC Starry Sky Art Museum Vincom Royal City @(21.00323,105.81389) (museum,landmark) R:4.7/422 $$
+   Desc: HLC Starry Sky Art Museum Vincom Royal City - Bảo tàng
+   Hours: Thứ Hai: 10:00–22:00, Thứ Ba: 10:00–22:00, Thứ Tư: 10:00–22:00, Thứ Năm: 10:00–22:00, Thứ Sáu: 10:00–22:00, Thứ Bảy: 10:00–22:00, Chủ Nhật: 10:00–22:00
+   Amenities: good_for_children
+   Tel: 024 6666 3306
+   Website: https://www.facebook.com/share/19vkbGrN7e/
+   Reviews: (5.0★) Lần đầu bước vào HLC Starry Museum ở Royal City, tôi thật sự phải “wow” lên vì c... | (5.0★) 
+28. [poi_baotanglichsuquansuvietnam_w7epw2x] Bảo tàng Lịch sử Quân sự Việt Nam @(21.00933,105.75389) (landmark,museum) R:4.5/11314 $$
+   Desc: Bảo tàng lịch sử quân đội trưng bày hiện vật từ các chiến dịch khác nhau và có cả bộ sưu tập máy bay
+   Hours: Thứ Hai: Đóng cửa, Thứ Ba: 08:00–16:30, Thứ Tư: 08:00–16:30, Thứ Năm: 08:00–16:30, Thứ Sáu: Đóng cửa, Thứ Bảy: 08:00–16:30, Chủ Nhật: 08:00–16:30
+   Amenities: good_for_children
+   Tel: 024 6253 1367
+   Website: https://baotanglichsuquansu.vn/vi-vn/
+   Reviews: (5.0★) Mặc dù vị trí của bảo tàng hiện nay hơi xa trung tâm thành phố một chút, nhưng m... | (5.0★) 
+29. [poi_massage9x_w7eprw2] Massage 9x @(20.99726,105.79909) (entertainment,landmark) R:1.0/1 $$
+   Desc: Massage 9x - Trung tâm vui chơi giải trí
+   Hours: 24/7
+30. [poi_baotanghanoi_w7epx0x] Bảo tàng Hà Nội @(21.00992,105.78630) (museum,landmark) R:4.3/4352 $$
+   Desc: Bảo tàng hình kim tự tháp ngược trưng bày các hiện vật lịch sử về Hà Nội và Việt Nam.
+   Hours: Hours not specified
+   Amenities: good_for_children
+   Tel: 024 6287 0604
+   Website: https://baotanghanoi.com.vn/
+   Reviews: (5.0★) Nếu có dự định ghé Bảo tàng Hà Nội, hãy lưu ngay tips hữu ích sau đây:
+
+Tại bảo ... | (5.0★) 
+
+=== TOTAL: 30 POIs in 2 clusters ===

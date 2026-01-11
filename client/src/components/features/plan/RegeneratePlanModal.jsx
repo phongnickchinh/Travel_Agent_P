@@ -11,7 +11,7 @@
  */
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, ChevronUp, Loader2, X } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
 // Interest options (text-only, no icons)
@@ -87,6 +87,7 @@ const RegeneratePlanModal = ({
   });
   const [pace, setPace] = useState(initialPace);
   const [userNotes, setUserNotes] = useState(initUserNotes);
+  const [deepSearch, setDeepSearch] = useState(false);
   
   // UI state
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -157,6 +158,7 @@ const RegeneratePlanModal = ({
         pace,
         userNotes: userNotes.trim() || undefined,
         num_days: numDays,  // Include num_days in preferences (backend may use it)
+        deep_search: deepSearch
       },
     };
     console.log('[RegenerateModal] Submitting:', payload);
@@ -370,6 +372,43 @@ const RegeneratePlanModal = ({
                             placeholder="VD: Ăn chay, dị ứng hải sản, không thích biển..."
                             className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/50"
                           />
+                        </div>
+
+                        {/* Deep Search Toggle */}
+                        <div className="p-3 bg-linear-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              id="deepSearchRegen"
+                              checked={deepSearch}
+                              onChange={(e) => setDeepSearch(e.target.checked)}
+                              className="mt-0.5 w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <label htmlFor="deepSearchRegen" className="text-sm font-bold text-gray-900 dark:text-gray-100 cursor-pointer flex items-center gap-1.5">
+                                <span>🔍 Tìm kiếm sâu</span>
+                              </label>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                Sử dụng dữ liệu mới từ Google Places API
+                              </p>
+                              <AnimatePresence>
+                                {deepSearch && (
+                                  <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="flex items-start gap-1.5 mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-600 rounded text-xs text-amber-800 dark:text-amber-200"
+                                  >
+                                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="font-semibold">Lưu ý:</p>
+                                      <p>Thời gian lâu hơn (30-60s) và chi phí cao hơn</p>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>

@@ -2,6 +2,7 @@
 # ========================================
 # Docker Entrypoint Script
 # Runs database migrations before starting app
+# Also handles database backup/restore
 # ========================================
 
 set -e
@@ -10,6 +11,59 @@ echo "========================================"
 echo "Travel Agent P - Starting Application"
 echo "========================================"
 
+# ============= Database Backup Function =============
+backup_database() {
+    echo "📦 Creating database backup..."
+    BACKUP_DIR="/backups"
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    BACKUP_FILE="$BACKUP_DIR/backup_$TIMESTAMP.sql"
+    
+    mkdir -p "$BACKUP_DIR"
+    
+    PGPASSWORD=$POSTGRES_PASSWORD pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -F c -b > "$BACKUP_FILE" 2>/dev/null || {
+        echo "⚠️  Backup failed or database 'railway' not exists yet"
+        return 0
+    }
+    
+    echo "✅ Backup created: $BACKUP_FILE"
+    
+    # Keep only last 5 backups
+    ls -t "$BACKUP_DIR"/railway_backup_*.sql 2>/dev/null | tail -n +6 | xargs -r rm 2>/dev/null || true
+}
+
+# ============= Database Restore Function =============
+restore_database() {
+    BACKUP_FILE="/backups/phong.sql"
+    
+    if [ ! -f "$BACKUP_FILE" ]; then
+        echo "⚠️  No backup file found at $BACKUP_FILE (skip restore)"
+        return 0
+    fi
+    
+    echo "📦 Found backup file, checking if restore needed..."
+    
+    # Check if railway database exists and has tables
+    TABLE_COUNT=$(PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'" 2>/dev/null || echo "0")
+    TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d '[:space:]')
+    
+    if [ "$TABLE_COUNT" -gt "0" ]; then
+        echo "✅ Database already has $TABLE_COUNT tables (skip restore)"
+        return 0
+    fi
+    
+    echo "🔄 Restoring database from backup..."
+    
+    # Create railway database if not exists
+    PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d postgres -c "CREATE DATABASE railway;" 2>/dev/null || true
+    
+    # Restore from backup
+    PGPASSWORD=$POSTGRES_PASSWORD pg_restore -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d railway -v --no-owner --no-privileges "$BACKUP_FILE" 2>&1 || {
+        echo "⚠️  pg_restore completed with warnings (normal for existing objects)"
+    }
+    
+    echo "✅ Database restore completed!"
+}
+
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL..."
 until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERNAME" -d "$POSTGRES_DBNAME" -c '\q' 2>/dev/null; do
@@ -17,6 +71,9 @@ until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_HOST" -U "$POSTGRES_USERN
     sleep 2
 done
 echo "✅ PostgreSQL is ready!"
+
+# Auto-restore database if needed (only on fresh deployment)
+restore_database
 
 # Wait for MongoDB to be ready
 echo "Waiting for MongoDB..."
@@ -47,13 +104,6 @@ until redis-cli -h "${REDIS_HOST:-localhost}" -p "${REDIS_PORT:-6379}" ping >/de
     sleep 2
 done
 echo "✅ Redis is ready!"
-
-# Run database migrations
-echo "Running database migrations..."
-flask db upgrade || {
-    echo "⚠️  Migration failed, continuing anyway..."
-}
-echo "✅ Migrations completed!"
 
 echo "========================================"
 echo "Starting Flask application..."

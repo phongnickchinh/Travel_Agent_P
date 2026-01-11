@@ -7,13 +7,14 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft,
-  Calendar,
-  Loader2,
-  MapPin,
-  Sparkles,
-  Utensils,
-  Wallet
+    AlertTriangle,
+    ArrowLeft,
+    Calendar,
+    Loader2,
+    MapPin,
+    Sparkles,
+    Utensils,
+    Wallet
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -77,6 +78,7 @@ export default function CreatePlanNew() {
       pace: 'moderate',
       userNotes: '',
       customInterests: '',
+      deepSearch: false
     }
   });
 
@@ -273,6 +275,7 @@ export default function CreatePlanNew() {
           budget_level: formData.preferences.budgetLevel,
           pace: formData.preferences.pace,
           user_notes: formData.preferences.userNotes || null,
+          deep_search: formData.preferences.deepSearch
         }
       };
 
@@ -630,6 +633,52 @@ export default function CreatePlanNew() {
                       </motion.button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Deep Search Toggle */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 mt-1">
+                    <input
+                      type="checkbox"
+                      id="deepSearch"
+                      checked={formData.preferences.deepSearch}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        preferences: { ...prev.preferences, deepSearch: e.target.checked }
+                      }))}
+                      className="w-5 h-5 rounded border-2 border-amber-400 text-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-0 cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="deepSearch" className="flex items-center gap-2 text-base font-bold text-gray-900 cursor-pointer mb-1">
+                      <span>🔍 Tìm kiếm sâu (Deep Search)</span>
+                    </label>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Sử dụng dữ liệu mới nhất từ Google Places API thay vì dữ liệu có sẵn trong hệ thống
+                    </p>
+                    <AnimatePresence>
+                      {formData.preferences.deepSearch && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex items-start gap-2 p-3 bg-amber-100 border border-amber-300 rounded-xl mt-2"
+                        >
+                          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="text-sm text-amber-800">
+                            <p className="font-semibold mb-1">⚠️ Lưu ý quan trọng:</p>
+                            <ul className="list-disc list-inside space-y-0.5 text-xs">
+                              <li>Thời gian xử lý có thể <strong>lâu hơn 30-60 giây</strong></li>
+                              <li>Chi phí API <strong>cao hơn</strong> do gọi Google Places trực tiếp</li>
+                              <li>Dữ liệu mới nhất nhưng có thể tốn kém hơn</li>
+                            </ul>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 

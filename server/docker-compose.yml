@@ -1,7 +1,50 @@
-version: "3.8"
-
+# ========================================
+# Docker Compose - Production Stack
+# Travel Agent P
+# ========================================
+# Services: PostgreSQL, Redis, Elasticsearch, Flask, Celery, Nginx
+# MongoDB: Uses MongoDB Atlas (cloud)
+# Usage: docker compose up -d --build
+# ========================================
 services:
-  # Elasticsearch for full-text search and autocomplete
+  # ============= PostgreSQL Database =============
+  postgres:
+    image: postgres:17-alpine
+    container_name: travel-agent-postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - travel-agent-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-postgres} -d ${POSTGRES_DBNAME:-travel_agent_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============= Redis Cache & Queue =============
+  redis:
+    image: redis:7-alpine
+    container_name: travel-agent-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - travel-agent-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+  # ============= Elasticsearch (Optional) =============
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
     container_name: travel_agent_elasticsearch
@@ -13,85 +56,129 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
-      - travel_agent_network
+      - travel-agent-network
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  # Optional: Kibana for ES visualization and management
-  kibana:
-    image: docker.elastic.co/kibana/kibana:9.2.2
-    container_name: travel_agent_kibana
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  # ============= Flask API Application =============
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel-agent-flask
+    restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "5601:5601"
-    depends_on:
-      - elasticsearch
-    networks:
-      - travel_agent_network
-
-  # Redis for caching, rate limiting, JWT blacklist
-  redis:
-    image: redis:7-alpine
-    container_name: travel_agent_redis
-    ports:
-      - "6379:6379"
+      - "5000:5000"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - ./logs:/logs
+      - ./secrets:/secrets:ro
+      - ./backups:/backups
     networks:
-      - travel_agent_network
+      - travel-agent-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    command: gunicorn --bind 0.0.0.0:5000 --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile - "app:create_app()"
 
-  # Web app (Flask) removed for now; running only Celery worker/beat with Redis
-
-  # Celery worker - runs background tasks (uses project mounted from host)
-  worker:
-    image: python:3.11-slim
-    container_name: travel_agent_worker
-    restart: on-failure
-    volumes:
-      - ..:/app
-    working_dir: /app/server
+  # ============= Celery Worker =============
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel-agent-celery-worker
+    restart: unless-stopped
     env_file:
-      - ./.env
-    depends_on:
-      - redis
-    networks:
-      - travel_agent_network
-    command: sh -c "celery -A celery_worker.celery worker --loglevel=info --concurrency=1"
-
-  # Optional: Celery beat scheduler (periodic tasks)
-  beat:
-    image: python:3.11-slim
-    container_name: travel_agent_beat
-    restart: on-failure
+      - .env
+    healthcheck:
+      disable: true
     volumes:
-      - ..:/app
-    working_dir: /app/server
-    env_file:
-      - ./.env
-    depends_on:
-      - redis
+      - ./logs:/logs
+      - ./secrets:/secrets:ro
     networks:
-      - travel_agent_network
-    command: sh -c "celery -A celery_worker.celery beat --loglevel=info"
+      - travel-agent-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      flask-app:
+        condition: service_healthy
+    command: celery -A celery_worker.celery worker --loglevel=info --pool=solo
 
+  # ============= Celery Beat Scheduler =============
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travel-agent-celery-beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/logs
+      - ./secrets:/secrets:ro
+    networks:
+      - travel-agent-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      flask-app:
+        condition: service_healthy
+    command: celery -A celery_worker.celery beat --loglevel=info
+
+  # ============= Nginx Reverse Proxy =============
+  nginx:
+    image: nginx:alpine
+    container_name: travel-agent-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - travel-agent-network
+    depends_on:
+      - flask-app
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============= Networks =============
+networks:
+  travel-agent-network:
+    driver: bridge
+
+# ============= Volumes =============
 volumes:
-  es_data:
+  postgres_data:
     driver: local
   redis_data:
     driver: local
-
-networks:
-  travel_agent_network:
-    driver: bridge
+  elasticsearch_data:
+    driver: local

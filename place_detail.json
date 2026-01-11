@@ -1,0 +1,878 @@
+{
+  "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8",
+  "id": "ChIJcUlD0eOAhYARucGJj8eN9I8",
+  "types": [
+    "hamburger_restaurant",
+    "fast_food_restaurant",
+    "diner",
+    "american_restaurant",
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ],
+  "nationalPhoneNumber": "(800) 786-1000",
+  "internationalPhoneNumber": "+1 800-786-1000",
+  "formattedAddress": "333 Jefferson St, San Francisco, CA 94133, USA",
+  "addressComponents": [
+    {
+      "longText": "333",
+      "shortText": "333",
+      "types": [
+        "street_number"
+      ],
+      "languageCode": "en-US"
+    },
+    {
+      "longText": "Jefferson Street",
+      "shortText": "Jefferson St",
+      "types": [
+        "route"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "Fisherman's Wharf",
+      "shortText": "Fisherman's Wharf",
+      "types": [
+        "neighborhood",
+        "political"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "San Francisco",
+      "shortText": "SF",
+      "types": [
+        "locality",
+        "political"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "San Francisco County",
+      "shortText": "San Francisco County",
+      "types": [
+        "administrative_area_level_2",
+        "political"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "California",
+      "shortText": "CA",
+      "types": [
+        "administrative_area_level_1",
+        "political"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "United States",
+      "shortText": "US",
+      "types": [
+        "country",
+        "political"
+      ],
+      "languageCode": "en"
+    },
+    {
+      "longText": "94133",
+      "shortText": "94133",
+      "types": [
+        "postal_code"
+      ],
+      "languageCode": "en-US"
+    }
+  ],
+  "plusCode": {
+    "globalCode": "849VRH5J+4H",
+    "compoundCode": "RH5J+4H Fisherman's Wharf, San Francisco, CA, USA"
+  },
+  "location": {
+    "latitude": 37.8077951,
+    "longitude": -122.41851189999998
+  },
+  "viewport": {
+    "low": {
+      "latitude": 37.8061742197085,
+      "longitude": -122.4201040302915
+    },
+    "high": {
+      "latitude": 37.8088721802915,
+      "longitude": -122.41740606970852
+    }
+  },
+  "rating": 4.3,
+  "googleMapsUri": "https://maps.google.com/?cid=10373071729987273145&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+  "websiteUri": "https://locations.in-n-out.com/154",
+  "regularOpeningHours": {
+    "openNow": true,
+    "periods": [
+      {
+        "open": {
+          "day": 0,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 1,
+          "hour": 1,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 1,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 2,
+          "hour": 1,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 2,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 3,
+          "hour": 1,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 3,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 4,
+          "hour": 1,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 4,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 5,
+          "hour": 1,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 5,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 6,
+          "hour": 1,
+          "minute": 30
+        }
+      },
+      {
+        "open": {
+          "day": 6,
+          "hour": 10,
+          "minute": 30
+        },
+        "close": {
+          "day": 0,
+          "hour": 1,
+          "minute": 30
+        }
+      }
+    ],
+    "weekdayDescriptions": [
+      "Monday: 10:30 AM – 1:00 AM",
+      "Tuesday: 10:30 AM – 1:00 AM",
+      "Wednesday: 10:30 AM – 1:00 AM",
+      "Thursday: 10:30 AM – 1:00 AM",
+      "Friday: 10:30 AM – 1:30 AM",
+      "Saturday: 10:30 AM – 1:30 AM",
+      "Sunday: 10:30 AM – 1:00 AM"
+    ],
+    "nextCloseTime": "2026-01-05T09:00:00Z"
+  },
+  "utcOffsetMinutes": -480,
+  "adrFormatAddress": "\u003cspan class=\"street-address\"\u003e333 Jefferson St\u003c/span\u003e, \u003cspan class=\"locality\"\u003eSan Francisco\u003c/span\u003e, \u003cspan class=\"region\"\u003eCA\u003c/span\u003e \u003cspan class=\"postal-code\"\u003e94133\u003c/span\u003e, \u003cspan class=\"country-name\"\u003eUSA\u003c/span\u003e",
+  "businessStatus": "OPERATIONAL",
+  "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+  "userRatingCount": 12228,
+  "iconMaskBaseUri": "https://maps.gstatic.com/mapfiles/place_api/icons/v2/restaurant_pinlet",
+  "iconBackgroundColor": "#FF9E67",
+  "displayName": {
+    "text": "In-N-Out Burger",
+    "languageCode": "en"
+  },
+  "primaryTypeDisplayName": {
+    "text": "Hamburger Restaurant",
+    "languageCode": "en-US"
+  },
+  "takeout": true,
+  "delivery": false,
+  "dineIn": false,
+  "curbsidePickup": false,
+  "reservable": false,
+  "servesBreakfast": false,
+  "servesLunch": true,
+  "servesDinner": true,
+  "servesBeer": true,
+  "servesWine": true,
+  "servesBrunch": false,
+  "servesVegetarianFood": false,
+  "currentOpeningHours": {
+    "openNow": true,
+    "periods": [
+      {
+        "open": {
+          "day": 0,
+          "hour": 0,
+          "minute": 0,
+          "truncated": true,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 4
+          }
+        },
+        "close": {
+          "day": 0,
+          "hour": 1,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 4
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 0,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 4
+          }
+        },
+        "close": {
+          "day": 1,
+          "hour": 1,
+          "minute": 0,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 5
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 1,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 5
+          }
+        },
+        "close": {
+          "day": 2,
+          "hour": 1,
+          "minute": 0,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 6
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 2,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 6
+          }
+        },
+        "close": {
+          "day": 3,
+          "hour": 1,
+          "minute": 0,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 7
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 3,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 7
+          }
+        },
+        "close": {
+          "day": 4,
+          "hour": 1,
+          "minute": 0,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 8
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 4,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 8
+          }
+        },
+        "close": {
+          "day": 5,
+          "hour": 1,
+          "minute": 0,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 9
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 5,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 9
+          }
+        },
+        "close": {
+          "day": 6,
+          "hour": 1,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 10
+          }
+        }
+      },
+      {
+        "open": {
+          "day": 6,
+          "hour": 10,
+          "minute": 30,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 10
+          }
+        },
+        "close": {
+          "day": 6,
+          "hour": 23,
+          "minute": 59,
+          "truncated": true,
+          "date": {
+            "year": 2026,
+            "month": 1,
+            "day": 10
+          }
+        }
+      }
+    ],
+    "weekdayDescriptions": [
+      "Monday: 10:30 AM – 1:00 AM",
+      "Tuesday: 10:30 AM – 1:00 AM",
+      "Wednesday: 10:30 AM – 1:00 AM",
+      "Thursday: 10:30 AM – 1:00 AM",
+      "Friday: 10:30 AM – 1:30 AM",
+      "Saturday: 10:30 AM – 1:30 AM",
+      "Sunday: 10:30 AM – 1:00 AM"
+    ],
+    "nextCloseTime": "2026-01-05T09:00:00Z"
+  },
+  "primaryType": "hamburger_restaurant",
+  "shortFormattedAddress": "333 Jefferson St, San Francisco",
+  "editorialSummary": {
+    "text": "Classic burger chain serving customizable burgers, hand-cut fries & shakes.",
+    "languageCode": "en"
+  },
+  "reviews": [
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/reviews/Ci9DQUlRQUNvZENodHljRjlvT21wS1kzSk9NREJaYjBSblpEbHBVR28yWVZkelZIYxAB",
+      "relativePublishTimeDescription": "2 weeks ago",
+      "rating": 5,
+      "text": {
+        "text": "Visited December 16, 2025\n\nFive stars without hesitation. We are heading out tomorrow on a 17 day cruise to Hawaii and flew into San Francisco a day early to settle in and enjoy the city. My original plan for lunch was Chinese food, but I opened my big mouth and told my kids a story from 2020. When we were in LA on our way to Hawaii back then, we stopped at In N Out. My husband and I thought our older daughter, who was not even two at the time, would share the burger with us. Instead she ate the entire thing herself and my husband had to go get another one. 😆\n\nThat story completely sealed our fate. My older daughter refused anything but In N Out, so from the Marriott Marquis where we are staying, we hopped on the cable car and rode all the way there. The place was absolutely packed, but the energy was great and the line moved efficiently. Despite how busy it was, the staff remained friendly, calm, and welcoming, and we were lucky enough to manage getting a table.\n\nA special shout out to Dino who was bussing tables. He was incredibly attentive and kind. He noticed our two little girls right away and surprised them with kids activity books, which completely made their day. He checked on us several times, brought extra napkins, and made sure we were comfortable the entire time. That level of genuine care really stood out.\n\nFor the girls, we ordered two Double Doubles with just cheese, cheese fries, and chocolate milkshakes. For my husband and me, we ordered two Double Doubles with added chilies and grilled onions along with Animal Fries. We made our lemon up ourselves and it was so fresh and so good. Every single bite was delicious and absolutely worth the trip. The food was hot, fresh, and exactly as remembered, maybe even better.\n\nAfter eating, we took the cable car straight back to the hotel and everyone promptly passed out. Waking up at 1 am was no fun, but this experience was completely worth it and gave us such a fun family memory right before our cruise.\n\nThe only small hiccup was entirely on us. We forgot hand sanitizer and the restaurant did not have any available. My six year old had basically touched everything on the cable car 😆 so my husband walked across the street to buy some and paid six dollars for a tiny bottle that would normally cost a dollar elsewhere. Oh well 😆😆\n\nOverall, the food, the service, and the kindness of the staff made this an easy five star experience. Thank you to Dino and the entire team for such a memorable and welcoming visit. We loved every single moment and every bite.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "Visited December 16, 2025\n\nFive stars without hesitation. We are heading out tomorrow on a 17 day cruise to Hawaii and flew into San Francisco a day early to settle in and enjoy the city. My original plan for lunch was Chinese food, but I opened my big mouth and told my kids a story from 2020. When we were in LA on our way to Hawaii back then, we stopped at In N Out. My husband and I thought our older daughter, who was not even two at the time, would share the burger with us. Instead she ate the entire thing herself and my husband had to go get another one. 😆\n\nThat story completely sealed our fate. My older daughter refused anything but In N Out, so from the Marriott Marquis where we are staying, we hopped on the cable car and rode all the way there. The place was absolutely packed, but the energy was great and the line moved efficiently. Despite how busy it was, the staff remained friendly, calm, and welcoming, and we were lucky enough to manage getting a table.\n\nA special shout out to Dino who was bussing tables. He was incredibly attentive and kind. He noticed our two little girls right away and surprised them with kids activity books, which completely made their day. He checked on us several times, brought extra napkins, and made sure we were comfortable the entire time. That level of genuine care really stood out.\n\nFor the girls, we ordered two Double Doubles with just cheese, cheese fries, and chocolate milkshakes. For my husband and me, we ordered two Double Doubles with added chilies and grilled onions along with Animal Fries. We made our lemon up ourselves and it was so fresh and so good. Every single bite was delicious and absolutely worth the trip. The food was hot, fresh, and exactly as remembered, maybe even better.\n\nAfter eating, we took the cable car straight back to the hotel and everyone promptly passed out. Waking up at 1 am was no fun, but this experience was completely worth it and gave us such a fun family memory right before our cruise.\n\nThe only small hiccup was entirely on us. We forgot hand sanitizer and the restaurant did not have any available. My six year old had basically touched everything on the cable car 😆 so my husband walked across the street to buy some and paid six dollars for a tiny bottle that would normally cost a dollar elsewhere. Oh well 😆😆\n\nOverall, the food, the service, and the kindness of the staff made this an easy five star experience. Thank you to Dino and the entire team for such a memorable and welcoming visit. We loved every single moment and every bite.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Foodieextreme Foodieextreme",
+        "uri": "https://www.google.com/maps/contrib/114969326669998400546/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXOEc2NTmZ0RAirAs-ccCmJ1lg_zkedAe0aD0UTFEYIAdEAyXgX=s128-c0x00000000-cc-rp-mo-ba6"
+      },
+      "publishTime": "2025-12-17T01:52:55.598309694Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT21wS1kzSk9NREJaYjBSblpEbHBVR28yWVZkelZIYxAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT21wS1kzSk9NREJaYjBSblpEbHBVR28yWVZkelZIYxAB!2m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/reviews/Ci9DQUlRQUNvZENodHljRjlvT200MWNGQkpSa2ROT1hBemFpMU1kVlZOY2toTU0wRRAB",
+      "relativePublishTimeDescription": "3 weeks ago",
+      "rating": 5,
+      "text": {
+        "text": "Loved my first ever visit, specifically at their Fisherman's Wharf branch in San Francisco, CA. Although their menu was not very comprehensive, the food served were great-tasting and exceeded my expectations. The service crew were also very pleasant. One thing to note, though, is that it can be very packed at certain hours of the day and may be difficult to find seats. Overall, I highly recommend this place to those craving burgers and fries, and milkshake on the side.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "Loved my first ever visit, specifically at their Fisherman's Wharf branch in San Francisco, CA. Although their menu was not very comprehensive, the food served were great-tasting and exceeded my expectations. The service crew were also very pleasant. One thing to note, though, is that it can be very packed at certain hours of the day and may be difficult to find seats. Overall, I highly recommend this place to those craving burgers and fries, and milkshake on the side.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Wenzel Asprec",
+        "uri": "https://www.google.com/maps/contrib/104495863493848448891/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUuaDOA2Lds2zeaHLkUCT-eZ7gSwhKt_Peg7YBBK9_-RQ7FcNGS=s128-c0x00000000-cc-rp-mo-ba2"
+      },
+      "publishTime": "2025-12-13T05:43:05.065218018Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT200MWNGQkpSa2ROT1hBemFpMU1kVlZOY2toTU0wRRAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT200MWNGQkpSa2ROT1hBemFpMU1kVlZOY2toTU0wRRAB!2m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/reviews/Ci9DQUlRQUNvZENodHljRjlvT2pOb1JHRnRNMGxKVFRWVVEyUm5PSGxHVEhZdGVGRRAB",
+      "relativePublishTimeDescription": "2 months ago",
+      "rating": 4,
+      "text": {
+        "text": "This was the first thing I wanted to try coming all the way from MI and being in the area I had to see if it was worth the hype!!! I enjoyed the toasted bun and seasoned meat. I think I needed a little more of their sauce and some ketchup to make it really hit the spot though! Glad I finally got to sink my teeth into this burger. The parking lot at this location was super packed and crowded with lots of large SUVs being impatient trying to get around all the smaller vehicles",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "This was the first thing I wanted to try coming all the way from MI and being in the area I had to see if it was worth the hype!!! I enjoyed the toasted bun and seasoned meat. I think I needed a little more of their sauce and some ketchup to make it really hit the spot though! Glad I finally got to sink my teeth into this burger. The parking lot at this location was super packed and crowded with lots of large SUVs being impatient trying to get around all the smaller vehicles",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Alyssia Hall",
+        "uri": "https://www.google.com/maps/contrib/100155127328469496092/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVdf2boeQkD7sLCXay1Hs48Cf5MA491CTCDZIHOzD8Ghooo_F_yKg=s128-c0x00000000-cc-rp-mo-ba4"
+      },
+      "publishTime": "2025-10-31T01:50:42.124348606Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT2pOb1JHRnRNMGxKVFRWVVEyUm5PSGxHVEhZdGVGRRAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT2pOb1JHRnRNMGxKVFRWVVEyUm5PSGxHVEhZdGVGRRAB!2m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/reviews/Ci9DQUlRQUNvZENodHljRjlvT2tkT01FbDRkRFpJUzJGSFRGVkNWbVpoTFZGaVZuYxAB",
+      "relativePublishTimeDescription": "a month ago",
+      "rating": 4,
+      "text": {
+        "text": "It seems that in the great state of California, one cannot speak of cuisine without mentioning a fabled establishment In-N-Out Burger. My partner insisted it was an experience one must have, a culinary rite of passage, a sacred tradition.\n\nSo, on a lazy afternoon, we decided to indulge this local enthusiasm. The place positively brimming with life, a bustling crowd united by their devotion to burgers and the faint scent of grilled promise. Clearly, this was no ordinary eatery; it was a cult favourite.\n\nI wouldn’t dare compare it to the gourmet creations of fine restaurants, where one must decipher menus and pay for artistic interpretation and to be honest that wouldn’t be a fair at all. For fast food, it was most commendable. The flavor was honest, the texture agreeable and it does sit in the upper level of fast food burger hierarchy.\n\nIt was a charmingly sincere experience and I see the point my partner was trying to make.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "It seems that in the great state of California, one cannot speak of cuisine without mentioning a fabled establishment In-N-Out Burger. My partner insisted it was an experience one must have, a culinary rite of passage, a sacred tradition.\n\nSo, on a lazy afternoon, we decided to indulge this local enthusiasm. The place positively brimming with life, a bustling crowd united by their devotion to burgers and the faint scent of grilled promise. Clearly, this was no ordinary eatery; it was a cult favourite.\n\nI wouldn’t dare compare it to the gourmet creations of fine restaurants, where one must decipher menus and pay for artistic interpretation and to be honest that wouldn’t be a fair at all. For fast food, it was most commendable. The flavor was honest, the texture agreeable and it does sit in the upper level of fast food burger hierarchy.\n\nIt was a charmingly sincere experience and I see the point my partner was trying to make.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Shawn Rahman",
+        "uri": "https://www.google.com/maps/contrib/116254424886806620352/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjVYy9qFtqPfe7IH8dPgQzMoLhKv7Qa3RKWTPNI_i2lJ1b3hi2SN_g=s128-c0x00000000-cc-rp-mo-ba4"
+      },
+      "publishTime": "2025-11-11T20:00:43.254214230Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT2tkT01FbDRkRFpJUzJGSFRGVkNWbVpoTFZGaVZuYxAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT2tkT01FbDRkRFpJUzJGSFRGVkNWbVpoTFZGaVZuYxAB!2m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/reviews/Ci9DQUlRQUNvZENodHljRjlvT25WMlNXWXhTazVUTjA1dlowVTViM1ZmVVhZM2JIYxAB",
+      "relativePublishTimeDescription": "3 weeks ago",
+      "rating": 4,
+      "text": {
+        "text": "Who doesn’t like a reasonable price burger these days. Our animal burger was hot, fresh and tasty. But the line is long and kind of slow. For tourists they is a good place to grab a tasty burger.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "Who doesn’t like a reasonable price burger these days. Our animal burger was hot, fresh and tasty. But the line is long and kind of slow. For tourists they is a good place to grab a tasty burger.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Jesse Lee",
+        "uri": "https://www.google.com/maps/contrib/105809324767030388498/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXqc4Js_hbpSJyGd7HxE4_GSDRsIjYI5FHNMKdapkO7Vpm1mm0=s128-c0x00000000-cc-rp-mo-ba7"
+      },
+      "publishTime": "2025-12-14T00:52:48.582255247Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT25WMlNXWXhTazVUTjA1dlowVTViM1ZmVVhZM2JIYxAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT25WMlNXWXhTazVUTjA1dlowVTViM1ZmVVhZM2JIYxAB!2m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    }
+  ],
+  "photos": [
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHqWzlAl8TKI1CMxltvffnnd51AP5PtNBGyN9PJ9ZDWGJYgnRfMdkRqmW_Eh53Xe8jFjqVZ682swV8F7TfOCM4-xGtHVycfXqovRttfYWsj0G7tK4ZSVKu2JMk2Fvf2vv1CDtyZSaCRYcMcu1eUUOYflZjV6PXoOfp9BossSqQ-8c7ITrByRu_Be2CLc_tXrUDAri-9pgintxzqwkY54E69eR3Femeb4lUN8NouEZgwsX6T1ng1mWn9D9E6pBhyDRhzSVdyJddfcaXvNCCsy1hKs11E8o-swM-a-r8ylNK5_GuzqQ8GJMR3rqQtyH4OrepqUDAm34mEKlK_hXskg895ns4jnMt8wBsUTyfOH0H9-yKEJxy6Mo8J_3h7smCEoV1bHqmJRBiKen5Yc27Jd02yjkC39GMmgRRcUAcidFv9C8SQ",
+      "widthPx": 3171,
+      "heightPx": 2716,
+      "authorAttributions": [
+        {
+          "displayName": "Martin Beales",
+          "uri": "https://maps.google.com/maps/contrib/116270298623188651586",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXFF0SIK6gYkNiv0P91RLzEVV5xmKBh94Fiqv6u_WLOo2KZyRoaDw=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICk-Jzz9QE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICk-Jzz9QE!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHo34A24V5eqz6DONzUezVq0CYwGLYiAhfMRmIuco4r-IydIzZ6zsoHAxIw_NjDkQDU3LUFNbNqYSttouOQhBlU3CeyfJwbUtB3LGhVerGQhgEIwE8Y8DyzBYpzh93h3Ox8-ksYeF-4y5geV4UpndhEn7Hlj0z4oV4ydP4x25zhJqOng1-MrCcJH-KPyejliXbzk5Y8cnF8kGOH9C5Fnb86Bzzq98LayvoIaoxiv0i_1H4GdCZIdFXYDpYOih13RPQceKIqN6nQ7Jt5MppiZNfG1O6AMVkANP2xHHykm9v81Ug",
+      "widthPx": 1600,
+      "heightPx": 1040,
+      "authorAttributions": [
+        {
+          "displayName": "In-N-Out Burger",
+          "uri": "https://maps.google.com/maps/contrib/108052722137520772271",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXitLYbDvKRfBP8xtporpGGbelJ7rFZToGhAdvjah5Q83iUBWKT=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipPmY4HJtzIFwvuCAO8T5nV4t_pQA4z2oZNUh5dT&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipPmY4HJtzIFwvuCAO8T5nV4t_pQA4z2oZNUh5dT!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHrwOJVMEhOdNSbHXNgLKHCd84FkdmedUW9xu8lUvYvl0_rr2f-J_fTEQS4HZaRxcrGjmuU9LmHJqz5aK3j5nu6empT85Yqr4gMVKgBubrMrjUqYzxl1z5cYwOH31lEAXalf-Y1JXAUAz21lLIhopCtnKUg951RSFTe0y24UKIHH7zvJ6yiG2dg2jcjBb3d6choCC7L5oOLA3TqX66Cp8rDt_a0cjtfSJg7aH0fqyh4I4K62ByPW3YKZcKZIC-gtbjZ32i52vZCwZUaO_g8uL0jtJafgw4hdvnDf5CSoISA9CGzGyLXSoaolTMU1UuI7a3CG2UwCC_faOqTzJyzFTZ6ziMG_qy0HLdA6CxT1o5pjWLDkCxE6GiP_qIeuuTXFLWnAcgtd_RhQ1yVjID2Z8r2l7Bwt8ytZ7FaXHWmjLpGOLoyrO-DeLH-2JD1xeAQw",
+      "widthPx": 3024,
+      "heightPx": 2773,
+      "authorAttributions": [
+        {
+          "displayName": "Playmo Billy",
+          "uri": "https://maps.google.com/maps/contrib/114578072798743130891",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXyZ5uLU0eI98-MJ6gU_Tji8yoJm2wu9LhbkAmJ9M4B5-F26Oz0=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhCWWmAgNG7hHvXraQzfj1R8&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhCWWmAgNG7hHvXraQzfj1R8!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHopraI0Wd8HErkVdYt8-9t7XcGjW7K3rCNxDvpZEtnaqB1kt2PbmIeUQvPBj92SCUDyYUuCjMHJmM6Af37OuqbndrteIol5AbxdiFAMjl5CiVEov3WMUn7xQSi4dOWuftZpe67htwQH0EGbdELsKGeHEmIWxnBAcdCm-W7UJeST3M-BAvpJUn96idEViVuCrmjBc5aMTXtnNdhegsqOtQy5NbbSVbdRg7inuSTDZ7IAODDZfvOxcnG00moIrBXgZXg-_7q14CwM4zWZ_Q72AdB7MyaEhmxfn_-QAsBH56qRvmaYQ1vXKdySuyqW3A-OCCO6thA-Cq5-a2MPn3_21u0SLSnYBiHmF_I8qJT9v1Rs57dCK6jY2sU56SgVMS96pPGjk8ft-YYOZ8RPhgFembxr-IkUDokQAm9hxsHzkpQT8BoPGxHuvhUe6tDgDA",
+      "widthPx": 3072,
+      "heightPx": 4096,
+      "authorAttributions": [
+        {
+          "displayName": "Mao-Ling Lin",
+          "uri": "https://maps.google.com/maps/contrib/116408971500409695452",
+          "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocJlvTg4Krq9si-aXTD3qNAsLpi2H57YvAx6oQRW3q6MbmCsEw=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhB_oCP7jdqMO3nhB2ozJ7sS&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhB_oCP7jdqMO3nhB2ozJ7sS!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHqcUaU_6gdugIc83q-FA3KPVcyaeFsTT0xPgFvPdaz22lU1O3BxoNqaZd2AhiCnUz3BMk011CZBZJNxhanZFBkN31W7sYxYsGLtzDkH15kre29vGc6Lof5h1HhWCSV54UI3GrT1N8kT5PfDrcw4Y9RkDG8OF3XO7L_X_g7mLazQduiXm1saaA09Dj95JlIvLBLvoQoKM-CXhYnpWR4xoSO5jzq7HbtXZCiQGWujGuimTZtKlZtH26aFPmUUGUy3vaT8gFjfi9F9xkzCty0W6iXaI_pYSwei8CrZ0mKFXqq2vA",
+      "widthPx": 1600,
+      "heightPx": 1040,
+      "authorAttributions": [
+        {
+          "displayName": "In-N-Out Burger",
+          "uri": "https://maps.google.com/maps/contrib/108052722137520772271",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXitLYbDvKRfBP8xtporpGGbelJ7rFZToGhAdvjah5Q83iUBWKT=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipNs1GvfcE0uXCcQl7heOEWT8jWKUZv80A7Y9VOg&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipNs1GvfcE0uXCcQl7heOEWT8jWKUZv80A7Y9VOg!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHqhFMo4sfYEh-6OnfM7QwInQs7kJglqTqfEsiEcslJ0_iJNlv0uodsL2iJmC8mw8EJX4f5cHBsFeOh6-lz2Un7jLFvOKUYWXAxZmMtS376DSDylkxOCUGonQaFyi_svoEMOeUjsFZjIoUoYaSpY1oIvoP0nKIoy7FwdS0qcK8_57xC8vxC1bp0XdC5mjUE0DV1bSkOqatu2zPYx5M16SouU2PT5Tj1dxEW6KGGtBE6ScGDVH60E_-dKAEOHwXAyAU1OQlSLTQa4dBqBmQ3q2FTtCnE6Qc7hzpkgLhSnaZiQHgM7Ma2w30ftoBFgMW76XveDbYtw7SYiswZVMOMv1ZvuT8kv6euYWIkTLN5yOEF5gzEd3YU9WN3wkuZHgSGw2rpM40SUnag7TfUniBl8xwZZNN2iBgBusJidUw-1W8I2m2yoAuMtQUaSui3fVPfv",
+      "widthPx": 4000,
+      "heightPx": 3008,
+      "authorAttributions": [
+        {
+          "displayName": "judicael jeanty",
+          "uri": "https://maps.google.com/maps/contrib/104394305108095577136",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUnG_IKwjMaVU34xBlMw6J3fM-04pU7KMoz-VtAyorUqhSAZ7dWFw=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhAA3jqzzCpwqGfBMMIADuIX&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhAA3jqzzCpwqGfBMMIADuIX!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHpG-LdZ-94GXdIVWQC2Lo3bjZvSBUC6U8sVQa73ok2WUkYVGeDQ8nQOYdoIoh55PowfN7TUAsfZGOrc4StPvIdSbc6ALn5igI-pErTYQt4DLIu_-5isdrS5wz7Sxeke2t5H-ERhIIie9vipZ4wSEntMBNjsqxsYdDnGap6IfvznyUmr7BU9tpWNQhYn4r1CISHBWRLNP9t_Ah7-ytaR0HUkueJVFIvs7IeOZnXB-LkPQLIDT6IDMmQoXheoA-fOZzymSNHr4RwylJOqmGzlAsrTGBDHyoymQjQEYyT1rYtIR0amjXHZDnYZUJSdQ5NC3aY2lykmUCFnhwcDAZzzrQmYFsLV0b638CP3kRiUbZjggi3pVwrLQUBTF7ZGjjFPCTKcpNgsSBWWkcKz_HvWKHo5n0JDIum3N0QCE3oZ44wigDrkcAh_V2keMt52r2yC",
+      "widthPx": 4800,
+      "heightPx": 3600,
+      "authorAttributions": [
+        {
+          "displayName": "Ronnie Chan",
+          "uri": "https://maps.google.com/maps/contrib/112543739633021099912",
+          "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocKJLMXT59vKetD4OqrrV5l9EfcXiDXXHziyxbt6AMDbLBf4ZA=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhAzUgCFzrdBhJd3mpk13hCU&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhAzUgCFzrdBhJd3mpk13hCU!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHpehUu33ppPrCIhu6NL9TLcokemordvWpaQ7nHoUgtkea_7KQ4ydXtTp1S7JMHEmbjB4MbYaGv7TSv1iqXnfyUWnUXBU6bkkaoKtOe6nKeCcczGy1Asg9JtOxjwgePXuwj5kH58-0paqQFPKOWMCLdPbPmqn80bh9gDMmsGxmG2y9mwHFWhnq6BwjCGsfkhpaUWaRC4R2OwRkAztwsEQ0MzqDF7d_h_uF7VoLszxGqj5PiX-9I1qfPpaxT2fs8nQEKOavefMmc4NxO3z7Kw_i-1OQO4BcJWnvM6HuvjRjmzGi7ZxEIjt05DYOQVUI0vEIOp1cgrjFB_fGWew39msed2hN9yLoz2zWKvOdNjXMN2dOi9Kw9m0UsoL-oHLbhiDfmvFt27HyBc2zsUFI-qM57tk4RXvUVUAdnMHAdpXd_cRvQg7idOdDvwc6EygA",
+      "widthPx": 3024,
+      "heightPx": 4032,
+      "authorAttributions": [
+        {
+          "displayName": "Büşra Karakaya",
+          "uri": "https://maps.google.com/maps/contrib/101381977752796884234",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWTzGAbK6ydKJIcy59qKEL9bHQo0TbuOk96Up4sL71LXQr-83f_=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhBm-WXlCT2zQg_nZxCECsuo&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhBm-WXlCT2zQg_nZxCECsuo!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHrPVrb4NST1A8G6E1hTWhgARL4VNrKON3RTuPO6hQzzC6Gcp0GtENlzKcFBTqYITh7zBC8bk8mwRTcWZ-3ipiAUK5-V5kk5APVuCHyn6e1tJqDH-j4ThyzPWLdGnhZvFtvrIy_XAYqjuMsiDx5kOyj347B8b3cp3uZQjayy8EMBc1uOXn47DJSd0tvh_ozGa-J2kCEZHYUbzfLVRFnLUoPCN_ywOuybEhlMmGeOxGWnQCJ_Dv_7LiBev99H2aL64seE3pMjY5gr4V0fQRRfC5i_mPLMPxUnmHYxUP7NS7AWx_42xs-7KVpl2ntEyT4LvFXXIZ-dkgVBa08_Rz8a69CW5M2HH-sB8P0-l1CHfOQ6jR4IMicWln_m4WJpCw908CgmM2ShZ5rdf6_uGn8nlWwbhA2EvT8P1zahdBw7zC90WLKeQit563uXCvZcb6vV",
+      "widthPx": 3022,
+      "heightPx": 3411,
+      "authorAttributions": [
+        {
+          "displayName": "Playmo Billy",
+          "uri": "https://maps.google.com/maps/contrib/114578072798743130891",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXyZ5uLU0eI98-MJ6gU_Tji8yoJm2wu9LhbkAmJ9M4B5-F26Oz0=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhBn1QqU5Scr-ga6yaaBm9_T&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhBn1QqU5Scr-ga6yaaBm9_T!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    },
+    {
+      "name": "places/ChIJcUlD0eOAhYARucGJj8eN9I8/photos/AZLasHrRXhjWlWA8FulB09rJuqxXUnEJEoVMjdIgcP7Hp7CZnWawFz771fdZL6gUH3ZYNsbwAdFluyk2y9wN3qsTKIQtvaPUpC_0SrhUP2hwAW6Lh_8_bik63LpeNm9OdpQfEwHMmZJLzBM-Loc81j-jZ9Hvl8MlJFMXYWyCpUKvKImoXYULa1d68rI3XQm1HJ8qv4QyIPsP91YW5fzU2WwW6hcMKi5A-ddI4GXAuzZx2M5kM5Dsqi8Uf33I8tHDjslKhz_DJtv_pqjEGTs8TI02Zz-steM8Bpj3xIbXBVXWmHQigTr5nQDfEFADcFtqxTZgybswmTD40xhRM4Jmt4qnrSGnSK24zqm0fw19x2AbT45Q6okzp4QcNXFiIi4PT18D2Tbdeai_WlAdQdXNpn10HtHWx2J9_cvr-csgSiBkXi5IeeJIv-zPWzsJv3aHUdrt",
+      "widthPx": 3000,
+      "heightPx": 4000,
+      "authorAttributions": [
+        {
+          "displayName": "俞恆劭",
+          "uri": "https://maps.google.com/maps/contrib/104532970916729021278",
+          "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocIu1DzvRrFOrG-SzC_7pFb18tRH10e9hkA9LBv9TDcukHZjfw=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIABIhADycKzeiebUWfrv7YACiHW&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIABIhADycKzeiebUWfrv7YACiHW!2e10!4m2!3m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9"
+    }
+  ],
+  "outdoorSeating": false,
+  "liveMusic": false,
+  "menuForChildren": false,
+  "servesCocktails": false,
+  "servesDessert": true,
+  "servesCoffee": true,
+  "goodForChildren": true,
+  "restroom": true,
+  "goodForGroups": true,
+  "goodForWatchingSports": false,
+  "paymentOptions": {
+    "acceptsCreditCards": true,
+    "acceptsDebitCards": true,
+    "acceptsCashOnly": false,
+    "acceptsNfc": true
+  },
+  "parkingOptions": {
+    "paidParkingLot": true,
+    "paidStreetParking": true
+  },
+  "accessibilityOptions": {
+    "wheelchairAccessibleParking": true,
+    "wheelchairAccessibleEntrance": true,
+    "wheelchairAccessibleRestroom": true,
+    "wheelchairAccessibleSeating": true
+  },
+  "generativeSummary": {
+    "overview": {
+      "text": "Fast-food chain serving its classic menu of burgers, fries, and shakes in a casual setting.",
+      "languageCode": "en-US"
+    },
+    "overviewFlagContentUri": "https://www.google.com/local/review/rap/report?postId=CiUweDgwODU4MGUzZDE0MzQ5NzE6MHg4ZmY0OGRjNzhmODljMWI5MAI&d=17924085&t=12",
+    "disclosureText": {
+      "text": "Summarized with Gemini",
+      "languageCode": "en-US"
+    }
+  },
+  "containingPlaces": [
+    {
+      "name": "places/ChIJc80F2eOAhYARMfYMi6xKS2Y",
+      "id": "ChIJc80F2eOAhYARMfYMi6xKS2Y"
+    }
+  ],
+  "pureServiceAreaBusiness": false,
+  "addressDescriptor": {
+    "landmarks": [
+      {
+        "name": "places/ChIJudrs1uOAhYARaet-5wOrl8A",
+        "placeId": "ChIJudrs1uOAhYARaet-5wOrl8A",
+        "displayName": {
+          "text": "IT'SUGAR Fisherman",
+          "languageCode": "en"
+        },
+        "types": [
+          "establishment",
+          "food",
+          "point_of_interest",
+          "store"
+        ],
+        "spatialRelationship": "DOWN_THE_ROAD",
+        "straightLineDistanceMeters": 38.08293,
+        "travelDistanceMeters": 33.041485
+      },
+      {
+        "name": "places/ChIJc80F2eOAhYARMfYMi6xKS2Y",
+        "placeId": "ChIJc80F2eOAhYARMfYMi6xKS2Y",
+        "displayName": {
+          "text": "Anchorage Square Mall",
+          "languageCode": "en"
+        },
+        "types": [
+          "establishment",
+          "point_of_interest",
+          "shopping_mall"
+        ],
+        "straightLineDistanceMeters": 68.80097,
+        "travelDistanceMeters": 173.62054
+      },
+      {
+        "name": "places/ChIJF2AsDeGAhYARL8mgygJ5CCo",
+        "placeId": "ChIJF2AsDeGAhYARL8mgygJ5CCo",
+        "displayName": {
+          "text": "The Cannery",
+          "languageCode": "en"
+        },
+        "types": [
+          "establishment",
+          "point_of_interest",
+          "shopping_mall"
+        ],
+        "spatialRelationship": "AROUND_THE_CORNER",
+        "straightLineDistanceMeters": 98.99715,
+        "travelDistanceMeters": 105.90181
+      },
+      {
+        "name": "places/ChIJFaeBneGAhYARnxI6Yco7NMk",
+        "placeId": "ChIJFaeBneGAhYARnxI6Yco7NMk",
+        "displayName": {
+          "text": "Cioppino's",
+          "languageCode": "en"
+        },
+        "types": [
+          "bar",
+          "establishment",
+          "food",
+          "point_of_interest",
+          "restaurant"
+        ],
+        "spatialRelationship": "DOWN_THE_ROAD",
+        "straightLineDistanceMeters": 77.63657,
+        "travelDistanceMeters": 66.172
+      },
+      {
+        "name": "places/ChIJCRogY-GAhYARMVbshHMD0qk",
+        "placeId": "ChIJCRogY-GAhYARMVbshHMD0qk",
+        "displayName": {
+          "text": "Quickly",
+          "languageCode": "en"
+        },
+        "types": [
+          "cafe",
+          "establishment",
+          "food",
+          "point_of_interest",
+          "restaurant",
+          "store"
+        ],
+        "spatialRelationship": "AROUND_THE_CORNER",
+        "straightLineDistanceMeters": 41.94882,
+        "travelDistanceMeters": 80.07554
+      }
+    ],
+    "areas": [
+      {
+        "name": "places/ChIJueOuefqAhYARapAU-YtbztA",
+        "placeId": "ChIJueOuefqAhYARapAU-YtbztA",
+        "displayName": {
+          "text": "Fisherman's Wharf",
+          "languageCode": "en"
+        },
+        "containment": "WITHIN"
+      },
+      {
+        "name": "places/ChIJZbMgK-KAhYAR-QTYjYOMt94",
+        "placeId": "ChIJZbMgK-KAhYAR-QTYjYOMt94",
+        "displayName": {
+          "text": "Parking lot",
+          "languageCode": "en"
+        },
+        "containment": "NEAR"
+      }
+    ]
+  },
+  "googleMapsLinks": {
+    "directionsUri": "https://www.google.com/maps/dir//''/data=!4m7!4m6!1m1!4e2!1m2!1m1!1s0x808580e3d1434971:0x8ff48dc78f89c1b9!3e0?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+    "placeUri": "https://maps.google.com/?cid=10373071729987273145&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+    "writeAReviewUri": "https://www.google.com/maps/place//data=!4m3!3m2!1s0x808580e3d1434971:0x8ff48dc78f89c1b9!12e1?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+    "reviewsUri": "https://www.google.com/maps/place//data=!4m4!3m3!1s0x808580e3d1434971:0x8ff48dc78f89c1b9!9m1!1b1?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA",
+    "photosUri": "https://www.google.com/maps/place//data=!4m3!3m2!1s0x808580e3d1434971:0x8ff48dc78f89c1b9!10e5?g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYASAA"
+  },
+  "priceRange": {
+    "startPrice": {
+      "currencyCode": "USD",
+      "units": "10"
+    },
+    "endPrice": {
+      "currencyCode": "USD",
+      "units": "20"
+    }
+  },
+  "reviewSummary": {
+    "text": {
+      "text": "People say this hamburger restaurant serves delicious Double-Double and Cheese Burgers, as well as animal style fries. They also highlight the fresh ingredients, flavorful burgers, and the value for money.\n\nOther reviews mention the fries can be soggy.",
+      "languageCode": "en-US"
+    },
+    "flagContentUri": "https://www.google.com/local/review/rap/report?postId=5%401:CAIQACodChtyc19oOjFILUk4WmI1MHA2VGI5TEhxajhUc2c%7CCAIQACorChtyc19oOjFILUk4WmI1MHA2VGI5TEhxajhUc2cSDAi_2OfEBhD44ZHwAg&d=17924085&t=8",
+    "disclosureText": {
+      "text": "Summarized with Gemini",
+      "languageCode": "en-US"
+    },
+    "reviewsUri": "https://www.google.com/maps/place//data=!4m4!3m3!1s0x808580e3d1434971:0x8ff48dc78f89c1b9!9m1!1b1"
+  },
+  "timeZone": {
+    "id": "America/Los_Angeles"
+  },
+  "postalAddress": {
+    "regionCode": "US",
+    "languageCode": "en-US",
+    "postalCode": "94133",
+    "administrativeArea": "California",
+    "locality": "San Francisco",
+    "addressLines": [
+      "333 Jefferson St"
+    ]
+  }
+}

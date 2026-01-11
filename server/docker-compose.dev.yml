@@ -1,0 +1,104 @@
+# ========================================
+# Docker Compose - Development Stack
+# Travel Agent P
+# ========================================
+# Services: Elasticsearch, Redis, Celery (worker/beat)
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# ========================================
+version: "3.8"
+
+services:
+  # Elasticsearch for full-text search and autocomplete
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
+    container_name: travel_agent_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - travel_agent_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Optional: Kibana for ES visualization and management
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.2.2
+    container_name: travel_agent_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - travel_agent_network
+
+  # Redis for caching, rate limiting, JWT blacklist
+  redis:
+    image: redis:7-alpine
+    container_name: travel_agent_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - travel_agent_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Web app (Flask) removed for now; running only Celery worker/beat with Redis
+
+  # Celery worker - runs background tasks (uses project mounted from host)
+  worker:
+    image: python:3.11-slim
+    container_name: travel_agent_worker
+    restart: on-failure
+    volumes:
+      - ..:/app
+    working_dir: /server
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - travel_agent_network
+    command: sh -c "celery -A celery_worker.celery worker --loglevel=info --concurrency=1"
+
+  # Optional: Celery beat scheduler (periodic tasks)
+  beat:
+    image: python:3.11-slim
+    container_name: travel_agent_beat
+    restart: on-failure
+    volumes:
+      - ..:/app
+    working_dir: /server
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+    networks:
+      - travel_agent_network
+    command: sh -c "celery -A celery_worker.celery beat --loglevel=info"
+
+volumes:
+  es_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  travel_agent_network:
+    driver: bridge

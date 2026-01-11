@@ -12,20 +12,20 @@
 
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    ArrowLeft,
-    Camera,
-    Check,
-    Clock,
-    Eye,
-    EyeOff,
-    Globe,
-    Loader2,
-    Lock,
-    Mail,
-    Moon,
-    Palette,
-    Sun,
-    User,
+  ArrowLeft,
+  Camera,
+  Check,
+  Clock,
+  Eye,
+  EyeOff,
+  Globe,
+  Loader2,
+  Lock,
+  Mail,
+  Moon,
+  Palette,
+  Sun,
+  User,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -594,7 +594,7 @@ function AppearanceTab() {
             ) : (
               <Sun className="w-6 h-6 text-amber-500" />
             )}
-            <div>
+            <div className="text-left">
               <p className="font-medium text-gray-900 dark:text-white">Chế độ tối</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isDark ? 'Đang bật chế độ tối' : 'Đang dùng chế độ sáng'}

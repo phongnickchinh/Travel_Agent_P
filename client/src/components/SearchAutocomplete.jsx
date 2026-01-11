@@ -21,20 +21,20 @@
  */
 
 import {
-    Beer,
-    Clock,
-    Coffee,
-    Hotel,
-    Landmark,
-    Loader2,
-    MapPin,
-    Palmtree,
-    RefreshCw,
-    Search,
-    ShoppingBag,
-    TreePine,
-    Utensils,
-    X,
+  Beer,
+  Clock,
+  Coffee,
+  Hotel,
+  Landmark,
+  Loader2,
+  MapPin,
+  Palmtree,
+  RefreshCw,
+  Search,
+  ShoppingBag,
+  TreePine,
+  Utensils,
+  X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import searchAPI from '../services/searchApi';

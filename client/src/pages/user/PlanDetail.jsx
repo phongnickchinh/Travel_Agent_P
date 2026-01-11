@@ -300,7 +300,7 @@ const buildShareUrl = (token) => {
   if (!token) return null;
   const origin = typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
-    : 'http://localhost:5173';
+    : 'http://phamphong.id.vn';
   return `${origin}/shared/${token}`;
 };
 
@@ -1273,7 +1273,7 @@ export default function PlanDetail() {
                   );
                 })}
 
-                {/* Render accommodation POI markers (with hotel emoji 🏨, no numbers) */}
+                {/* Render accommodation POI markers (with hotel icon, no numbers) */}
                 {accommodationPOIs.map((poi) => {
                   const TypeIconComponent = getTypeIcon(poi.category);
                   const isHovered = hoveredPOI === poi.id;
@@ -1336,9 +1336,9 @@ export default function PlanDetail() {
                           {/* Centered type icon */}
                           {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
                           
-                          {/* Hotel emoji badge at top-right (accommodations show 🏨 instead of numbers) */}
+                          {/* Hotel icon badge at top-right (accommodations show hotel icon instead of numbers) */}
                           <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white">
-                            🏨
+                            <Bed className="w-3 h-3" />
                           </div>
                         </div>
                         
@@ -1470,8 +1470,8 @@ export default function PlanDetail() {
                           {/* Accommodation badge */}
                           {isAccomm && (
                             <div className="mt-2 flex items-center gap-1.5">
-                              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                                🏨 Lưu trú
+                              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                <Bed className="w-3 h-3" /> Lưu trú
                               </span>
                             </div>
                           )}
@@ -1547,7 +1547,7 @@ export default function PlanDetail() {
                                     {tripSummary.accommodations.slice(0, 2).map((acc, i) => (
                                       <p 
                                         key={i} 
-                                        className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate cursor-pointer hover:text-brand-primary dark:hover:text-brand-muted transition-colors" 
+                                        className="flex items-center gap-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate cursor-pointer hover:text-brand-primary dark:hover:text-brand-muted transition-colors" 
                                         title={acc.name}
                                         onMouseEnter={() => {
                                           console.log("acc: ", acc);
@@ -1565,7 +1565,7 @@ export default function PlanDetail() {
                                         }}
                                         onMouseLeave={handleActivityLeave}
                                       >
-                                        🏨 {acc.name}
+                                        <Bed className="w-3 h-3" /> {acc.name}
                                       </p>
                                     ))}
                                     {tripSummary.accommodations.length > 2 && (

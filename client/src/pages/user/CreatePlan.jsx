@@ -13,28 +13,50 @@
  */
 
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, Loader2, MapPin, PiggyBank, Search, Sparkles, Timer, X } from 'lucide-react';
+import {
+  Calendar,
+  Camera,
+  ChevronLeft,
+  Coffee,
+  Heart,
+  Landmark,
+  Loader2,
+  MapPin,
+  Moon,
+  Mountain,
+  Palmtree,
+  PiggyBank,
+  Scroll,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Timer,
+  TreePine,
+  Users,
+  Utensils,
+  X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';
 
-// Available interest options
+// Available interest options with lucide-react icons
 const INTEREST_OPTIONS = [
-  { id: 'beach', label: 'Biển', icon: '🏖️' },
-  { id: 'culture', label: 'Văn hóa', icon: '🏛️' },
-  { id: 'food', label: 'Ẩm thực', icon: '🍜' },
-  { id: 'cafe', label: 'Cafe', icon: '☕' },
-  { id: 'nightlife', label: 'Giải trí đêm', icon: '🌙' },
-  { id: 'nature', label: 'Thiên nhiên', icon: '🌿' },
-  { id: 'adventure', label: 'Phiêu lưu', icon: '🧗' },
-  { id: 'shopping', label: 'Mua sắm', icon: '🛍️' },
-  { id: 'relaxation', label: 'Thư giãn', icon: '🧘' },
-  { id: 'history', label: 'Lịch sử', icon: '📜' },
-  { id: 'photography', label: 'Chụp ảnh', icon: '📸' },
-  { id: 'family', label: 'Gia đình', icon: '👨‍👩‍👧‍👦' },
-  { id: 'romantic', label: 'Lãng mạn', icon: '💑' },
+  { id: 'beach', label: 'Biển', Icon: Palmtree },
+  { id: 'culture', label: 'Văn hóa', Icon: Landmark },
+  { id: 'food', label: 'Ẩm thực', Icon: Utensils },
+  { id: 'cafe', label: 'Cafe', Icon: Coffee },
+  { id: 'nightlife', label: 'Giải trí đêm', Icon: Moon },
+  { id: 'nature', label: 'Thiên nhiên', Icon: TreePine },
+  { id: 'adventure', label: 'Phiêu lưu', Icon: Mountain },
+  { id: 'shopping', label: 'Mua sắm', Icon: ShoppingBag },
+  { id: 'relaxation', label: 'Thư giãn', Icon: Sparkles },
+  { id: 'history', label: 'Lịch sử', Icon: Scroll },
+  { id: 'photography', label: 'Chụp ảnh', Icon: Camera },
+  { id: 'family', label: 'Gia đình', Icon: Users },
+  { id: 'romantic', label: 'Lãng mạn', Icon: Heart },
 ];
 
 // Budget levels with non-linear values (VND)
@@ -702,6 +724,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                 <div className="flex flex-wrap gap-2">
                   {INTEREST_OPTIONS.map((interest) => {
                     const isSelected = formData.preferences.interests.includes(interest.id);
+                    const IconComponent = interest.Icon;
                     return (
                       <motion.button
                         key={interest.id}
@@ -715,7 +738,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                             : 'border-brand-primary/30 bg-white text-gray-800 hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-900 dark:text-white dark:hover:border-brand-primary dark:hover:text-white'
                         }`}
                       >
-                        <span>{interest.icon}</span>
+                        <IconComponent className="h-4 w-4" />
                         <span>{interest.label}</span>
                       </motion.button>
                     );
@@ -742,21 +765,24 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                     </div>
                     {showInterestSuggestions && filteredInterestOptions.length > 0 && (
                       <div className="absolute z-10 mt-2 w-full rounded-xl border border-brand-primary/30 bg-white shadow-lg dark:border-brand-primary/50 dark:bg-gray-900">
-                        {filteredInterestOptions.map((item) => (
-                          <button
-                            type="button"
-                            key={item.id}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => {
-                              handleInterestToggle(item.id);
-                              setInterestSearch('');
-                            }}
-                            className="flex w-full items-center gap-2 px-3.5 py-2 text-sm text-left hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
-                          >
-                            <span>{item.icon}</span>
-                            <span>{item.label}</span>
-                          </button>
-                        ))}
+                        {filteredInterestOptions.map((item) => {
+                          const ItemIcon = item.Icon;
+                          return (
+                            <button
+                              type="button"
+                              key={item.id}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => {
+                                handleInterestToggle(item.id);
+                                setInterestSearch('');
+                              }}
+                              className="flex w-full items-center gap-2 px-3.5 py-2 text-sm text-left hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-gray-800"
+                            >
+                              <ItemIcon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

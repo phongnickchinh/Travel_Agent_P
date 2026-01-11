@@ -21,6 +21,18 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Beer,
+  Clock,
+  Coffee,
+  Hotel,
+  Landmark,
+  MapPin,
+  Palmtree,
+  ShoppingBag,
+  TreePine,
+  Utensils,
+} from 'lucide-react';
 import searchAPI from '../services/searchApi';
 
 const SearchAutocomplete = ({ 
@@ -268,31 +280,31 @@ const SearchAutocomplete = ({
   }, [selectedIndex]);
 
   /**
-   * Get POI type icon
+   * Get POI type icon component
    */
   const getTypeIcon = (type) => {
-    const icons = {
-      restaurant: '🍽️',
-      cafe: '☕',
-      hotel: '🏨',
-      beach: '🏖️',
-      museum: '🏛️',
-      park: '🌳',
-      shopping: '🛍️',
-      bar: '🍺',
-      recent: '🕒',
-      default: '📍'
+    const iconMap = {
+      restaurant: Utensils,
+      cafe: Coffee,
+      hotel: Hotel,
+      beach: Palmtree,
+      museum: Landmark,
+      park: TreePine,
+      shopping: ShoppingBag,
+      bar: Beer,
+      recent: Clock,
+      default: MapPin
     };
 
-    if (type === 'recent') return icons.recent;
+    if (type === 'recent') return iconMap.recent;
     
     // Check if type contains common keywords
     const typeStr = (type || '').toLowerCase();
-    for (const [key, icon] of Object.entries(icons)) {
-      if (typeStr.includes(key)) return icon;
+    for (const [key, IconComponent] of Object.entries(iconMap)) {
+      if (typeStr.includes(key)) return IconComponent;
     }
     
-    return icons.default;
+    return iconMap.default;
   };
 
   /**
@@ -382,14 +394,16 @@ const SearchAutocomplete = ({
               >
                 {/* Icon */}
                 <span className="result-icon">
-                  {getTypeIcon(
-                    showRecent ? 'recent' : (
-                      result.type || 
-                      result.primary_type || 
-                      (Array.isArray(result.types) ? result.types[0] : result.types)
-                    ), 
-                    result.source_type
-                  )}
+                  {(() => {
+                    const IconComponent = getTypeIcon(
+                      showRecent ? 'recent' : (
+                        result.type || 
+                        result.primary_type || 
+                        (Array.isArray(result.types) ? result.types[0] : result.types)
+                      )
+                    );
+                    return <IconComponent className="w-4 h-4" />;
+                  })()}
                 </span>
 
                 {/* Content */}

@@ -57,8 +57,8 @@ def create_app(config_class=Config):
         "origins": ["https://phamphong.id.vn", "http://localhost:5173", "http://localhost:3000"],
         "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         "allow_headers": "*",
-        "expose_headers": "*"
-        ""
+        "expose_headers": "*",
+        "supports_credentials": False
     }})
     
     # Initialize Redis connection

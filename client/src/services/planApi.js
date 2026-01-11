@@ -148,6 +148,37 @@ class PlanAPI {
     }
   }
 
+  /**
+   * Search plans by title or destination
+   * 
+   * @param {Object} params - Search parameters
+   * @param {string} params.q - Search query (required)
+   * @param {number} params.page - Page number (default: 1)
+   * @param {number} params.limit - Items per page (default: 20)
+   * @returns {Promise<Object>} - Search results with pagination
+   */
+  async searchPlans(params = {}) {
+    try {
+      const response = await api.get('/plan/search', { params });
+      return {
+        success: true,
+        data: {
+          plans: response.data.plans || [],
+          total: response.data.total || 0,
+          page: response.data.page || 1,
+          limit: response.data.limit || 20,
+          query: response.data.query || params.q
+        }
+      };
+    } catch (error) {
+      console.error('[ERROR] Search plans failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
   // ========================================
   // TRASH OPERATIONS
   // ========================================

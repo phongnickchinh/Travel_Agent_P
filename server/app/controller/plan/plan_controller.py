@@ -61,6 +61,9 @@ class PlanController:
         
         plan_api.add_url_rule("/", "list_plans", self._wrap_jwt_required(self.list_plans), methods=["GET"])
         
+        # Search plans - must be before /<plan_id> to avoid conflict
+        plan_api.add_url_rule("/search", "search_plans", self._wrap_jwt_required(self.search_plans), methods=["GET"])
+        
         plan_api.add_url_rule("/<plan_id>", "get_plan", self._wrap_jwt_required(self.get_plan), methods=["GET"])
         
         plan_api.add_url_rule("/<plan_id>","update_plan", self._wrap_jwt_required(self.update_plan), methods=["PUT"])
@@ -253,6 +256,66 @@ class PlanController:
                 "Failed to retrieve plans.",
                 f"Không thể lấy danh sách kế hoạch: {str(e)}",
                 "50002",
+                500
+            )
+    
+    def search_plans(self, user):
+        """
+        Search user's plans by title or destination.
+        
+        GET /plan/search?q=<query>&page=1&limit=20
+        
+        Query Parameters:
+            q: Search query (required, min 1 char)
+            page: Page number (default: 1)
+            limit: Items per page (default: 20)
+        
+        Response:
+        {
+            "plans": [...],
+            "total": 5,
+            "page": 1,
+            "limit": 20,
+            "query": "Đà Lạt"
+        }
+        """
+        try:
+            query = request.args.get('q', '').strip()
+            
+            if not query:
+                return build_error_response(
+                    "Search query is required.",
+                    "Vui lòng nhập từ khóa tìm kiếm.",
+                    "40010",
+                    400
+                )
+            
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 20))
+            
+            # Limit max results
+            limit = min(limit, 50)
+            
+            result = self.planner_service.search_plans(
+                user_id=user.id,
+                query=query,
+                page=page,
+                limit=limit
+            )
+            
+            return build_success_response(
+                f"Found {result['total']} plans matching '{query}'.",
+                f"Tìm thấy {result['total']} kế hoạch phù hợp với '{query}'.",
+                "20010",
+                result
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to search plans: {e}")
+            return build_error_response(
+                "Failed to search plans.",
+                f"Không thể tìm kiếm kế hoạch: {str(e)}",
+                "50010",
                 500
             )
     

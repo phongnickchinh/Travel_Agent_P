@@ -609,3 +609,92 @@ class PlanRepository(PlanRepositoryInterface):
         except Exception as e:
             logger.error(f"[ERROR] Failed to count plans for user {user_id}: {e}")
             return 0
+    
+    def search_plans(
+        self,
+        user_id: str,
+        query: str,
+        skip: int = 0,
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Search user's plans by title or destination.
+        
+        Uses MongoDB text search with regex for flexible matching.
+        
+        Args:
+            user_id: User identifier
+            query: Search query string
+            skip: Offset for pagination
+            limit: Max results per page
+            
+        Returns:
+            List of matching plan documents
+        """
+        if self.collection is None:
+            return []
+        
+        try:
+            # Build regex pattern for case-insensitive search
+            import re
+            pattern = re.compile(re.escape(query), re.IGNORECASE)
+            
+            # Search in title and destination
+            mongo_query = {
+                "user_id": user_id,
+                "is_deleted": {"$ne": True},
+                "$or": [
+                    {"title": {"$regex": pattern}},
+                    {"destination": {"$regex": pattern}}
+                ]
+            }
+            
+            plans = list(
+                self.collection.find(mongo_query)
+                .sort("created_at", DESCENDING)
+                .skip(skip)
+                .limit(limit)
+            )
+            
+            for plan in plans:
+                plan['_id'] = str(plan['_id'])
+            
+            logger.info(f"[INFO] Search '{query}' found {len(plans)} plans for user {user_id}")
+            return plans
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to search plans: {e}")
+            return []
+    
+    def count_search_results(self, user_id: str, query: str) -> int:
+        """
+        Count search results for pagination.
+        
+        Args:
+            user_id: User identifier
+            query: Search query string
+            
+        Returns:
+            Total matching count
+        """
+        if self.collection is None:
+            return 0
+        
+        try:
+            import re
+            pattern = re.compile(re.escape(query), re.IGNORECASE)
+            
+            mongo_query = {
+                "user_id": user_id,
+                "is_deleted": {"$ne": True},
+                "$or": [
+                    {"title": {"$regex": pattern}},
+                    {"destination": {"$regex": pattern}}
+                ]
+            }
+            
+            return self.collection.count_documents(mongo_query)
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to count search results: {e}")
+            return 0

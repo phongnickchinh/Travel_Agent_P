@@ -2008,6 +2008,37 @@ class PlannerService:
         """
         return self.plan_repo.count_by_user(user_id, status)
     
+    def search_plans(
+        self,
+        user_id: str,
+        query: str,
+        page: int = 1,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Search user's plans by title or destination.
+        
+        Args:
+            user_id: User identifier
+            query: Search query string
+            page: Page number (1-indexed)
+            limit: Max results per page
+            
+        Returns:
+            Dict with plans, total, page, limit
+        """
+        skip = (page - 1) * limit
+        plans = self.plan_repo.search_plans(user_id, query, skip, limit)
+        total = self.plan_repo.count_search_results(user_id, query)
+        
+        return {
+            'plans': plans,
+            'total': total,
+            'page': page,
+            'limit': limit,
+            'query': query
+        }
+    
     def delete_plan(self, plan_id: str, user_id: str) -> bool:
         """
         Soft delete plan (move to trash) with ownership check.

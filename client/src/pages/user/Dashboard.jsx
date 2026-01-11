@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ChangePasswordModal from '../../components/modals/ChangePasswordModal';
 import ProfileSettingsModal from '../../components/modals/ProfileSettingsModal';
@@ -13,7 +13,7 @@ import CreatePlan from './CreatePlan';
 /**
  * Dashboard Component
  * 
- * Main dashboard view with plan grid, pagination and modal management
+ * Main dashboard view with plan grid, search, pagination and modal management
  */
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -26,6 +26,10 @@ export default function Dashboard() {
   const [total, setTotal] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  
   // Modal states
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -33,8 +37,8 @@ export default function Dashboard() {
 
   const PLANS_PER_PAGE = 8;
 
-  // Fetch plans
-  const fetchPlans = async (pageNum = 1, append = false) => {
+  // Fetch plans (normal or search)
+  const fetchPlans = useCallback(async (pageNum = 1, append = false, query = '') => {
     try {
       if (append) {
         setLoadingMore(true);
@@ -42,10 +46,24 @@ export default function Dashboard() {
         setLoading(true);
       }
 
-      const result = await planAPI.getPlans({
-        page: pageNum,
-        limit: PLANS_PER_PAGE,
-      });
+      let result;
+      
+      if (query.trim()) {
+        // Search mode
+        setIsSearching(true);
+        result = await planAPI.searchPlans({
+          q: query.trim(),
+          page: pageNum,
+          limit: PLANS_PER_PAGE,
+        });
+      } else {
+        // Normal mode
+        setIsSearching(false);
+        result = await planAPI.getPlans({
+          page: pageNum,
+          limit: PLANS_PER_PAGE,
+        });
+      }
 
       if (result.success && result.data) {
         const newPlans = result.data.plans || [];
@@ -68,7 +86,14 @@ export default function Dashboard() {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, [PLANS_PER_PAGE]);
+
+  // Handle search
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query);
+    setPage(1);
+    fetchPlans(1, false, query);
+  }, [fetchPlans]);
 
   // Fetch recent plans (for sidebar)
   const fetchRecentPlans = async () => {
@@ -92,7 +117,7 @@ export default function Dashboard() {
 
   // Initial load
   useEffect(() => {
-    fetchPlans(1);
+    fetchPlans(1, false, '');
     fetchRecentPlans();
   }, []);
 
@@ -173,7 +198,7 @@ export default function Dashboard() {
   const handleLoadMore = () => {
     const nextPage = page + 1;
     setPage(nextPage);
-    fetchPlans(nextPage, true);
+    fetchPlans(nextPage, true, searchQuery);
   };
 
   // Delete plan handler (called after successful delete in PlanCard)
@@ -194,8 +219,9 @@ export default function Dashboard() {
   // Handle successful plan creation
   const handlePlanCreated = () => {
     setShowCreatePlanModal(false);
-    // Refresh plan lists
-    fetchPlans(1);
+    // Refresh plan lists and clear search
+    setSearchQuery('');
+    fetchPlans(1, false, '');
     fetchRecentPlans();
     setPage(1);
   };
@@ -221,6 +247,8 @@ export default function Dashboard() {
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           onOpenProfile={() => setShowProfileModal(true)}
           onOpenPassword={() => setShowPasswordModal(true)}
+          onSearch={handleSearch}
+          searchQuery={searchQuery}
         />
 
         {/* Content Area */}
@@ -229,10 +257,13 @@ export default function Dashboard() {
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="font-poppins font-bold text-3xl text-brand-primary dark:text-white mb-1 text-justify">
-                Travel Plan List
+                {isSearching ? 'Kết quả tìm kiếm' : 'Travel Plan List'}
               </h1>
               <p className="text-gray-500 text-sm text-justify">
-                Your travel itineraries
+                {isSearching 
+                  ? `Tìm thấy ${total} kế hoạch cho "${searchQuery}"`
+                  : 'Your travel itineraries'
+                }
               </p>
             </div>
 
@@ -245,16 +276,21 @@ export default function Dashboard() {
               /* Empty State */
               <div className="text-center py-20">
                 <p className="text-gray-500 dark:text-gray-400 text-lg mb-4">
-                  Bạn chưa có kế hoạch nào
+                  {isSearching 
+                    ? `Không tìm thấy kế hoạch nào cho "${searchQuery}"`
+                    : 'Bạn chưa có kế hoạch nào'
+                  }
                 </p>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleNewPlan}
-                  className="px-8 py-3 bg-brand-primary dark:bg-brand-secondary text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
-                >
-                  Tạo kế hoạch đầu tiên
-                </motion.button>
+                {!isSearching && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleNewPlan}
+                    className="px-8 py-3 bg-brand-primary dark:bg-brand-secondary text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-shadow"
+                  >
+                    Tạo kế hoạch đầu tiên
+                  </motion.button>
+                )}
               </div>
             ) : (
               <>  

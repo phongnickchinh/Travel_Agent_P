@@ -1,23 +1,61 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LogOut, Menu, Plus, Settings, User } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, LogOut, Menu, Plus, Search, Settings, User, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * DashboardHeader Component
  * 
- * Top navigation bar with New Plan button and user info
+ * Top navigation bar with search, New Plan button and user info
  * 
  * @param {Function} onNewPlan - Callback to open create plan modal
  * @param {Function} onMenuToggle - Callback to toggle mobile sidebar
  * @param {Function} onOpenProfile - Callback to open profile settings modal
  * @param {Function} onOpenPassword - Callback to open change password modal
+ * @param {Function} onSearch - Callback when search query changes (debounced)
+ * @param {string} searchQuery - Current search query
  */
-export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile, onOpenPassword }) {
+export default function DashboardHeader({ 
+  onNewPlan, 
+  onMenuToggle, 
+  onOpenProfile, 
+  onOpenPassword,
+  onSearch,
+  searchQuery = ''
+}) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const searchInputRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  // Sync with external searchQuery prop
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Debounced search
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setLocalSearch(value);
+    
+    // Debounce 300ms
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      onSearch?.(value);
+    }, 300);
+  };
+
+  const clearSearch = () => {
+    setLocalSearch('');
+    onSearch?.('');
+    searchInputRef.current?.focus();
+  };
 
   // Get user avatar - prefer profile_picture (Google), fallback to avatar_url
   const avatarUrl = user?.avatar_url || user?.profile_picture;
@@ -51,8 +89,32 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
           <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
         </button>
 
-        {/* Spacer for alignment */}
-        <div className="flex-1" />
+        {/* Search Bar */}
+        <div className="flex-1 max-w-md mx-4 lg:mx-8">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={localSearch}
+              onChange={handleSearchChange}
+              placeholder="Tìm kiếm kế hoạch..."
+              className="w-full pl-10 pr-10 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/50 focus:border-brand-primary transition-all"
+            />
+            {localSearch && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </motion.button>
+            )}
+          </div>
+        </div>
 
         {/* New Plan Button */}
         <motion.button

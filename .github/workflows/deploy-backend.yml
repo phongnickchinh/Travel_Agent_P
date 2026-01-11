@@ -15,7 +15,6 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_COMPOSE_VERSION: '2.23.0'
   DEPLOY_PATH: '/home/travel_project'
 
 jobs:
@@ -36,7 +35,6 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${{ secrets.VPS_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          head -n 1 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
@@ -56,7 +54,7 @@ jobs:
           set -e
           
           echo "========================================"
-          echo "Starting Deployment"
+          echo "Starting Deployment - $(date)"
           echo "========================================"
           
           # Navigate to deployment directory
@@ -70,48 +68,135 @@ jobs:
           # Navigate to server directory
           cd server
           
-          # Create .env from secrets if not exists
+          # Verify .env exists
           if [ ! -f .env ]; then
-            echo "Creating .env file from template..."
-            cp .env.production.example .env
-            echo "WARNING: Please configure server/.env with production values!"
+            echo "ERROR: .env file not found! Please configure manually first."
+            exit 1
           fi
           
-          # Stop services
-          echo "Stopping current services..."
-          docker compose down
+          # Load environment variables
+          source .env
           
-          # Build new images
-          echo "Building Docker images..."
-          docker compose build --no-cache --pull
+          echo "========================================"
+          echo "Step 1: Backup Current Database"
+          echo "========================================"
           
-          # Start services
-          echo "Starting services..."
-          docker compose up -d
+          # Create backup directory
+          mkdir -p backups
+          BACKUP_FILE="backups/backup_$(date +%Y%m%d_%H%M%S).sql"
           
-          # Wait for services to be healthy
-          echo "Waiting for services to be healthy..."
-          sleep 30
+          # Check if postgres container is running
+          if docker compose ps postgres 2>/dev/null | grep -q "running"; then
+            echo "Backing up current database..."
+            docker compose exec -T postgres pg_dump \
+              -U "${POSTGRES_USERNAME:-postgres}" \
+              -d "${POSTGRES_DBNAME:-railway}" \
+              -Fc --no-owner --no-privileges \
+              > "$BACKUP_FILE" 2>/dev/null || true
+            
+            if [ -s "$BACKUP_FILE" ]; then
+              echo "✅ Database backup saved to: $BACKUP_FILE"
+              # Keep only last 5 backups
+              ls -t backups/backup_*.sql 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null || true
+            else
+              echo "⚠️ No data to backup (new deployment or empty database)"
+              rm -f "$BACKUP_FILE"
+            fi
+          else
+            echo "⚠️ Postgres not running, skipping backup"
+          fi
           
-          # Check Flask health
-          echo "Checking Flask health..."
+          echo "========================================"
+          echo "Step 2: Start Database First"
+          echo "========================================"
+          
+          # Stop all services except database
+          echo "Stopping application services..."
+          docker compose stop flask-app celery-worker celery-beat nginx 2>/dev/null || true
+          
+          # Start only database services first
+          echo "Starting database services..."
+          docker compose up -d postgres redis
+          
+          # Wait for postgres to be ready
+          echo "Waiting for PostgreSQL to be ready..."
           for i in {1..30}; do
-            if docker compose exec -T flask-app curl -f http://localhost:5000/health >/dev/null 2>&1; then
-              echo "Flask is healthy!"
+            if docker compose exec -T postgres pg_isready -U "${POSTGRES_USERNAME:-postgres}" >/dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready!"
               break
             fi
-            echo "Waiting for Flask... ($i/30)"
+            echo "Waiting for PostgreSQL... ($i/30)"
             sleep 2
           done
           
+          # Check if database exists, if not create it
+          echo "Checking database..."
+          DB_EXISTS=$(docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -lqt | cut -d \| -f 1 | grep -w "${POSTGRES_DBNAME:-railway}" || true)
+          
+          if [ -z "$DB_EXISTS" ]; then
+            echo "Creating database ${POSTGRES_DBNAME:-railway}..."
+            docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -c "CREATE DATABASE ${POSTGRES_DBNAME:-railway};" 2>/dev/null || true
+          fi
+          
+          # Restore from backup if database is empty and backup exists
+          TABLE_COUNT=$(docker compose exec -T postgres psql -U "${POSTGRES_USERNAME:-postgres}" -d "${POSTGRES_DBNAME:-railway}" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")
+          
+          if [ "$TABLE_COUNT" = "0" ] || [ -z "$TABLE_COUNT" ]; then
+            LATEST_BACKUP=$(ls -t backups/backup_*.sql 2>/dev/null | head -1)
+            if [ -n "$LATEST_BACKUP" ] && [ -s "$LATEST_BACKUP" ]; then
+              echo "Database is empty, restoring from: $LATEST_BACKUP"
+              docker compose exec -T postgres pg_restore \
+                -U "${POSTGRES_USERNAME:-postgres}" \
+                -d "${POSTGRES_DBNAME:-railway}" \
+                --no-owner --no-privileges \
+                < "$LATEST_BACKUP" 2>/dev/null || true
+              echo "✅ Database restored!"
+            else
+              echo "⚠️ No backup found, starting with fresh database"
+            fi
+          else
+            echo "✅ Database has $TABLE_COUNT tables, skipping restore"
+          fi
+          
+          echo "========================================"
+          echo "Step 3: Build and Start Application"
+          echo "========================================"
+          
+          # Build and start all services
+          echo "Building and starting all services..."
+          docker compose up -d --build --force-recreate
+          
+          # Prune old images to save disk space
+          echo "Cleaning up old images..."
+          docker image prune -f
+          
+          # Wait for services to be healthy
+          echo "Waiting for services to be healthy..."
+          sleep 15
+          
+          # Check Flask container health
+          echo "Checking Flask container..."
+          for i in {1..30}; do
+            FLASK_STATUS=$(docker compose ps flask-app --format json 2>/dev/null | grep -o '"Status":"[^"]*"' | head -1 || echo "")
+            if echo "$FLASK_STATUS" | grep -q "healthy\|running"; then
+              echo "Flask container is running!"
+              break
+            fi
+            echo "Waiting for Flask... ($i/30)"
+            sleep 3
+          done
+          
           # Show running containers
+          echo ""
           echo "Running containers:"
           docker compose ps
           
-          # Show logs (last 50 lines)
-          echo "Recent logs:"
-          docker compose logs --tail=50
+          # Quick log check for errors
+          echo ""
+          echo "Checking for startup errors..."
+          docker compose logs --tail=20 flask-app 2>&1 | grep -i "error\|exception\|failed" || echo "No errors found in recent logs"
           
+          echo ""
           echo "========================================"
           echo "Deployment completed successfully!"
           echo "========================================"
@@ -122,22 +207,24 @@ jobs:
         run: |
           echo "Verifying deployment health..."
           
-          # Wait a bit for services to stabilize
+          # Wait for services to stabilize
           sleep 10
           
-          # Check health endpoint (replace with your domain)
-          HEALTH_URL="http://${{ secrets.VPS_HOST }}/health"
+          # Check health endpoint via HTTPS
+          HEALTH_URL="https://api.phamphong.id.vn/health"
           
           for i in {1..10}; do
-            if curl -f -s "$HEALTH_URL" | grep -q "ok"; then
-              echo "Health check passed!"
+            RESPONSE=$(curl -sf "$HEALTH_URL" 2>/dev/null || echo "")
+            if echo "$RESPONSE" | grep -q "ok"; then
+              echo "✅ Health check passed!"
+              echo "Response: $RESPONSE"
               exit 0
             fi
-            echo "Health check attempt $i/10 failed, retrying..."
+            echo "Health check attempt $i/10, retrying in 5s..."
             sleep 5
           done
           
-          echo "Health check failed after 10 attempts"
+          echo "❌ Health check failed after 10 attempts"
           exit 1
 
       # ============= Rollback on Failure =============

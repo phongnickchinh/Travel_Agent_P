@@ -224,10 +224,11 @@ class ESPOIRepository(ESPOIRepositoryInterface):
         radius_km: float = 5.0,
         types: Optional[List[str]] = None,
         min_rating: Optional[float] = None,
-        price_level: Optional[str] = None,
-        size: int = 20,
-        from_: int = 0
-    ) -> List[Dict]:
+        price_levels: Optional[List[str]] = None,
+        sort_by: str = "relevance",
+        limit: int = 20,
+        offset: int = 0
+    ) -> Dict[str, Any]:
         """
         Search POIs with filters
         
@@ -237,13 +238,17 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             radius_km: Search radius in kilometers
             types: Filter by POI types
             min_rating: Minimum rating filter
-            price_level: Price level filter
-            size: Number of results to return
-            from_: Offset for pagination
+            price_levels: List of price levels to filter
+            sort_by: Sort order - "relevance", "distance", "rating"
+            limit: Number of results to return
+            offset: Pagination offset
             
         Returns:
-            List of POI dictionaries with scores
+            Dict with results, total, took_ms
         """
+        import time
+        start_time = time.time()
+        
         try:
             must_clauses = []
             filter_clauses = []
@@ -279,9 +284,10 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             if min_rating is not None:
                 filter_clauses.append({"range": {"rating": {"gte": min_rating}}})
             
-            # Price level filter
-            if price_level:
-                filter_clauses.append({"term": {"price_level": price_level}})
+            # Price level filter (accept list)
+            if price_levels:
+                filter_clauses.append({"terms": {"price_level": price_levels}})
+            
             search_query = {
                 "bool": {
                     "must": must_clauses if must_clauses else {"match_all": {}},
@@ -289,9 +295,9 @@ class ESPOIRepository(ESPOIRepositoryInterface):
                 }
             }
             
-            # Add sorting (by relevance and distance)
+            # Build sort based on sort_by parameter
             sort = []
-            if location:
+            if sort_by == "distance" and location:
                 sort.append({
                     "_geo_distance": {
                         "location": {
@@ -302,37 +308,66 @@ class ESPOIRepository(ESPOIRepositoryInterface):
                         "unit": "km"
                     }
                 })
-            sort.append("_score")
+            elif sort_by == "rating":
+                sort.append({"rating": {"order": "desc"}})
+            elif sort_by == "popularity":
+                sort.append({"total_reviews": {"order": "desc"}})
+            else:
+                # Default relevance - add distance as secondary sort if location provided
+                if location:
+                    sort.append({
+                        "_geo_distance": {
+                            "location": {
+                                "lat": location.get('latitude'),
+                                "lon": location.get('longitude')
+                            },
+                            "order": "asc",
+                            "unit": "km"
+                        }
+                    })
+                sort.append("_score")
             
-            # Execute search
+            # Execute search with track_total_hits for accurate count
             response = self.es.search(
                 index=self.INDEX_NAME,
                 query=search_query,
                 sort=sort,
-                size=size,
-                from_=from_
+                size=limit,
+                from_=offset,
+                track_total_hits=True
             )
-            hits = response['hits']['hits']
-            results = []
             
+            took_ms = int((time.time() - start_time) * 1000)
+            hits = response['hits']['hits']
+            total = response['hits']['total']['value'] if isinstance(response['hits']['total'], dict) else response['hits']['total']
+            
+            results = []
             for hit in hits:
-                result = hit['_source']
+                result = self._transform_from_es_document(hit['_source'], location)
                 result['_score'] = hit['_score']
                 result['_id'] = hit['_id']
                 
                 # Add distance if geo search
-                if 'sort' in hit and len(hit['sort']) > 0:
-                    result['_distance_km'] = hit['sort'][0]
+                if 'sort' in hit and len(hit['sort']) > 0 and isinstance(hit['sort'][0], (int, float)):
+                    result['_distance_km'] = round(hit['sort'][0], 2)
                 
                 results.append(result)
             
-            logger.info(f"Search '{query}' returned {len(results)} results")
+            logger.info(f"Search '{query}' returned {len(results)}/{total} results in {took_ms}ms")
             
-            return results
+            return {
+                "results": results,
+                "total": total,
+                "took_ms": took_ms
+            }
             
         except Exception as e:
             logger.error(f"Search failed: {e}")
-            return []
+            return {
+                "results": [],
+                "total": 0,
+                "took_ms": int((time.time() - start_time) * 1000)
+            }
     
     def autocomplete(self, prefix: str, size: int = 10) -> List[Dict]:
         """
@@ -477,6 +512,62 @@ class ESPOIRepository(ESPOIRepositoryInterface):
         }
         
         return es_doc
+
+    def _transform_from_es_document(self, es_doc: Dict, center_location: Optional[Dict] = None) -> Dict:
+        """
+        Transform ES document back to frontend-friendly format
+        
+        Converts ES geo_point back to latitude/longitude for frontend consumption
+        
+        Args:
+            es_doc: ES document dictionary
+            center_location: Optional center location for reference
+            
+        Returns:
+            Frontend-friendly POI dictionary
+        """
+        location = es_doc.get('location', {})
+        lat = location.get('lat', 0.0) if isinstance(location, dict) else 0.0
+        lon = location.get('lon', 0.0) if isinstance(location, dict) else 0.0
+        
+        photos = es_doc.get('photos', [])
+        primary_photo = photos[0] if photos else None
+        
+        return {
+            'poi_id': es_doc.get('poi_id'),
+            'name': es_doc.get('name', ''),
+            'types': es_doc.get('types', []),
+            'primary_type': es_doc.get('primary_type', ''),
+            'category': es_doc.get('primary_type') or (es_doc.get('types', [''])[0] if es_doc.get('types') else ''),
+            
+            'location': {
+                'latitude': lat,
+                'longitude': lon
+            },
+            'latitude': lat,
+            'longitude': lon,
+            
+            'address': es_doc.get('address', ''),
+            
+            'rating': es_doc.get('rating', 0.0),
+            'total_reviews': es_doc.get('total_reviews', 0),
+            
+            'price_level': es_doc.get('price_level', ''),
+            
+            'description': es_doc.get('description', ''),
+            
+            'business_status': es_doc.get('business_status', ''),
+            'google_maps_uri': es_doc.get('google_maps_uri', ''),
+            
+            'photo_reference': primary_photo,
+            'photos': photos,
+            'photos_count': es_doc.get('photos_count', 0),
+            
+            'opening_hours': es_doc.get('opening_hours', {}),
+            
+            'provider': es_doc.get('provider', ''),
+            'provider_id': es_doc.get('provider_id', '')
+        }
 
     def is_healthy(self) -> bool:
         """

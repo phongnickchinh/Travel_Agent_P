@@ -53,13 +53,13 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
         >
           <motion.div
             initial={{ scale: 0.95, y: 10, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 10, opacity: 0 }}
-            className="w-full max-w-xl bg-white rounded-2xl shadow-2xl p-6 space-y-4"
+            className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl p-4 lg:p-6 space-y-4"
           >
             <div className="flex items-center justify-between">
               <h3 className="font-poppins font-semibold text-lg text-gray-900">Thêm hoạt động</h3>

@@ -68,10 +68,11 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
         {/* User Info with Dropdown */}
         <div
           className="relative"
-          onMouseEnter={() => setShowMenu(true)}
-          onMouseLeave={() => setShowMenu(false)}
         >
-          <div className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+          <div 
+            onClick={() => setShowMenu(!showMenu)}
+            className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+          >
             {/* User Avatar */}
             {avatarUrl ? (
               <img
@@ -112,6 +113,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.15 }}
                 className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-700 overflow-hidden py-2"
+                onMouseLeave={() => setShowMenu(false)}
               >
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">

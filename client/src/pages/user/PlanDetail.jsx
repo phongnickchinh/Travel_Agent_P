@@ -64,6 +64,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DayItinerary from '../../components/features/plan/DayItinerary';
 import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
 import { EditableDate, EditableTitle } from '../../components/ui/EditableField';
+import MarqueeText from '../../components/ui/MarqueeText';
+import Tooltip from '../../components/ui/Tooltip';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
@@ -1122,60 +1124,63 @@ export default function PlanDetail() {
             )}
 
             {!isPublicView && (
-              <motion.button
-                whileHover={{ scale: 1.02, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowRegenerateModal(true)}
-                disabled={regenerateLoading}
-                title="Regenerate plan"
-                className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
-                  regenerateLoading
-                    ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden lg:inline text-sm font-semibold">Regenerate plan</span>
-              </motion.button>
+              <Tooltip content="Regenerate plan" position="bottom">
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowRegenerateModal(true)}
+                  disabled={regenerateLoading}
+                  className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
+                    regenerateLoading
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden lg:inline text-sm font-semibold">Regenerate plan</span>
+                </motion.button>
+              </Tooltip>
             )}
 
             {!isPublicView && (
+              <Tooltip content={shareState.isPublic ? 'Click to make private' : 'Click to make public'} position="bottom">
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleToggleShare}
+                  disabled={shareLoading}
+                  className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
+                    shareState.isPublic
+                      ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  } ${shareLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                >
+                  {shareState.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  <span className="hidden lg:inline text-sm font-semibold">
+                    {shareState.isPublic ? 'Public' : 'Private'}
+                  </span>
+                </motion.button>
+              </Tooltip>
+            )}
+
+            <Tooltip content={shareCopied ? 'Copied!' : 'Copy share link'} position="bottom">
               <motion.button
                 whileHover={{ scale: 1.02, y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleToggleShare}
-                disabled={shareLoading}
-                title={shareState.isPublic ? 'Public' : 'Private'}
+                onClick={handleCopyShareLink}
+                disabled={!shareState.shareUrl}
                 className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
-                  shareState.isPublic
-                    ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                } ${shareLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  shareState.shareUrl
+                    ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                }`}
               >
-                {shareState.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                <Copy className="w-4 h-4" />
                 <span className="hidden lg:inline text-sm font-semibold">
-                  {shareState.isPublic ? 'Public' : 'Private'}
+                  {shareCopied ? 'Copied!' : 'Copy link'}
                 </span>
               </motion.button>
-            )}
-
-            <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleCopyShareLink}
-              disabled={!shareState.shareUrl}
-              title={shareCopied ? 'Copied!' : 'Copy link'}
-              className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
-                shareState.shareUrl
-                  ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-              }`}
-            >
-              <Copy className="w-4 h-4" />
-              <span className="hidden lg:inline text-sm font-semibold">
-                {shareCopied ? 'Copied!' : 'Copy link'}
-              </span>
-            </motion.button>
+            </Tooltip>
           </div>
         </div>
       </header>
@@ -1800,18 +1805,21 @@ export default function PlanDetail() {
 
               {/* Nearby Search Floating Panel */}
               {!isPublicView && (
-                <div className="absolute top-16 right-4 z-20">
+                <div className="absolute top-20 right-4 z-20">
                   {/* Search Toggle Button */}
                   {!showNearbyPanel && (
-                    <motion.button
-                      initial={{ scale: 0.9 }}
-                      animate={{ scale: 1 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setShowNearbyPanel(true)}
-                      className="p-3 bg-white shadow-lg rounded-full border border-gray-200 hover:border-brand-primary hover:bg-brand-muted transition-colors group"
-                    >
-                      <Search className="w-5 h-5 text-gray-600 group-hover:text-brand-primary" />
+                    <Tooltip content="Search nearby places" position="left">
+                      <motion.button
+                        initial={{ scale: 0.9 }}
+                        animate={{ scale: 1 }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowNearbyPanel(true)}
+                        className="p-3 bg-white shadow-lg rounded-full border border-gray-200 hover:border-brand-primary hover:bg-brand-muted transition-colors group"
+                      >
+                        <Search className="w-5 h-5 text-gray-600 group-hover:text-brand-primary" />
+                      </motion.button>
+                    </Tooltip>
                     </motion.button>
                   )}
 

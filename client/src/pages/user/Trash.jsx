@@ -269,7 +269,7 @@ export default function Trash() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col">
       {/* Header */}
-      <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
+      <DashboardHeader onMenuToggle={() => setSidebarOpen(true)} />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}

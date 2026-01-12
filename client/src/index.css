@@ -53,6 +53,21 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Marquee animation for truncated text on hover */
+@keyframes marquee {
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(calc(-100% + var(--container-width, 100px))); }
+}
+
+.hover-marquee {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.hover-marquee-container:hover .hover-marquee {
+  animation: marquee 3s ease-in-out infinite alternate;
+}
 /* 
 a {
   font-weight: 500;

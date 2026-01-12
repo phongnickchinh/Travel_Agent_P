@@ -230,11 +230,11 @@ const DayItinerary = ({
     <div className="p-6">
     {/* Day Notes - Editable for owner */}
     <div className="px-6">
-        <div className="border-b border-gray-100 dark:border-gray-700 pb-6">
+        <div className="border-b border-gray-100 dark:border-gray-700 pb-6 text-center">
             {isPublicView ? (
             // Public view - static display
             day.notes && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic flex items-center gap-1">
+                <p className="text-centertext-sm text-gray-500 dark:text-gray-400 italic flex items-center gap-1 ">
                 <Lightbulb className="w-4 h-4" /> {day.notes}
                 </p>
             )

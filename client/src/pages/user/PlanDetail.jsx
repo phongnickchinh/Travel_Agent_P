@@ -47,7 +47,6 @@ import {
   Scroll,
   Search,
   Settings2,
-  Share2,
   ShoppingBag,
   Sparkles,
   Star,

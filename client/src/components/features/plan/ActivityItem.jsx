@@ -185,7 +185,7 @@ const ActivityItem = ({
             <div className="space-y-1">
               {description && <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>}
               {localActivity.address && (
-                <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> {localActivity.address}</p>
+                <p className=" text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 text-left"><MapPin className="w-3 h-3" /> {localActivity.address}</p>
               )}
             </div>
           )}

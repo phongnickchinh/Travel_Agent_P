@@ -12,6 +12,7 @@ Date: Week 4 - HuggingFace + LangChain Integration
 """
 
 import logging
+from functools import wraps
 from flask import request, jsonify
 
 from . import plan_api
@@ -87,6 +88,7 @@ class PlanController:
     
     def _wrap_jwt_required(self, f):
         """Helper to maintain JWT required middleware."""
+        @wraps(f)
         @JWT_required
         def wrapper(user, *args, **kwargs):
             return f(user, *args, **kwargs)

@@ -9,7 +9,7 @@
  * - Info panels for costs, accommodation, preferences
  */
 
-import { GoogleMap, InfoWindow, OverlayView, useJsApiLoader } from '@react-google-maps/api';
+import { Circle, GoogleMap, InfoWindow, OverlayView, useJsApiLoader } from '@react-google-maps/api';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -337,6 +337,7 @@ export default function PlanDetail() {
   const [nearbyCategory, setNearbyCategory] = useState('');
   const [hoveredNearbyPOI, setHoveredNearbyPOI] = useState(null);
   const [addingToDayPOI, setAddingToDayPOI] = useState(null);
+  const [nearbySearchCenter, setNearbySearchCenter] = useState(null); // {lat, lng} for center marker
   
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
@@ -465,7 +466,10 @@ export default function PlanDetail() {
     const lat = center.lat();
     const lng = center.lng();
     
+    // Store center for visualization
+    setNearbySearchCenter({ lat, lng });
     setNearbySearching(true);
+    
     try {
       const options = { limit: 20 };
       if (nearbyCategory) {
@@ -504,6 +508,7 @@ export default function PlanDetail() {
     setNearbyPOIs([]);
     setHoveredNearbyPOI(null);
     setAddingToDayPOI(null);
+    setNearbySearchCenter(null); // Clear center marker
   }, []);
 
   // Add nearby POI to specific day
@@ -1549,6 +1554,43 @@ export default function PlanDetail() {
                     </OverlayView>
                   );
                 })}
+
+                {/* Nearby Search Center Marker and Radius Circle */}
+                {nearbySearchCenter && (
+                  <>
+                    {/* Radius Circle */}
+                    <Circle
+                      center={nearbySearchCenter}
+                      radius={nearbyRadius * 1000} // Convert km to meters
+                      options={{
+                        fillColor: '#2E571C',
+                        fillOpacity: 0.08,
+                        strokeColor: '#2E571C',
+                        strokeOpacity: 0.5,
+                        strokeWeight: 2,
+                        strokeDashArray: [4, 4],
+                      }}
+                    />
+                    {/* Center Marker (Crosshair style) */}
+                    <OverlayView
+                      position={nearbySearchCenter}
+                      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                    >
+                      <div 
+                        className="relative flex items-center justify-center"
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                      >
+                        {/* Outer ring */}
+                        <div className="absolute w-8 h-8 rounded-full border-2 border-brand-primary bg-brand-primary/10 animate-pulse" />
+                        {/* Center dot */}
+                        <div className="w-3 h-3 rounded-full bg-brand-primary border-2 border-white shadow-md z-10" />
+                        {/* Crosshairs */}
+                        <div className="absolute w-10 h-0.5 bg-brand-primary/50" />
+                        <div className="absolute w-0.5 h-10 bg-brand-primary/50" />
+                      </div>
+                    </OverlayView>
+                  </>
+                )}
 
                 {/* InfoWindow for hovered POI - Card-style design with image */}
                 {hoveredPOI && (() => {

@@ -40,7 +40,10 @@ from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..repo.mongo.interfaces import POIRepositoryInterface
 from ..model.mongo.poi import POISearchRequest
 from ..core.clients.elasticsearch_client import ElasticsearchClient
-from ..providers.type_mapping import map_user_interests_to_google_types
+from ..providers.type_mapping import (
+    map_user_interests_to_google_types,
+    map_user_interests_to_categories
+)
 
 if TYPE_CHECKING:
     from ..providers.places.google_places_provider import GooglePlacesProvider
@@ -130,6 +133,7 @@ class SearchService:
         longitude: Optional[float] = None,
         radius_km: Optional[float] = 10.0,
         types: Optional[List[str]] = None,
+        interests: Optional[List[str]] = None,
         min_rating: Optional[float] = None,
         price_levels: Optional[List[str]] = None,
         sort_by: str = "relevance",
@@ -144,7 +148,8 @@ class SearchService:
             latitude: Center point latitude (for geo-distance)
             longitude: Center point longitude (for geo-distance)
             radius_km: Search radius in km (default: 10)
-            types: POI types filter (e.g., ["restaurant", "cafe"])
+            types: POI types filter - Google Place Types (direct pass-through to Google API)
+            interests: User interest IDs (e.g., ['beach', 'culture']) - converted to appropriate types per backend
             min_rating: Minimum average rating (0-5)
             price_levels: Price levels (e.g., ["MODERATE", "INEXPENSIVE"])
             sort_by: Sort order - "relevance", "distance", "rating", "popularity"
@@ -162,7 +167,24 @@ class SearchService:
             }
         """
         start_time = time.time()
-        logger.info(f"[SEARCH] query='{query}', lat={latitude}, lng={longitude}, radius={radius_km}km, types={types}")
+        logger.info(f"[SEARCH] query='{query}', lat={latitude}, lng={longitude}, radius={radius_km}km, types={types}, interests={interests}")
+        
+        # Convert interests to appropriate types for each backend
+        # ES/MongoDB use CategoryEnum values, Google API uses Google Place Types
+        es_mongo_types = types  # Pass-through if types provided directly
+        google_types = types    # Pass-through if types provided directly
+        
+        if interests and not types:
+            # Convert for ES/MongoDB (CategoryEnum values as strings)
+            categories = map_user_interests_to_categories(interests)
+            if categories:
+                es_mongo_types = [cat.value for cat in categories]  # CategoryEnum.BEACH -> "BEACH"
+                logger.info(f"[SEARCH] Mapped interests {interests} -> ES/Mongo categories {es_mongo_types}")
+            
+            # Convert for Google API (Google Place Types)
+            google_types = map_user_interests_to_google_types(interests)
+            if google_types:
+                logger.info(f"[SEARCH] Mapped interests {interests} -> Google types {google_types}")
         
         results = []
         source = "unknown"
@@ -179,7 +201,7 @@ class SearchService:
                     query=query,
                     location=location,
                     radius_km=radius_km,
-                    types=types,
+                    types=es_mongo_types,  # Use CategoryEnum values for ES
                     min_rating=min_rating,
                     price_levels=price_levels,
                     sort_by=sort_by,
@@ -203,7 +225,7 @@ class SearchService:
                 latitude=latitude,
                 longitude=longitude,
                 radius_km=radius_km,
-                types=types,
+                types=es_mongo_types,  # Use CategoryEnum values for MongoDB
                 min_rating=min_rating,
                 price_levels=price_levels,
                 limit=limit,
@@ -222,7 +244,7 @@ class SearchService:
                         latitude=latitude,
                         longitude=longitude,
                         radius_km=radius_km or 10.0,
-                        types=types,
+                        types=google_types,  # Use Google Place Types for Google API
                         query=query if query else None,
                         max_results=limit - len(results)  # Only fetch what we need
                     )
@@ -686,23 +708,17 @@ class SearchService:
             ...     interests=["beach", "food"]  # Converted to Google types internally
             ... )
         """
-        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km")
-        
-        # Convert user interests to Google Place Types if provided
-        search_types = types  # Direct pass-through if types provided
-        if interests and not types:
-            google_types = map_user_interests_to_google_types(interests)
-            if google_types:
-                search_types = google_types
-                logger.info(f"[NEARBY] Mapped interests {interests} -> Google types {search_types}")
+        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km, interests={interests}")
         
         # Use search with empty query (geo-only)
+        # Pass interests directly - search() handles conversion for each backend
         results = self.search(
             query="",
             latitude=latitude,
             longitude=longitude,
             radius_km=radius_km,
-            types=search_types,
+            types=types,
+            interests=interests,  # Pass interests directly, search() converts per backend
             min_rating=min_rating,
             sort_by="distance",
             limit=limit

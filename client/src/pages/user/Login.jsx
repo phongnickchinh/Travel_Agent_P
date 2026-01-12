@@ -84,15 +84,12 @@ export default function Login({ isModal = false, onClose }) {
 
     loadGoogleScript().then(() => {
       if (window.google) {
-        // Use redirect mode on mobile for better UX (avoid popup issues)
-        const isMobile = window.innerWidth < 768;
-        
+        // Always use popup mode (redirect causes access blocked issues on mobile)
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleLogin,
           auto_select: false,
-          ux_mode: isMobile ? 'redirect' : 'popup',
-          login_uri: isMobile ? window.location.origin + '/login' : undefined,
+          ux_mode: 'popup',
         });
         window.google.accounts.id.renderButton(
           document.getElementById('googleSignInButton'),

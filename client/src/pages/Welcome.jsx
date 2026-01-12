@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Mail, X } from 'lucide-react';
+import { ArrowRight, Mail, Moon, Sun, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/auth/AuthModal';
@@ -11,6 +11,24 @@ export default function Welcome() {
   const { user, loading } = useAuth();
   const [showContactModal, setShowContactModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  const toggleTheme = () => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    if (newIsDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
 
   useEffect(() => {
     if (!loading && user) {
@@ -76,36 +94,58 @@ export default function Welcome() {
           </div>
 
           {/* Nav Buttons */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Theme Toggle */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-colors"
+              aria-label="Toggle theme"
+            >
+              {isDark ? (
+                <Sun className="w-5 h-5 text-yellow-300" />
+              ) : (
+                <Moon className="w-5 h-5 text-white" />
+              )}
+            </motion.button>
+
+            {/* About Us - hidden on mobile */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowAboutModal(true)}
-              className="px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
+              className="hidden md:block px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
             >
               About Us
             </motion.button>
+            
+            {/* Contact Us - hidden on mobile */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setShowContactModal(true)}
-              className="px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
+              className="hidden md:block px-4 py-2 text-white/80 hover:text-white font-medium transition-colors"
             >
               Contact Us
             </motion.button>
+            
+            {/* Login - hidden on mobile */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/login')}
-              className="px-6 py-2.5 text-brand-primary dark:text-white dark:hover:text-white hover:text-brand-secondary font-medium rounded-full border-2 border-brand-primary/60 hover:border-brand-secondary/90 transition-colors"
+              className="hidden md:block px-6 py-2.5 text-brand-primary dark:text-white dark:hover:text-white hover:text-brand-secondary font-medium rounded-full border-2 border-brand-primary/60 hover:border-brand-secondary/90 transition-colors"
             >
               Đăng nhập
             </motion.button>
+            
+            {/* Register - hidden on mobile */}
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate('/register')}
-              className="px-6 py-2.5 bg-brand-primary text-white font-medium rounded-full hover:bg-brand-secondary transition-colors shadow-lg"
+              className="hidden md:block px-6 py-2.5 bg-brand-primary text-white font-medium rounded-full hover:bg-brand-secondary transition-colors shadow-lg"
             >
               Đăng ký
             </motion.button>

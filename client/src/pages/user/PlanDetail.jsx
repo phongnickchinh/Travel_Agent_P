@@ -1074,8 +1074,8 @@ export default function PlanDetail() {
 
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-full px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-full px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 lg:gap-4">
             <button
               onClick={() => navigate('/dashboard')}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -1174,7 +1174,7 @@ export default function PlanDetail() {
       {/* Main Content */}
       <div className="flex h-[calc(100vh-73px)]">
         {/* Left: Scrollable Itinerary - All Days */}
-        <main className="w-[40%] overflow-y-auto px-8 py-6 min-w-100 border-r border-gray-200 dark:border-gray-700">
+        <main className="w-[45%] xl:w-[40%] overflow-y-auto px-4 lg:px-6 xl:px-8 py-4 lg:py-6 min-w-[320px] border-r border-gray-200 dark:border-gray-700">
           <div className="max-w-3xl mx-auto space-y-8">
             {plan.itinerary?.map((day, dayIndex) => {
               // Calculate starting index for this day
@@ -1250,7 +1250,7 @@ export default function PlanDetail() {
         </main>
 
         {/* Right: Sticky Google Map with Info Panels */}
-        <aside className="w-[60%] bg-white dark:bg-gray-800 shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
+        <aside className="w-[55%] xl:w-[60%] bg-white dark:bg-gray-800 shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
           {loadError && (
             <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
               Error loading Google Maps

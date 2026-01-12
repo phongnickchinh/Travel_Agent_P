@@ -33,11 +33,13 @@ import {
   Landmark,
   Loader2,
   MapPin,
+  Moon,
   Mountain,
   Music,
   Palmtree,
   Plane,
   Plus,
+  Scroll,
   Search,
   Settings2,
   Share2,
@@ -46,6 +48,7 @@ import {
   Star,
   Train,
   TreePine,
+  Users,
   Utensils,
   UtensilsCrossed,
   Wallet,
@@ -85,6 +88,26 @@ const mapOptions = {
     }
   ]
 };
+
+// Nearby search category options (matches CreatePlan interests)
+// Maps interest IDs to Google Places API types
+const NEARBY_CATEGORY_OPTIONS = [
+  { id: 'beach', label: 'Beach', Icon: Palmtree, types: 'natural_feature' },
+  { id: 'culture', label: 'Culture', Icon: Landmark, types: 'museum,art_gallery,cultural_center' },
+  { id: 'food', label: 'Food', Icon: Utensils, types: 'restaurant,food' },
+  { id: 'cafe', label: 'Cafe', Icon: Coffee, types: 'cafe,coffee_shop,bakery' },
+  { id: 'nightlife', label: 'Nightlife', Icon: Moon, types: 'night_club,bar' },
+  { id: 'nature', label: 'Nature', Icon: TreePine, types: 'park,national_park,campground' },
+  { id: 'adventure', label: 'Adventure', Icon: Mountain, types: 'amusement_park,tourist_attraction' },
+  { id: 'shopping', label: 'Shopping', Icon: ShoppingBag, types: 'shopping_mall,store,market' },
+  { id: 'relaxation', label: 'Relaxation', Icon: Sparkles, types: 'spa,beauty_salon' },
+  { id: 'history', label: 'History', Icon: Scroll, types: 'museum,historical_landmark,monument' },
+  { id: 'photography', label: 'Photography', Icon: Camera, types: 'tourist_attraction,landmark,scenic_point' },
+  { id: 'family', label: 'Family', Icon: Users, types: 'amusement_park,zoo,aquarium,playground' },
+  { id: 'romantic', label: 'Romantic', Icon: Heart, types: 'restaurant,spa,scenic_point' },
+  { id: 'temple', label: 'Temple', Icon: Church, types: 'hindu_temple,buddhist_temple,church,mosque' },
+  { id: 'hotel', label: 'Hotel', Icon: Bed, types: 'lodging,hotel,resort_hotel' },
+];
 
 // POI type to icon mapping (expanded)
 const getTypeIcon = (category) => {
@@ -1776,23 +1799,42 @@ export default function PlanDetail() {
                           </div>
                         </div>
 
-                        {/* Category Filter */}
+                        {/* Category Filter - Icon Grid */}
                         <div className="mb-3">
-                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Category (optional)</label>
-                          <select
-                            value={nearbyCategory}
-                            onChange={(e) => setNearbyCategory(e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
-                          >
-                            <option value="">All categories</option>
-                            <option value="restaurant">Restaurant</option>
-                            <option value="cafe">Cafe</option>
-                            <option value="attraction">Attraction</option>
-                            <option value="museum">Museum</option>
-                            <option value="park">Park</option>
-                            <option value="shopping">Shopping</option>
-                            <option value="hotel">Hotel</option>
-                          </select>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-medium text-gray-600">Category</label>
+                            {nearbyCategory && (
+                              <button
+                                onClick={() => setNearbyCategory('')}
+                                className="text-xs text-brand-primary hover:underline"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-5 gap-1.5">
+                            {NEARBY_CATEGORY_OPTIONS.map((cat) => {
+                              const IconComponent = cat.Icon;
+                              const isSelected = nearbyCategory === cat.types;
+                              return (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => setNearbyCategory(isSelected ? '' : cat.types)}
+                                  title={cat.label}
+                                  className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-all ${
+                                    isSelected
+                                      ? 'bg-brand-primary text-white shadow-sm'
+                                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <IconComponent className="w-4 h-4" />
+                                  <span className="text-[9px] mt-0.5 leading-tight truncate w-full text-center">
+                                    {cat.label}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
 
                         {/* Action Buttons */}

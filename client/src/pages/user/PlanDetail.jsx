@@ -1509,7 +1509,7 @@ export default function PlanDetail() {
                           <motion.div
                             initial={{ opacity: 0, y: -5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-40 z-[200]"
+                            className="absolute top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-40 z-200"
                             onMouseEnter={() => setHoveredNearbyPOI(poi.id)}
                             onMouseLeave={() => {
                               setHoveredNearbyPOI(null);

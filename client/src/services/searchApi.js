@@ -98,7 +98,7 @@ class SearchAPI {
         ...options
       };
       
-      const response = await api.get('/api/search/nearby', { params });
+      const response = await api.get('/search/nearby', { params });
       return response.data;
     } catch (error) {
       console.error('[ERROR] Nearby search failed:', error);

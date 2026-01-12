@@ -38,7 +38,7 @@ from typing import List, Dict, Optional, Any, TYPE_CHECKING
 
 from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..repo.mongo.interfaces import POIRepositoryInterface
-from ..model.mongo.poi import POISearchRequest, POI
+from ..model.mongo.poi import POISearchRequest
 from ..core.clients.elasticsearch_client import ElasticsearchClient
 
 if TYPE_CHECKING:
@@ -269,6 +269,9 @@ class SearchService:
         """
         Search Google Places Nearby API.
         
+        Note: GooglePlacesProvider.nearby_search() already transforms the response
+        to our POI schema, so we just need to add distance calculation.
+        
         Args:
             latitude: Center latitude
             longitude: Center longitude
@@ -278,7 +281,7 @@ class SearchService:
             max_results: Maximum results to fetch
         
         Returns:
-            List of POI dicts transformed to our schema
+            List of POI dicts already in our schema format
         """
         if not self.google_provider:
             return []
@@ -287,23 +290,26 @@ class SearchService:
             # Convert types to Google Places format
             google_types = self._map_types_to_google(types) if types else None
             
-            # Call Google Nearby Search
+            # Call Google Nearby Search - returns already-transformed POIs
             location = {"latitude": latitude, "longitude": longitude}
             radius_meters = int(radius_km * 1000)
             
-            google_results = self.google_provider.nearby_search(
+            pois = self.google_provider.nearby_search(
                 location=location,
                 radius=radius_meters,
                 types=google_types,
                 max_results=max_results
             )
             
-            # Transform Google response to our POI schema
-            pois = []
-            for place in google_results:
-                poi = self._transform_google_to_poi(place, latitude, longitude)
-                if poi:
-                    pois.append(poi)
+            # Add distance to each POI
+            for poi in pois:
+                if poi and poi.get('location'):
+                    coords = poi['location'].get('coordinates', [])
+                    if len(coords) >= 2:
+                        poi_lng, poi_lat = coords[0], coords[1]
+                        poi['_distance_km'] = self._calculate_distance(
+                            latitude, longitude, poi_lat, poi_lng
+                        )
             
             logger.info(f"[GOOGLE] Nearby search: {len(pois)} POIs found")
             return pois
@@ -311,111 +317,6 @@ class SearchService:
         except Exception as e:
             logger.error(f"[GOOGLE] Nearby search failed: {e}")
             return []
-    
-    def _transform_google_to_poi(
-        self,
-        place: Dict[str, Any],
-        search_lat: float,
-        search_lng: float
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Transform Google Places result to our POI schema.
-        
-        Args:
-            place: Google Places API result
-            search_lat: Search center latitude
-            search_lng: Search center longitude
-        
-        Returns:
-            POI dict in our schema format
-        """
-        try:
-            place_id = place.get('place_id') or place.get('id')
-            if not place_id:
-                return None
-            
-            # Extract location
-            location = place.get('location') or place.get('geometry', {}).get('location', {})
-            lat = location.get('lat') or location.get('latitude')
-            lng = location.get('lng') or location.get('longitude')
-            
-            if not lat or not lng:
-                return None
-            
-            # Extract name
-            name = place.get('displayName', {}).get('text') if isinstance(place.get('displayName'), dict) else place.get('name')
-            if not name:
-                return None
-            
-            # Extract types
-            types = place.get('types', [])
-            primary_type = place.get('primaryType') or place.get('primaryTypeDisplayName', {}).get('text') or (types[0] if types else None)
-            
-            # Extract rating
-            rating = place.get('rating', 0)
-            total_reviews = place.get('userRatingCount') or place.get('user_ratings_total', 0)
-            
-            # Extract address
-            address = place.get('formattedAddress') or place.get('formatted_address') or place.get('vicinity', '')
-            
-            # Extract price level
-            price_level = place.get('priceLevel')
-            if price_level:
-                # Map Google price level to our format
-                price_map = {
-                    'PRICE_LEVEL_FREE': 'FREE',
-                    'PRICE_LEVEL_INEXPENSIVE': 'INEXPENSIVE',
-                    'PRICE_LEVEL_MODERATE': 'MODERATE',
-                    'PRICE_LEVEL_EXPENSIVE': 'EXPENSIVE',
-                    'PRICE_LEVEL_VERY_EXPENSIVE': 'VERY_EXPENSIVE'
-                }
-                price_level = price_map.get(price_level, price_level)
-            
-            # Calculate distance if we have search coordinates
-            distance_km = None
-            if search_lat and search_lng:
-                distance_km = self._calculate_distance(search_lat, search_lng, lat, lng)
-            
-            # Build POI dict
-            poi = {
-                "poi_id": place_id,
-                "place_id": place_id,
-                "name": name,
-                "address": address,
-                "location": {
-                    "type": "Point",
-                    "coordinates": [lng, lat]  # GeoJSON format: [lng, lat]
-                },
-                "types": types,
-                "primary_type": primary_type,
-                "rating": rating,
-                "total_reviews": total_reviews,
-                "price_level": price_level,
-                "source": "google_places",
-                "_distance_km": distance_km
-            }
-            
-            # Add photos if available
-            photos = place.get('photos', [])
-            if photos:
-                poi['photos'] = [
-                    {"photo_reference": p.get('name') or p.get('photo_reference')}
-                    for p in photos[:5]
-                ]
-            
-            # Add opening hours if available
-            opening_hours = place.get('currentOpeningHours') or place.get('opening_hours', {})
-            if opening_hours:
-                poi['opening_hours'] = {
-                    "open_now": opening_hours.get('openNow') or opening_hours.get('open_now', False),
-                    "weekday_text": opening_hours.get('weekdayDescriptions') or opening_hours.get('weekday_text', [])
-                }
-            
-            return poi
-            
-        except Exception as e:
-            logger.error(f"[TRANSFORM] Failed to transform Google place: {e}")
-            return None
     
     def _cache_pois(self, pois: List[Dict[str, Any]]) -> int:
         """
@@ -453,24 +354,32 @@ class SearchService:
         """
         Cache a single POI to MongoDB with deduplication.
         
+        The POI dict is expected to be in the format returned by 
+        GooglePlacesProvider.transform_to_poi(), which already matches 
+        our MongoDB POI schema.
+        
         Args:
-            poi: POI dict to cache
+            poi: POI dict from provider (already transformed to our schema)
         
         Returns:
             True if cached successfully, False otherwise
         """
         try:
-            from ..utils.poi_dedupe import generate_dedupe_key
+            # The provider already generates poi_id and dedupe_key
+            dedupe_key = poi.get('dedupe_key')
+            poi_id = poi.get('poi_id')
             
-            # Generate dedupe key
-            coords = poi.get('location', {}).get('coordinates', [0, 0])
-            lng, lat = coords[0], coords[1]
-            
-            dedupe_key = generate_dedupe_key(
-                name=poi.get('name', ''),
-                lat=lat,
-                lng=lng
-            )
+            if not dedupe_key:
+                from ..utils.poi_dedupe import generate_dedupe_key
+                coords = poi.get('location', {}).get('coordinates', [0, 0])
+                lng, lat = coords[0], coords[1]
+                dedupe_key = generate_dedupe_key(
+                    name=poi.get('name', ''),
+                    lat=lat,
+                    lng=lng
+                )
+                poi['dedupe_key'] = dedupe_key
+                poi['poi_id'] = poi_id or f"poi_{dedupe_key}"
             
             # Check if already exists
             existing = self.mongo_repo.get_by_dedupe_key(dedupe_key)
@@ -478,24 +387,23 @@ class SearchService:
                 logger.debug(f"[CACHE] POI already exists in MongoDB: {dedupe_key}")
                 return False
             
-            # Create POI model
-            poi_model = POI(
-                poi_id=poi.get('poi_id'),
-                dedupe_key=dedupe_key,
-                name=poi.get('name'),
-                address=poi.get('address'),
-                location=poi.get('location'),
-                types=poi.get('types', []),
-                primary_type=poi.get('primary_type'),
-                rating=poi.get('rating', 0),
-                total_reviews=poi.get('total_reviews', 0),
-                price_level=poi.get('price_level'),
-                photos=poi.get('photos', []),
-                opening_hours=poi.get('opening_hours'),
-                source=poi.get('source', 'google_places')
-            )
+            # Insert directly to MongoDB (dict already matches our schema)
+            # Use the repository's collection directly since the dict is pre-formatted
+            collection = self.mongo_repo.collection
+            if collection is None:
+                logger.error("[CACHE] MongoDB collection not available")
+                return False
             
-            self.mongo_repo.create(poi_model)
+            # Ensure required fields are present
+            if 'metadata' not in poi:
+                from datetime import datetime
+                poi['metadata'] = {
+                    'created_at': datetime.utcnow(),
+                    'updated_at': datetime.utcnow()
+                }
+            
+            collection.insert_one(poi)
+            logger.debug(f"[CACHE] POI cached to MongoDB: {poi_id}")
             return True
             
         except Exception as e:

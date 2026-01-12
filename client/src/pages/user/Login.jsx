@@ -1,9 +1,25 @@
 import { motion } from 'framer-motion';
-import { Loader2, Lock, Mail, X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2, Lock, Mail, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthConfigApi } from '../../services/authApi';
+
+// Detect if running in WebView (Instagram, Facebook, etc.)
+const isWebView = () => {
+  const ua = navigator.userAgent || navigator.vendor || window.opera;
+  // Common WebView indicators
+  return (
+    ua.includes('FBAN') || // Facebook
+    ua.includes('FBAV') || // Facebook
+    ua.includes('Instagram') ||
+    ua.includes('Twitter') ||
+    ua.includes('Line') ||
+    ua.includes('wv') || // Android WebView
+    (ua.includes('iPhone') && !ua.includes('Safari')) || // iOS WebView
+    window.navigator.standalone === true
+  );
+};
 
 // Load Google Sign-In script
 const loadGoogleScript = () => {
@@ -34,6 +50,12 @@ export default function Login({ isModal = false, onClose }) {
   const [passwordError, setPasswordError] = useState('');
   const [googleClientId, setGoogleClientId] = useState(null);
   const [googleBlocked, setGoogleBlocked] = useState(false);
+  const [isInWebView, setIsInWebView] = useState(false);
+
+  // Check if in WebView on mount
+  useEffect(() => {
+    setIsInWebView(isWebView());
+  }, []);
 
   // Fetch Google Client ID from backend
   useEffect(() => {
@@ -53,6 +75,12 @@ export default function Login({ isModal = false, onClose }) {
   // Initialize Google Sign-In
   useEffect(() => {
     if (!googleClientId) return;
+    
+    // Skip Google Sign-In in WebView (not supported)
+    if (isInWebView) {
+      setGoogleBlocked(true);
+      return;
+    }
 
     loadGoogleScript().then(() => {
       if (window.google) {
@@ -252,9 +280,13 @@ export default function Login({ isModal = false, onClose }) {
 
           <div className="flex justify-center">
             {googleBlocked ? (
-              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 rounded-lg">
-                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                <span>Google Sign-In bị chặn. Hãy tắt ad blocker hoặc dùng email đăng nhập.</span>
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 rounded-lg text-center">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>
+                  {isInWebView 
+                    ? 'Mở bằng trình duyệt (Chrome/Safari) để dùng Google Sign-In.' 
+                    : 'Google Sign-In bị chặn. Hãy tắt ad blocker hoặc dùng email.'}
+                </span>
               </div>
             ) : (
               <div id="googleSignInButton" className="flex w-full max-w-xs items-center justify-center" />

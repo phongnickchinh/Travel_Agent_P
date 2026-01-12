@@ -234,7 +234,9 @@ class SearchService:
                         # Cache new POIs to MongoDB + ES
                         cached_count = self._cache_pois(new_pois)
                         
-                        # Add to results
+                        # Add to results (strip _original_poi before adding)
+                        for poi in new_pois:
+                            poi.pop('_original_poi', None)
                         results.extend(new_pois)
                         total += len(new_pois)
                         source = "hybrid" if source != "google_api" else "google_api"
@@ -301,18 +303,27 @@ class SearchService:
                 max_results=max_results
             )
             
-            # Add distance to each POI
+            # Transform POIs to frontend-friendly format and add distance
+            transformed_pois = []
             for poi in pois:
-                if poi and poi.get('location'):
-                    coords = poi['location'].get('coordinates', [])
-                    if len(coords) >= 2:
-                        poi_lng, poi_lat = coords[0], coords[1]
-                        poi['_distance_km'] = self._calculate_distance(
+                if poi:
+                    # Transform to frontend format (flat latitude/longitude)
+                    frontend_poi = self._transform_poi_for_frontend(poi)
+                    
+                    # Calculate distance
+                    poi_lat = frontend_poi.get('latitude', 0)
+                    poi_lng = frontend_poi.get('longitude', 0)
+                    if poi_lat and poi_lng:
+                        frontend_poi['_distance_km'] = self._calculate_distance(
                             latitude, longitude, poi_lat, poi_lng
                         )
+                    
+                    # Also keep original POI for caching (MongoDB/ES need provider format)
+                    frontend_poi['_original_poi'] = poi
+                    transformed_pois.append(frontend_poi)
             
-            logger.info(f"[GOOGLE] Nearby search: {len(pois)} POIs found")
-            return pois
+            logger.info(f"[GOOGLE] Nearby search: {len(transformed_pois)} POIs found")
+            return transformed_pois
             
         except Exception as e:
             logger.error(f"[GOOGLE] Nearby search failed: {e}")
@@ -321,6 +332,9 @@ class SearchService:
     def _cache_pois(self, pois: List[Dict[str, Any]]) -> int:
         """
         Cache POIs to both MongoDB and Elasticsearch.
+        
+        POIs may be in frontend format (with _original_poi) or provider format.
+        Uses _original_poi for caching if available.
         
         Args:
             pois: List of POI dicts to cache
@@ -335,11 +349,14 @@ class SearchService:
         
         for poi in pois:
             try:
+                # Use original provider format if available (for proper MongoDB/ES schema)
+                original_poi = poi.get('_original_poi', poi)
+                
                 # Cache to MongoDB (primary storage)
-                mongo_success = self._cache_poi_to_mongodb(poi)
+                mongo_success = self._cache_poi_to_mongodb(original_poi)
                 
                 # Cache to Elasticsearch (for fast search)
-                es_success = self._cache_poi_to_es(poi)
+                es_success = self._cache_poi_to_es(original_poi)
                 
                 if mongo_success or es_success:
                     cached_count += 1
@@ -466,6 +483,139 @@ class SearchService:
                 google_types.append(mapped)
         
         return google_types
+    
+    def _transform_poi_for_frontend(self, poi: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Transform provider POI (GeoJSON format) to frontend-friendly format.
+        
+        The provider returns:
+        - location: {type: "Point", coordinates: [lng, lat]}
+        - ratings: {average, count}
+        - address: {full_address, ...}
+        
+        Frontend expects:
+        - location: {latitude, longitude}
+        - latitude, longitude (flat)
+        - rating, total_reviews (flat)
+        - address (string)
+        
+        Args:
+            poi: POI dict from GooglePlacesProvider.transform_to_poi()
+        
+        Returns:
+            Frontend-friendly POI dict
+        """
+        # Extract location from GeoJSON format
+        location = poi.get('location', {})
+        lat = 0.0
+        lng = 0.0
+        
+        if isinstance(location, dict):
+            if 'coordinates' in location:
+                coords = location.get('coordinates', [0, 0])
+                if len(coords) >= 2:
+                    lng = coords[0]
+                    lat = coords[1]
+            elif 'latitude' in location:
+                lat = location.get('latitude', 0.0)
+                lng = location.get('longitude', 0.0)
+        
+        # Extract ratings
+        ratings = poi.get('ratings', {})
+        rating = 0.0
+        total_reviews = 0
+        if isinstance(ratings, dict):
+            rating = ratings.get('average', 0.0)
+            total_reviews = ratings.get('count', 0)
+        
+        # Extract address
+        address = poi.get('address', {})
+        address_str = ''
+        if isinstance(address, dict):
+            address_str = address.get('full_address', address.get('short_address', ''))
+        elif isinstance(address, str):
+            address_str = address
+        
+        # Extract description
+        description = poi.get('description', {})
+        description_str = ''
+        if isinstance(description, dict):
+            description_str = description.get('short', description.get('long', ''))
+        elif isinstance(description, str):
+            description_str = description
+        
+        # Extract pricing
+        pricing = poi.get('pricing', {})
+        price_level = ''
+        if isinstance(pricing, dict):
+            price_level = pricing.get('level', '')
+        
+        # Extract contact
+        contact = poi.get('contact', {})
+        google_maps_uri = ''
+        if isinstance(contact, dict):
+            google_maps_uri = contact.get('google_maps_uri', '')
+        
+        # Extract photos
+        images = poi.get('images', [])
+        photos = []
+        photo_reference = None
+        if isinstance(images, list):
+            for img in images[:5]:
+                if isinstance(img, dict):
+                    ref = img.get('photo_reference', img.get('url', ''))
+                    if ref:
+                        photos.append(ref)
+                        if not photo_reference:
+                            photo_reference = ref
+        
+        # Extract types
+        types = poi.get('categories', poi.get('types', []))
+        primary_type = ''
+        google_data = poi.get('google_data', {})
+        if google_data:
+            primary_type = google_data.get('primary_type', '')
+        if not primary_type and types:
+            primary_type = types[0] if isinstance(types, list) and types else ''
+        
+        return {
+            'poi_id': poi.get('poi_id'),
+            'dedupe_key': poi.get('dedupe_key'),
+            'name': poi.get('name', ''),
+            'name_unaccented': poi.get('name_unaccented', ''),
+            
+            # Flat location for frontend
+            'latitude': lat,
+            'longitude': lng,
+            'location': {
+                'latitude': lat,
+                'longitude': lng
+            },
+            
+            'address': address_str,
+            
+            'rating': rating,
+            'total_reviews': total_reviews,
+            
+            'types': types,
+            'primary_type': primary_type,
+            'category': primary_type or (types[0] if types else ''),
+            
+            'price_level': price_level,
+            
+            'description': description_str,
+            
+            'photo_reference': photo_reference,
+            'photos': photos,
+            'photos_count': len(images) if isinstance(images, list) else 0,
+            
+            'google_maps_uri': google_maps_uri,
+            
+            'opening_hours': poi.get('opening_hours', {}),
+            'amenities': poi.get('amenities', []),
+            
+            'provider': 'google_places'
+        }
     
     def _calculate_distance(self, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         """

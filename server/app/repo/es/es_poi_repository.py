@@ -466,64 +466,177 @@ class ESPOIRepository(ESPOIRepositoryInterface):
     
     def _transform_to_es_document(self, poi_data: Dict) -> Dict:
         """
-        Transform POI data to ES document format
+        Transform POI data to ES document format.
         
-        Flattens nested structures for better indexing
+        Handles BOTH formats:
+        1. GooglePlacesProvider format (GeoJSON location, nested ratings/address)
+        2. Legacy format (flat location, flat rating)
         
         Args:
-            poi_data: Raw POI dictionary
+            poi_data: POI dictionary from provider or MongoDB
             
         Returns:
-            ES-optimized document dictionary
+            ES-optimized document dictionary matching ES index mapping
         """
+        # === LOCATION: Handle both GeoJSON and flat formats ===
         location = poi_data.get('location', {})
+        lat = 0.0
+        lon = 0.0
+        
+        if isinstance(location, dict):
+            # GeoJSON format from GooglePlacesProvider: {type: "Point", coordinates: [lng, lat]}
+            if 'coordinates' in location:
+                coords = location.get('coordinates', [0, 0])
+                if len(coords) >= 2:
+                    lon = coords[0]  # GeoJSON: [lng, lat]
+                    lat = coords[1]
+            # Flat format: {latitude: ..., longitude: ...}
+            elif 'latitude' in location:
+                lat = location.get('latitude', 0.0)
+                lon = location.get('longitude', 0.0)
+            # ES format: {lat: ..., lon: ...}
+            elif 'lat' in location:
+                lat = location.get('lat', 0.0)
+                lon = location.get('lon', 0.0)
+        
+        # === ADDRESS: Handle nested and flat formats ===
         address = poi_data.get('address', {})
-        rating_data = poi_data.get('rating', {})
+        address_str = ''
+        if isinstance(address, dict):
+            # Provider format: {full_address: ..., short_address: ...}
+            address_str = address.get('full_address', address.get('formatted', ''))
+        elif isinstance(address, str):
+            address_str = address
+        
+        # === RATING: Handle nested 'ratings' and flat 'rating' formats ===
+        ratings = poi_data.get('ratings', {})
+        rating_value = 0.0
+        total_reviews = 0
+        
+        if isinstance(ratings, dict):
+            # Provider format: {average: ..., count: ...}
+            rating_value = ratings.get('average', 0.0)
+            total_reviews = ratings.get('count', 0)
+        else:
+            # Flat format or legacy
+            rating_data = poi_data.get('rating', {})
+            if isinstance(rating_data, dict):
+                rating_value = rating_data.get('value', 0.0)
+                total_reviews = rating_data.get('total_reviews', 0)
+            else:
+                rating_value = float(rating_data) if rating_data else 0.0
+                total_reviews = poi_data.get('total_reviews', poi_data.get('user_ratings_total', 0))
+        
+        # === CONTACT: Handle nested format ===
         contact = poi_data.get('contact', {})
+        phone = contact.get('phone', '') if isinstance(contact, dict) else ''
+        website = contact.get('website', '') if isinstance(contact, dict) else ''
+        google_maps_uri = contact.get('google_maps_uri', '') if isinstance(contact, dict) else poi_data.get('google_maps_uri', '')
+        
+        # === DESCRIPTION: Handle nested format ===
         description = poi_data.get('description', {})
-        photos = poi_data.get('photos', [])
+        description_str = ''
+        if isinstance(description, dict):
+            description_str = description.get('long', description.get('short', ''))
+        elif isinstance(description, str):
+            description_str = description
+        
+        # === PRICING: Handle nested format ===
+        pricing = poi_data.get('pricing', {})
+        price_level = ''
+        if isinstance(pricing, dict):
+            price_level = pricing.get('level', '')
+        else:
+            price_level = poi_data.get('price_level', '')
+        
+        # === PHOTOS: Handle 'images' (provider) or 'photos' (legacy) ===
+        photos = poi_data.get('images', poi_data.get('photos', []))
+        photo_refs = []
+        if isinstance(photos, list):
+            for p in photos[:5]:
+                if isinstance(p, dict):
+                    ref = p.get('photo_reference', p.get('url', p.get('reference', '')))
+                    if ref:
+                        photo_refs.append(ref)
+                elif isinstance(p, str):
+                    photo_refs.append(p)
+        
+        # === REVIEWS ===
         reviews = poi_data.get('reviews', [])
+        google_data = poi_data.get('google_data', {})
+        if not reviews and google_data:
+            reviews = google_data.get('reviews', [])
+        
+        # === PROVIDER: Handle nested format ===
+        provider = poi_data.get('provider', {})
+        provider_name = ''
+        provider_id = ''
+        if isinstance(provider, dict):
+            provider_name = provider.get('name', 'google_places')
+            provider_id = provider.get('place_id', '')
+        else:
+            provider_name = str(provider) if provider else 'google_places'
+            provider_id = poi_data.get('provider_id', '')
+        
+        # === TYPES: Use categories if types not available ===
+        types = poi_data.get('types', poi_data.get('categories', []))
+        primary_type = poi_data.get('primary_type', '')
+        if not primary_type and google_data:
+            primary_type = google_data.get('primary_type', '')
+        if not primary_type and types:
+            primary_type = types[0] if isinstance(types, list) and types else ''
+        
+        # === METADATA: Get timestamps ===
+        metadata = poi_data.get('metadata', {})
+        created_at = metadata.get('created_at') if isinstance(metadata, dict) else poi_data.get('created_at')
+        updated_at = metadata.get('updated_at') if isinstance(metadata, dict) else poi_data.get('updated_at')
+        
+        # === BUSINESS STATUS ===
+        business_status = poi_data.get('business_status', '')
+        if not business_status and google_data:
+            business_status = google_data.get('business_status', '')
+        
         es_doc = {
             'poi_id': poi_data.get('poi_id') or poi_data.get('_id'),
             'dedupe_key': poi_data.get('dedupe_key'),
-            'provider': poi_data.get('provider'),
-            'provider_id': poi_data.get('provider_id'),
+            'provider': provider_name,
+            'provider_id': provider_id,
             
             'name': poi_data.get('name', ''),
-            'types': poi_data.get('types', []),
-            'primary_type': poi_data.get('primary_type', ''),
+            'types': types,
+            'primary_type': primary_type,
             
-            # Geo point (ES format: {"lat": ..., "lon": ...})
+            # ES geo_point format: {"lat": ..., "lon": ...}
             'location': {
-                'lat': location.get('latitude', 0.0),
-                'lon': location.get('longitude', 0.0)
+                'lat': lat,
+                'lon': lon
             },
             
-            'address': address.get('formatted', ''),
+            'address': address_str,
             
-            'rating': rating_data.get('value', 0.0),
-            'total_reviews': rating_data.get('total_reviews', 0),
+            'rating': rating_value,
+            'total_reviews': total_reviews,
             
-            'price_level': poi_data.get('price_level', ''),
+            'price_level': price_level,
             
-            'phone': contact.get('phone', ''),
-            'website': contact.get('website', ''),
+            'phone': phone,
+            'website': website,
             
-            'description': description.get('long', description.get('short', '')),
+            'description': description_str,
             
-            'business_status': poi_data.get('business_status', ''),
-            'google_maps_uri': poi_data.get('google_maps_uri', ''),
+            'business_status': business_status,
+            'google_maps_uri': google_maps_uri,
             
-            'photos_count': len(photos),
-            'photos': [p.get('reference', '') for p in photos[:5]],
+            'photos_count': len(photos) if isinstance(photos, list) else 0,
+            'photos': photo_refs,
             
-            'reviews_count': len(reviews),
+            'reviews_count': len(reviews) if isinstance(reviews, list) else 0,
             
             'amenities': poi_data.get('amenities', {}),
             'opening_hours': poi_data.get('opening_hours', {}),
             
-            'created_at': poi_data.get('created_at'),
-            'updated_at': poi_data.get('updated_at'),
+            'created_at': created_at,
+            'updated_at': updated_at,
             'fetched_at': poi_data.get('fetched_at')
         }
         

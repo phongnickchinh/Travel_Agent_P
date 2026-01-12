@@ -1820,7 +1820,6 @@ export default function PlanDetail() {
                         <Search className="w-5 h-5 text-gray-600 group-hover:text-brand-primary" />
                       </motion.button>
                     </Tooltip>
-                    </motion.button>
                   )}
 
                   {/* Search Panel */}

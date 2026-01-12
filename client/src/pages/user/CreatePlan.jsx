@@ -496,7 +496,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl border border-brand-primary dark:bg-gray-900 dark:border-brand-primary"
+        className="w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-brand-primary dark:bg-gray-900 dark:border-brand-primary"
       >
         <div className="flex items-start justify-between gap-3 border-b border-brand-primary/20 px-5 py-4 dark:border-brand-primary/30">
           <div className="space-y-1">

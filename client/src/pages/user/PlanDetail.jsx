@@ -90,23 +90,21 @@ const mapOptions = {
 };
 
 // Nearby search category options (matches CreatePlan interests)
-// Maps interest IDs to Google Places API types
+// Backend converts these IDs to Google Places API types via type_mapping.py
 const NEARBY_CATEGORY_OPTIONS = [
-  { id: 'beach', label: 'Beach', Icon: Palmtree, types: 'natural_feature' },
-  { id: 'culture', label: 'Culture', Icon: Landmark, types: 'museum,art_gallery,cultural_center' },
-  { id: 'food', label: 'Food', Icon: Utensils, types: 'restaurant,food' },
-  { id: 'cafe', label: 'Cafe', Icon: Coffee, types: 'cafe,coffee_shop,bakery' },
-  { id: 'nightlife', label: 'Nightlife', Icon: Moon, types: 'night_club,bar' },
-  { id: 'nature', label: 'Nature', Icon: TreePine, types: 'park,national_park,campground' },
-  { id: 'adventure', label: 'Adventure', Icon: Mountain, types: 'amusement_park,tourist_attraction' },
-  { id: 'shopping', label: 'Shopping', Icon: ShoppingBag, types: 'shopping_mall,store,market' },
-  { id: 'relaxation', label: 'Relaxation', Icon: Sparkles, types: 'spa,beauty_salon' },
-  { id: 'history', label: 'History', Icon: Scroll, types: 'museum,historical_landmark,monument' },
-  { id: 'photography', label: 'Photography', Icon: Camera, types: 'tourist_attraction,landmark,scenic_point' },
-  { id: 'family', label: 'Family', Icon: Users, types: 'amusement_park,zoo,aquarium,playground' },
-  { id: 'romantic', label: 'Romantic', Icon: Heart, types: 'restaurant,spa,scenic_point' },
-  { id: 'temple', label: 'Temple', Icon: Church, types: 'hindu_temple,buddhist_temple,church,mosque' },
-  { id: 'hotel', label: 'Hotel', Icon: Bed, types: 'lodging,hotel,resort_hotel' },
+  { id: 'beach', label: 'Beach', Icon: Palmtree },
+  { id: 'culture', label: 'Culture', Icon: Landmark },
+  { id: 'food', label: 'Food', Icon: Utensils },
+  { id: 'cafe', label: 'Cafe', Icon: Coffee },
+  { id: 'nightlife', label: 'Nightlife', Icon: Moon },
+  { id: 'nature', label: 'Nature', Icon: TreePine },
+  { id: 'adventure', label: 'Adventure', Icon: Mountain },
+  { id: 'shopping', label: 'Shopping', Icon: ShoppingBag },
+  { id: 'relaxation', label: 'Relaxation', Icon: Sparkles },
+  { id: 'history', label: 'History', Icon: Scroll },
+  { id: 'photography', label: 'Photography', Icon: Camera },
+  { id: 'family', label: 'Family', Icon: Users },
+  { id: 'romantic', label: 'Romantic', Icon: Heart },
 ];
 
 // POI type to icon mapping (expanded)
@@ -1815,11 +1813,11 @@ export default function PlanDetail() {
                           <div className="grid grid-cols-5 gap-1.5">
                             {NEARBY_CATEGORY_OPTIONS.map((cat) => {
                               const IconComponent = cat.Icon;
-                              const isSelected = nearbyCategory === cat.types;
+                              const isSelected = nearbyCategory === cat.id;
                               return (
                                 <button
                                   key={cat.id}
-                                  onClick={() => setNearbyCategory(isSelected ? '' : cat.types)}
+                                  onClick={() => setNearbyCategory(isSelected ? '' : cat.id)}
                                   title={cat.label}
                                   className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-all ${
                                     isSelected

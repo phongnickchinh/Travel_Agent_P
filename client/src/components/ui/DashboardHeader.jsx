@@ -41,7 +41,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
 
   return (
     <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-20">
-      <div className="flex items-center justify-between px-8 py-4">
+      <div className="flex items-center justify-between px-4 lg:px-6 xl:px-8 py-3 lg:py-4">
         {/* Mobile Menu Toggle */}
         <button
           onClick={onMenuToggle}
@@ -59,7 +59,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
           whileHover={{ scale: 1.02, y: -1 }}
           whileTap={{ scale: 0.97 }}
           onClick={onNewPlan}
-          className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white rounded-full font-semibold hover:bg-brand-primary hover:border-brand-primary hover:text-white dark:hover:bg-brand-primary dark:hover:border-brand-primary transition-all mr-6"
+          className="flex items-center gap-1.5 lg:gap-2 px-4 lg:px-5 xl:px-6 py-2 lg:py-2.5 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white rounded-full font-semibold hover:bg-brand-primary hover:border-brand-primary hover:text-white dark:hover:bg-brand-primary dark:hover:border-brand-primary transition-all mr-4 lg:mr-6 text-sm lg:text-base"
         >
           <Plus className="w-5 h-5" />
           <span>New Plan</span>

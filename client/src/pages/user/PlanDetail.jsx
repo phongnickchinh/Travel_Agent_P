@@ -31,7 +31,9 @@ import {
   Heart,
   Hospital,
   Landmark,
+  List,
   Loader2,
+  Map,
   MapPin,
   Moon,
   Mountain,
@@ -342,6 +344,7 @@ export default function PlanDetail() {
   const [loading, setLoading] = useState(true);
   const [hoveredPOI, setHoveredPOI] = useState(null); // Changed to hover-based
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('itinerary'); // Mobile tab: 'itinerary' | 'map'
   const [showInfoPanel, setShowInfoPanel] = useState(true);
   const [shareState, setShareState] = useState({ isPublic: false, shareToken: null, shareUrl: null });
   const [shareLoading, setShareLoading] = useState(false);
@@ -1171,10 +1174,40 @@ export default function PlanDetail() {
         </div>
       </header>
 
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-[57px] z-10">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('itinerary')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+              activeTab === 'itinerary'
+                ? 'text-brand-primary border-b-2 border-brand-primary bg-brand-muted/30'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Itinerary
+          </button>
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+              activeTab === 'map'
+                ? 'text-brand-primary border-b-2 border-brand-primary bg-brand-muted/30'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            <Map className="w-4 h-4" />
+            Map
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-73px)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-57px-45px)] lg:h-[calc(100vh-73px)]">
         {/* Left: Scrollable Itinerary - All Days */}
-        <main className="w-[45%] xl:w-[40%] overflow-y-auto px-4 lg:px-6 xl:px-8 py-4 lg:py-6 min-w-[320px] border-r border-gray-200 dark:border-gray-700">
+        <main className={`${
+          activeTab === 'itinerary' ? 'block' : 'hidden'
+        } lg:block w-full lg:w-[45%] xl:w-[40%] overflow-y-auto px-4 lg:px-6 xl:px-8 py-4 lg:py-6 lg:min-w-[320px] lg:border-r border-gray-200 dark:border-gray-700 h-full`}>
           <div className="max-w-3xl mx-auto space-y-8">
             {plan.itinerary?.map((day, dayIndex) => {
               // Calculate starting index for this day
@@ -1250,7 +1283,9 @@ export default function PlanDetail() {
         </main>
 
         {/* Right: Sticky Google Map with Info Panels */}
-        <aside className="w-[55%] xl:w-[60%] bg-white dark:bg-gray-800 shrink-0 sticky top-18.25 h-[calc(100vh-73px)]">
+        <aside className={`${
+          activeTab === 'map' ? 'block' : 'hidden'
+        } lg:block w-full lg:w-[55%] xl:w-[60%] bg-white dark:bg-gray-800 lg:shrink-0 lg:sticky lg:top-18.25 h-full lg:h-[calc(100vh-73px)]`}>
           {loadError && (
             <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
               Error loading Google Maps

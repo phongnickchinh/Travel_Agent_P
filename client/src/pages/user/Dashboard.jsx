@@ -207,8 +207,10 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen w-full bg-gray-50 dark:bg-black">
-      {/* Sidebar */}
+      {/* Sidebar - desktop always visible, mobile slide-out drawer */}
       <DashboardSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         recentPlans={recentPlans}
         onPlanClick={handlePlanClick}
       />

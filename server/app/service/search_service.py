@@ -40,6 +40,7 @@ from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..repo.mongo.interfaces import POIRepositoryInterface
 from ..model.mongo.poi import POISearchRequest
 from ..core.clients.elasticsearch_client import ElasticsearchClient
+from ..providers.type_mapping import map_user_interests_to_google_types
 
 if TYPE_CHECKING:
     from ..providers.places.google_places_provider import GooglePlacesProvider
@@ -651,6 +652,7 @@ class SearchService:
         longitude: float,
         radius_km: float = 5.0,
         types: Optional[List[str]] = None,
+        interests: Optional[List[str]] = None,
         min_rating: Optional[float] = None,
         limit: int = 20
     ) -> Dict[str, Any]:
@@ -663,7 +665,8 @@ class SearchService:
             latitude: Center point latitude
             longitude: Center point longitude
             radius_km: Search radius in km (default: 5)
-            types: POI types filter
+            types: POI types filter (Google Place Types, direct pass-through)
+            interests: User interest IDs (e.g., 'beach', 'culture', 'food') - converted to Google types
             min_rating: Minimum rating
             limit: Max results (default: 20)
         
@@ -680,10 +683,18 @@ class SearchService:
             ...     latitude=16.0544,
             ...     longitude=108.2428,
             ...     radius_km=2,
-            ...     types=["restaurant", "cafe"]
+            ...     interests=["beach", "food"]  # Converted to Google types internally
             ... )
         """
-        logger.info(f"[LOCATION] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km")
+        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km")
+        
+        # Convert user interests to Google Place Types if provided
+        search_types = types  # Direct pass-through if types provided
+        if interests and not types:
+            google_types = map_user_interests_to_google_types(interests)
+            if google_types:
+                search_types = google_types
+                logger.info(f"[NEARBY] Mapped interests {interests} -> Google types {search_types}")
         
         # Use search with empty query (geo-only)
         results = self.search(
@@ -691,7 +702,7 @@ class SearchService:
             latitude=latitude,
             longitude=longitude,
             radius_km=radius_km,
-            types=types,
+            types=search_types,
             min_rating=min_rating,
             sort_by="distance",
             limit=limit

@@ -21,7 +21,6 @@ from . import search_bp
 from app.service.search_service import SearchService
 from app.utils.response_helpers import build_error_response, build_success_response
 from app.core.di_container import DIContainer
-from app.providers.type_mapping import map_user_interests_to_google_types
 
 logger = logging.getLogger(__name__)
 
@@ -319,25 +318,18 @@ class SearchController:
                     400
                 )
             
-            # Parse types (frontend sends interest IDs like 'beach', 'culture', 'food')
-            # Convert to Google Place Types using type_mapping
-            types_list = None
-            if types:
-                interest_list = [t.strip() for t in types.split(',') if t.strip()]
-                # Map user interests to Google Place Types
-                google_types = map_user_interests_to_google_types(interest_list)
-                if google_types:
-                    types_list = google_types
-                    logger.info(f"[LOCATION] Mapped interests {interest_list} -> Google types {types_list}")
+            # Parse interests (frontend sends interest IDs like 'beach', 'culture', 'food')
+            # Service will convert to Google Place Types
+            interests_list = [t.strip() for t in types.split(',') if t.strip()] if types else None
             
             # Call service
-            logger.info(f"[LOCATION] Get nearby: lat={lat}, lng={lng}, radius={radius}km, types={types_list}")
+            logger.info(f"[NEARBY] Get nearby: lat={lat}, lng={lng}, radius={radius}km, interests={interests_list}")
             
             result = self.search_service.get_nearby(
                 latitude=lat,
                 longitude=lng,
                 radius_km=radius,
-                types=types_list,
+                interests=interests_list,
                 min_rating=min_rating,
                 limit=limit
             )

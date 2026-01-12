@@ -24,15 +24,18 @@ import {
   ClipboardList,
   Clock,
   Coffee,
+  Copy,
   CreditCard,
   Dumbbell,
   Film,
   Footprints,
+  Globe,
   Heart,
   Hospital,
   Landmark,
   List,
   Loader2,
+  Lock,
   Map,
   MapPin,
   Moon,
@@ -1150,7 +1153,7 @@ export default function PlanDetail() {
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 } ${shareLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                <Share2 className="w-4 h-4" />
+                {shareState.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                 <span className="hidden lg:inline text-sm font-semibold">
                   {shareState.isPublic ? 'Public' : 'Private'}
                 </span>
@@ -1169,7 +1172,7 @@ export default function PlanDetail() {
                   : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'
               }`}
             >
-              <Share2 className="w-4 h-4" />
+              <Copy className="w-4 h-4" />
               <span className="hidden lg:inline text-sm font-semibold">
                 {shareCopied ? 'Copied!' : 'Copy link'}
               </span>
@@ -1355,6 +1358,28 @@ export default function PlanDetail() {
                     setHoveredPOI(null);
                   };
                   
+                  // Handle marker click - toggle info window for mobile (no hover on touch)
+                  const handleMarkerClick = () => {
+                    // Toggle: if already hovered, close it; otherwise open it
+                    if (hoveredPOI === poi.id) {
+                      setHoveredPOI(null);
+                    } else {
+                      setHoveredPOI(poi.id);
+                      // Lazy load image if not cached
+                      if (poi.imageUrl && !hoveredImageCache[poi.id]) {
+                        const fullUrl = buildPhotoUrl(poi.imageUrl, googleMapsApiKey);
+                        preloadAndCacheImage(fullUrl, 'poi_featured')
+                          .then((url) => {
+                            setHoveredImageCache(prev => ({ ...prev, [poi.id]: url }));
+                          })
+                          .catch((err) => {
+                            console.error('Failed to load POI image:', err);
+                            setHoveredImageCache(prev => ({ ...prev, [poi.id]: fullUrl }));
+                          });
+                      }
+                    }
+                  };
+                  
                   return (
                     <OverlayView
                       key={poi.id}
@@ -1372,6 +1397,7 @@ export default function PlanDetail() {
                         className="relative cursor-pointer flex flex-col items-center"
                         onMouseEnter={handleMarkerEnter}
                         onMouseLeave={handleMarkerLeave}
+                        onClick={handleMarkerClick}
                         style={{ 
                           position: 'relative', 
                           zIndex: isHovered ? 100 : 1,

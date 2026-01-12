@@ -290,7 +290,7 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             
             search_query = {
                 "bool": {
-                    "must": must_clauses if must_clauses else {"match_all": {}},
+                    "must": must_clauses if must_clauses else [{"match_all": {}}],
                     "filter": filter_clauses
                 }
             }

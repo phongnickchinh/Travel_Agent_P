@@ -229,6 +229,32 @@ class POIRepository(POIRepositoryInterface):
             logger.error(f"[ERROR] Failed to get POI by Google ID {google_place_id}: {e}")
             return None
     
+    def get_by_dedupe_key(self, dedupe_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Get POI by deduplication key.
+        
+        Args:
+            dedupe_key: Unique deduplication key (normalized_name + geohash)
+            
+        Returns:
+            POI document if found, None otherwise
+            
+        Example:
+            poi = poi_repo.get_by_dedupe_key("mykhebeach_wecq6uk")
+            if poi:
+                print(f"Found existing POI: {poi['name']}")
+        """
+        if self.collection is None:
+            return None
+        
+        try:
+            poi = self.collection.find_one({"dedupe_key": dedupe_key})
+            return poi
+        
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get POI by dedupe_key {dedupe_key}: {e}")
+            return None
+    
     def get_by_ids(self, poi_ids: List[str]) -> Dict[str, Dict[str, Any]]:
         """
         Get multiple POIs by their IDs.

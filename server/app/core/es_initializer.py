@@ -93,8 +93,8 @@ class ESInitializer:
         
         1. Check ES connection
         2. Create indexes (POI + Autocomplete)
-        3. Sync POI data from MongoDB
-        4. Sync Autocomplete data from MongoDB
+        3. Sync POI data from MongoDB (always, check count first)
+        4. Sync Autocomplete data from MongoDB (always, check count first)
         5. Validate mappings
         
         Returns:
@@ -114,9 +114,8 @@ class ESInitializer:
             # Create/verify Autocomplete index
             auto_created = self._ensure_autocomplete_index()
             
-            # Sync POI data
-            if poi_created:
-                self.sync_pois()
+            # Sync POI data (always sync, will skip if already up-to-date)
+            self.sync_pois()
             
             # Sync Autocomplete data
             self.sync_autocomplete()
@@ -177,6 +176,8 @@ class ESInitializer:
         """
         Sync all POIs from MongoDB to Elasticsearch.
         
+        Will skip if ES already has >= MongoDB count (already synced).
+        
         Args:
             batch_size: Number of POIs to index per batch
             
@@ -195,6 +196,17 @@ class ESInitializer:
             if total_pois == 0:
                 logger.info("[ES_INIT] No POIs found in MongoDB to sync")
                 return (0, 0)
+            
+            # Check ES count first - skip if already synced
+            try:
+                es_count = self.poi_repo.count()
+                if es_count >= total_pois:
+                    logger.info(f"[ES_INIT] POI ES already synced ({es_count} items, MongoDB has {total_pois})")
+                    return (es_count, 0)
+                else:
+                    logger.info(f"[ES_INIT] POI ES has {es_count} items, MongoDB has {total_pois} - syncing {total_pois - es_count} new items")
+            except Exception as e:
+                logger.warning(f"[ES_INIT] Could not get ES count, proceeding with full sync: {e}")
             
             batch = []
             indexed_count = 0

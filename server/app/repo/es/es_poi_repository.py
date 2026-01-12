@@ -140,6 +140,22 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             logger.error(f"Failed to delete index: {e}")
             return False
     
+    def count(self) -> int:
+        """
+        Get total document count in POI index.
+        
+        Returns:
+            Number of documents in the index
+        """
+        try:
+            result = self.es.count(index=self.INDEX_NAME)
+            return result.get('count', 0)
+        except NotFoundError:
+            return 0
+        except Exception as e:
+            logger.error(f"Failed to count POIs: {e}")
+            return 0
+    
     def index_poi(self, poi_data: Dict, poi_id: Optional[str] = None) -> bool:
         """
         Index a single POI document

@@ -123,9 +123,11 @@ def setup_dependencies():
     def create_search_service(container):
         poi_repo = container.resolve(POIRepositoryInterface.__name__)
         es_repo = container.resolve(ESPOIRepositoryInterface.__name__)
+        google_provider = GooglePlacesProvider()
         return SearchService(
             poi_repo=poi_repo,
-            es_repo=es_repo
+            es_repo=es_repo,
+            google_provider=google_provider
         )
     
     def create_planner_service(container):

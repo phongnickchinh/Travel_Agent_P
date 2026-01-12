@@ -1,34 +1,55 @@
 """
-Search Service - Elasticsearch Search Wrapper
-==============================================
+Search Service - Hybrid Search with ES + MongoDB + Google API
+=============================================================
 
 Purpose:
-- High-level API for Elasticsearch POI search
-- Geo-distance search
-- Full-text search with filters
-- Graceful fallback to MongoDB
+- High-level API for POI search
+- ES-First strategy: Query Elasticsearch first (5-15ms)
+- MongoDB Fallback: If ES is down, use MongoDB (50ms)
+- Google API Fallback: If local cache insufficient, call Google Nearby Search
+- Auto-cache: Cache Google results to both MongoDB and ES
 
-Note: Autocomplete functionality moved to AutocompleteService (2025-01 migration)
+Architecture:
+    User Query
+           ↓
+    ES Cache (5-15ms) ──→ Enough results? ──→ YES ──→ Return
+           │                    │
+           │                   NO
+           ▼                    ↓
+    MongoDB Fallback      Google Nearby API
+      (if ES down)              │
+           │                    │
+           └────────────────────┘
+                    │
+                    ▼
+            Cache Results (MongoDB + ES)
+                    │
+                    ▼
+            Return to Frontend
 
 Author: Travel Agent P Team
 Date: November 27, 2025
-Updated: January 2025 - Removed multi-index autocomplete (use AutocompleteService)
+Updated: January 2025 - Added hybrid architecture with Google API fallback
 """
 
 import logging
-from typing import List, Dict, Optional, Any
+import time
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 
 from ..repo.es.interfaces import ESPOIRepositoryInterface
 from ..repo.mongo.interfaces import POIRepositoryInterface
-from ..model.mongo.poi import POISearchRequest
+from ..model.mongo.poi import POISearchRequest, POI
 from ..core.clients.elasticsearch_client import ElasticsearchClient
+
+if TYPE_CHECKING:
+    from ..providers.places.google_places_provider import GooglePlacesProvider
 
 logger = logging.getLogger(__name__)
 
 
 class SearchService:
     """
-    Search Service - Elasticsearch Wrapper with MongoDB Fallback
+    Hybrid Search Service - ES + MongoDB + Google API Fallback
     
     Features:
     - Geo-distance search (within radius) - 20-50ms latency
@@ -36,8 +57,8 @@ class SearchService:
     - Multi-filter support (type, rating, price)
     - Sorting (relevance, distance, rating, popularity)
     - Graceful degradation (ES down → MongoDB)
-    
-    Note: Autocomplete moved to AutocompleteService (2025-01 migration)
+    - Google API fallback when local cache insufficient
+    - Auto-cache: Save Google results to MongoDB + ES
     
     Architecture:
         User Query
@@ -45,9 +66,15 @@ class SearchService:
         Elasticsearch (FAST, 10-50ms)
             ↓ (if ES unavailable)
         MongoDB Fallback (SLOWER, 50-200ms)
+            ↓ (if results < limit)
+        Google Places API Nearby Search
+            ↓
+        Cache to MongoDB + ES
+            ↓
+        Return to Frontend
     
     Example:
-        service = SearchService()
+        service = SearchService(poi_repo, es_repo, google_provider)
         
         # Geo search
         results = service.search(
@@ -69,26 +96,31 @@ class SearchService:
     def __init__(
         self, 
         poi_repo: POIRepositoryInterface,
-        es_repo: ESPOIRepositoryInterface = None
+        es_repo: ESPOIRepositoryInterface = None,
+        google_provider: "GooglePlacesProvider" = None
     ):
         """
-        Initialize search service with ES + MongoDB fallback.
+        Initialize search service with ES + MongoDB + Google fallback.
         
         Args:
-            poi_repo: MongoDB POI repository (required, used as fallback)
-            es_repo: Elasticsearch POI repository (optional)
-        
-        Note: Multi-index autocomplete (es_admin_repo, es_region_repo, region_service)
-              was removed in 2025-01 migration. Use AutocompleteService instead.
+            poi_repo: MongoDB POI repository (required, used as fallback + cache)
+            es_repo: Elasticsearch POI repository (optional, primary search)
+            google_provider: Google Places Provider (optional, external API fallback)
         """
         self.es_enabled = es_repo is not None and ElasticsearchClient.is_healthy()
         self.es_repo = es_repo if self.es_enabled else None
-        self.mongo_repo = poi_repo  # Always available as fallback
+        self.mongo_repo = poi_repo  # Always available as fallback + cache
+        self.google_provider = google_provider  # External API fallback
         
         if self.es_enabled:
-            logger.info("[INFO] SearchService initialized with Elasticsearch")
+            logger.info("[SearchService] Initialized with Elasticsearch + MongoDB")
         else:
-            logger.warning("[WARNING] SearchService initialized WITHOUT Elasticsearch (using MongoDB fallback)")
+            logger.warning("[SearchService] Initialized WITHOUT Elasticsearch (using MongoDB fallback)")
+        
+        if self.google_provider:
+            logger.info("[SearchService] Google Places API fallback enabled")
+        else:
+            logger.warning("[SearchService] Google Places API fallback disabled")
     
     def search(
         self,
@@ -104,7 +136,7 @@ class SearchService:
         offset: int = 0
     ) -> Dict[str, Any]:
         """
-        Search POIs with full-text + geo + filters.
+        Hybrid search: ES → MongoDB → Google API fallback.
         
         Args:
             query: Search query string (e.g., "vietnamese restaurant")
@@ -123,26 +155,19 @@ class SearchService:
                 "results": [POI dicts with _score and _distance_km],
                 "total": int,
                 "took_ms": int,
-                "source": "elasticsearch" | "mongodb",
+                "source": "elasticsearch" | "mongodb" | "google_api" | "hybrid",
                 "page": int,
                 "limit": int
             }
-        
-        Example:
-            >>> results = service.search(
-            ...     query="beach",
-            ...     latitude=16.0544,
-            ...     longitude=108.2428,
-            ...     radius_km=5,
-            ...     min_rating=4.0,
-            ...     types=["beach", "nature"]
-            ... )
-            >>> for poi in results['results']:
-            ...     print(f"{poi['name']} - {poi['_distance_km']:.2f}km")
         """
-        logger.info(f"[SEARCH] Search: query='{query}', lat={latitude}, lng={longitude}, radius={radius_km}km")
+        start_time = time.time()
+        logger.info(f"[SEARCH] query='{query}', lat={latitude}, lng={longitude}, radius={radius_km}km, types={types}")
         
-        # Try Elasticsearch first
+        results = []
+        source = "unknown"
+        total = 0
+        
+        # Step 1: Try Elasticsearch first (ES and MongoDB share the same data source)
         if self.es_enabled and self.es_repo:
             try:
                 location = None
@@ -161,29 +186,399 @@ class SearchService:
                     offset=offset
                 )
                 
-                logger.info(f"[INFO] Elasticsearch: {es_result['total']} results in {es_result['took_ms']}ms")
-                return {
-                    **es_result,
-                    "source": "elasticsearch",
-                    "page": (offset // limit) + 1,
-                    "limit": limit
+                results = es_result.get('results', [])
+                total = es_result.get('total', 0)
+                source = "elasticsearch"
+                logger.info(f"[SEARCH] ES: {len(results)} results in {es_result.get('took_ms', 0)}ms")
+                
+            except Exception as e:
+                logger.error(f"[SEARCH] ES failed: {e}, trying MongoDB fallback")
+                source = "error"
+        
+        # Step 2: If ES failed or unavailable, fallback to MongoDB (shared data source)
+        if source == "error" or source == "unknown":
+            mongo_result = self._search_mongodb(
+                query=query,
+                latitude=latitude,
+                longitude=longitude,
+                radius_km=radius_km,
+                types=types,
+                min_rating=min_rating,
+                price_levels=price_levels,
+                limit=limit,
+                offset=offset
+            )
+            results = mongo_result.get('results', [])
+            total = mongo_result.get('total', 0)
+            source = "mongodb"
+            logger.info(f"[SEARCH] MongoDB fallback: {len(results)} results")
+        
+        # Step 3: If results < limit AND location provided, call Google Places API
+        if len(results) < limit and latitude is not None and longitude is not None:
+            if self.google_provider:
+                try:
+                    google_results = self._search_google(
+                        latitude=latitude,
+                        longitude=longitude,
+                        radius_km=radius_km or 10.0,
+                        types=types,
+                        query=query if query else None,
+                        max_results=limit - len(results)  # Only fetch what we need
+                    )
+                    
+                    if google_results:
+                        # Deduplicate: Only add POIs not already in results
+                        existing_ids = {r.get('poi_id') or r.get('place_id') for r in results}
+                        new_pois = [p for p in google_results if p.get('poi_id') not in existing_ids]
+                        
+                        # Cache new POIs to MongoDB + ES
+                        cached_count = self._cache_pois(new_pois)
+                        
+                        # Add to results
+                        results.extend(new_pois)
+                        total += len(new_pois)
+                        source = "hybrid" if source != "google_api" else "google_api"
+                        
+                        logger.info(f"[SEARCH] Google API: {len(new_pois)} new POIs, cached: {cached_count}")
+                
+                except Exception as e:
+                    logger.error(f"[SEARCH] Google API fallback failed: {e}")
+            else:
+                logger.debug("[SEARCH] Google API fallback disabled (no provider)")
+        
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        
+        return {
+            "results": results[:limit],  # Ensure we don't exceed limit
+            "total": total,
+            "took_ms": elapsed_ms,
+            "source": source,
+            "page": (offset // limit) + 1,
+            "limit": limit
+        }
+    
+    def _search_google(
+        self,
+        latitude: float,
+        longitude: float,
+        radius_km: float,
+        types: Optional[List[str]] = None,
+        query: Optional[str] = None,
+        max_results: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Search Google Places Nearby API.
+        
+        Args:
+            latitude: Center latitude
+            longitude: Center longitude
+            radius_km: Search radius in km
+            types: POI types filter
+            query: Optional text query
+            max_results: Maximum results to fetch
+        
+        Returns:
+            List of POI dicts transformed to our schema
+        """
+        if not self.google_provider:
+            return []
+        
+        try:
+            # Convert types to Google Places format
+            google_types = self._map_types_to_google(types) if types else None
+            
+            # Call Google Nearby Search
+            location = {"latitude": latitude, "longitude": longitude}
+            radius_meters = int(radius_km * 1000)
+            
+            google_results = self.google_provider.nearby_search(
+                location=location,
+                radius=radius_meters,
+                types=google_types,
+                max_results=max_results
+            )
+            
+            # Transform Google response to our POI schema
+            pois = []
+            for place in google_results:
+                poi = self._transform_google_to_poi(place, latitude, longitude)
+                if poi:
+                    pois.append(poi)
+            
+            logger.info(f"[GOOGLE] Nearby search: {len(pois)} POIs found")
+            return pois
+            
+        except Exception as e:
+            logger.error(f"[GOOGLE] Nearby search failed: {e}")
+            return []
+    
+    def _transform_google_to_poi(
+        self,
+        place: Dict[str, Any],
+        search_lat: float,
+        search_lng: float
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Transform Google Places result to our POI schema.
+        
+        Args:
+            place: Google Places API result
+            search_lat: Search center latitude
+            search_lng: Search center longitude
+        
+        Returns:
+            POI dict in our schema format
+        """
+        try:
+            place_id = place.get('place_id') or place.get('id')
+            if not place_id:
+                return None
+            
+            # Extract location
+            location = place.get('location') or place.get('geometry', {}).get('location', {})
+            lat = location.get('lat') or location.get('latitude')
+            lng = location.get('lng') or location.get('longitude')
+            
+            if not lat or not lng:
+                return None
+            
+            # Extract name
+            name = place.get('displayName', {}).get('text') if isinstance(place.get('displayName'), dict) else place.get('name')
+            if not name:
+                return None
+            
+            # Extract types
+            types = place.get('types', [])
+            primary_type = place.get('primaryType') or place.get('primaryTypeDisplayName', {}).get('text') or (types[0] if types else None)
+            
+            # Extract rating
+            rating = place.get('rating', 0)
+            total_reviews = place.get('userRatingCount') or place.get('user_ratings_total', 0)
+            
+            # Extract address
+            address = place.get('formattedAddress') or place.get('formatted_address') or place.get('vicinity', '')
+            
+            # Extract price level
+            price_level = place.get('priceLevel')
+            if price_level:
+                # Map Google price level to our format
+                price_map = {
+                    'PRICE_LEVEL_FREE': 'FREE',
+                    'PRICE_LEVEL_INEXPENSIVE': 'INEXPENSIVE',
+                    'PRICE_LEVEL_MODERATE': 'MODERATE',
+                    'PRICE_LEVEL_EXPENSIVE': 'EXPENSIVE',
+                    'PRICE_LEVEL_VERY_EXPENSIVE': 'VERY_EXPENSIVE'
+                }
+                price_level = price_map.get(price_level, price_level)
+            
+            # Calculate distance if we have search coordinates
+            distance_km = None
+            if search_lat and search_lng:
+                distance_km = self._calculate_distance(search_lat, search_lng, lat, lng)
+            
+            # Build POI dict
+            poi = {
+                "poi_id": place_id,
+                "place_id": place_id,
+                "name": name,
+                "address": address,
+                "location": {
+                    "type": "Point",
+                    "coordinates": [lng, lat]  # GeoJSON format: [lng, lat]
+                },
+                "types": types,
+                "primary_type": primary_type,
+                "rating": rating,
+                "total_reviews": total_reviews,
+                "price_level": price_level,
+                "source": "google_places",
+                "_distance_km": distance_km
+            }
+            
+            # Add photos if available
+            photos = place.get('photos', [])
+            if photos:
+                poi['photos'] = [
+                    {"photo_reference": p.get('name') or p.get('photo_reference')}
+                    for p in photos[:5]
+                ]
+            
+            # Add opening hours if available
+            opening_hours = place.get('currentOpeningHours') or place.get('opening_hours', {})
+            if opening_hours:
+                poi['opening_hours'] = {
+                    "open_now": opening_hours.get('openNow') or opening_hours.get('open_now', False),
+                    "weekday_text": opening_hours.get('weekdayDescriptions') or opening_hours.get('weekday_text', [])
                 }
             
-            except Exception as e:
-                logger.error(f"[ERROR] Elasticsearch search failed: {e}, falling back to MongoDB")
+            return poi
+            
+        except Exception as e:
+            logger.error(f"[TRANSFORM] Failed to transform Google place: {e}")
+            return None
+    
+    def _cache_pois(self, pois: List[Dict[str, Any]]) -> int:
+        """
+        Cache POIs to both MongoDB and Elasticsearch.
         
-        # Fallback to MongoDB
-        return self._search_mongodb(
-            query=query,
-            latitude=latitude,
-            longitude=longitude,
-            radius_km=radius_km,
-            types=types,
-            min_rating=min_rating,
-            price_levels=price_levels,
-            limit=limit,
-            offset=offset
-        )
+        Args:
+            pois: List of POI dicts to cache
+        
+        Returns:
+            Number of POIs successfully cached
+        """
+        if not pois:
+            return 0
+        
+        cached_count = 0
+        
+        for poi in pois:
+            try:
+                # Cache to MongoDB (primary storage)
+                mongo_success = self._cache_poi_to_mongodb(poi)
+                
+                # Cache to Elasticsearch (for fast search)
+                es_success = self._cache_poi_to_es(poi)
+                
+                if mongo_success or es_success:
+                    cached_count += 1
+                    
+            except Exception as e:
+                logger.error(f"[CACHE] Failed to cache POI {poi.get('poi_id')}: {e}")
+        
+        logger.info(f"[CACHE] Cached {cached_count}/{len(pois)} POIs to MongoDB + ES")
+        return cached_count
+    
+    def _cache_poi_to_mongodb(self, poi: Dict[str, Any]) -> bool:
+        """
+        Cache a single POI to MongoDB with deduplication.
+        
+        Args:
+            poi: POI dict to cache
+        
+        Returns:
+            True if cached successfully, False otherwise
+        """
+        try:
+            from ..utils.poi_dedupe import generate_dedupe_key
+            
+            # Generate dedupe key
+            coords = poi.get('location', {}).get('coordinates', [0, 0])
+            lng, lat = coords[0], coords[1]
+            
+            dedupe_key = generate_dedupe_key(
+                name=poi.get('name', ''),
+                lat=lat,
+                lng=lng
+            )
+            
+            # Check if already exists
+            existing = self.mongo_repo.get_by_dedupe_key(dedupe_key)
+            if existing:
+                logger.debug(f"[CACHE] POI already exists in MongoDB: {dedupe_key}")
+                return False
+            
+            # Create POI model
+            poi_model = POI(
+                poi_id=poi.get('poi_id'),
+                dedupe_key=dedupe_key,
+                name=poi.get('name'),
+                address=poi.get('address'),
+                location=poi.get('location'),
+                types=poi.get('types', []),
+                primary_type=poi.get('primary_type'),
+                rating=poi.get('rating', 0),
+                total_reviews=poi.get('total_reviews', 0),
+                price_level=poi.get('price_level'),
+                photos=poi.get('photos', []),
+                opening_hours=poi.get('opening_hours'),
+                source=poi.get('source', 'google_places')
+            )
+            
+            self.mongo_repo.create(poi_model)
+            return True
+            
+        except Exception as e:
+            logger.error(f"[CACHE] MongoDB cache failed for {poi.get('poi_id')}: {e}")
+            return False
+    
+    def _cache_poi_to_es(self, poi: Dict[str, Any]) -> bool:
+        """
+        Cache a single POI to Elasticsearch.
+        
+        Args:
+            poi: POI dict to cache
+        
+        Returns:
+            True if cached successfully, False otherwise
+        """
+        if not self.es_enabled or not self.es_repo:
+            return False
+        
+        try:
+            self.es_repo.index_poi(poi)
+            return True
+        except Exception as e:
+            logger.error(f"[CACHE] ES cache failed for {poi.get('poi_id')}: {e}")
+            return False
+    
+    def _map_types_to_google(self, types: List[str]) -> List[str]:
+        """
+        Map our POI types to Google Places types.
+        
+        Args:
+            types: Our POI types
+        
+        Returns:
+            List of Google Places types
+        """
+        type_mapping = {
+            "restaurant": "restaurant",
+            "cafe": "cafe",
+            "bar": "bar",
+            "hotel": "lodging",
+            "museum": "museum",
+            "park": "park",
+            "beach": "natural_feature",
+            "temple": "hindu_temple",
+            "pagoda": "place_of_worship",
+            "market": "shopping_mall",
+            "shopping": "shopping_mall",
+            "attraction": "tourist_attraction",
+            "landmark": "landmark",
+            "nature": "natural_feature",
+            "spa": "spa",
+            "gym": "gym"
+        }
+        
+        google_types = []
+        for t in types:
+            mapped = type_mapping.get(t.lower(), t)
+            if mapped not in google_types:
+                google_types.append(mapped)
+        
+        return google_types
+    
+    def _calculate_distance(self, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+        """
+        Calculate distance between two coordinates in kilometers.
+        Uses Haversine formula.
+        """
+        import math
+        
+        R = 6371  # Earth's radius in km
+        
+        lat1_rad = math.radians(lat1)
+        lat2_rad = math.radians(lat2)
+        delta_lat = math.radians(lat2 - lat1)
+        delta_lng = math.radians(lng2 - lng1)
+        
+        a = (math.sin(delta_lat / 2) ** 2 +
+             math.cos(lat1_rad) * math.cos(lat2_rad) * 
+             math.sin(delta_lng / 2) ** 2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        
+        return round(R * c, 2)
     
     # ============================================
     # NOTE: Old multi-index autocomplete methods REMOVED

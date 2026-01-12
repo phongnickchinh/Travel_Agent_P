@@ -160,6 +160,19 @@ class POIRepositoryInterface(ABC):
         """
         pass
     
+    @abstractmethod
+    def get_by_dedupe_key(self, dedupe_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Get POI by deduplication key.
+        
+        Args:
+            dedupe_key: Unique deduplication key
+            
+        Returns:
+            POI document if found, None otherwise
+        """
+        pass
+    
     # ========== Write-Through Cache Methods ==========
     
     @abstractmethod

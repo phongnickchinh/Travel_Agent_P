@@ -33,19 +33,28 @@ export default function Welcome() {
   // Firebase Storage background image URL
   const backgroundImageUrl = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/view-world-monument-celebrate-world-heritage-day%20(1).jpg?alt=media&token=62a8714c-1a82-4cb9-aa46-7e9a8b0a153d';
 
+  const [bgLoaded, setBgLoaded] = useState(false);
+
   const backgroundImageUrlDark = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/vietnam-2731636.jpg?alt=media&token=b683d99b-d55b-4ccf-b760-fac6e942a0e3';
 
+  // Preload background images
+  useEffect(() => {
+    const img = new Image();
+    img.src = backgroundImageUrl;
+    img.onload = () => setBgLoaded(true);
+  }, []);
+
   return (
-    <div className="min-h-screen h-screen relative overflow-hidden">
+    <div className="min-h-screen h-screen relative overflow-hidden bg-brand-primary">
       {/* Background Image - Light mode */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat dark:hidden"
-        style={{ backgroundImage: `url(${backgroundImageUrl})` }}
+        className={`absolute inset-0 bg-cover bg-center bg-no-repeat dark:hidden transition-opacity duration-500 ${bgLoaded ? 'opacity-100' : 'opacity-0'}`}
+        style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
       />
       {/* Background Image - Dark mode */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat hidden dark:block"
-        style={{ backgroundImage: `url(${backgroundImageUrlDark})` }}
+        style={{ backgroundImage: `url("${backgroundImageUrlDark}")` }}
       />
       {/* Dark overlay for better text readability */}
       <div className="absolute inset-0 bg-brand-secondary/20 dark:bg-black/10" />
@@ -202,28 +211,6 @@ Chào mừng đến với Travel Agent P — nhận lịch trình được cá n
             © 2025 Travel Agent P | All rights reserved.
           </p>
         </motion.footer>
-
-        {/* Mobile Nav Buttons */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
-          <div className="flex gap-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/login')}
-              className="flex-1 py-3 text-white font-medium rounded-full border-2 border-white/40"
-            >
-              Đăng nhập
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/register')}
-              className="flex-1 py-3 bg-brand-primary text-white font-medium rounded-full"
-            >
-              Đăng ký
-            </motion.button>
-          </div>
-        </div>
       </div>
 
       {/* Auth Modal */}

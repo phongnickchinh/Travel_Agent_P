@@ -68,6 +68,17 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
         {/* User Info with Dropdown */}
         <div
           className="relative"
+          onMouseEnter={() => {
+            // Hover only for desktop (pointer: fine)
+            if (window.matchMedia('(pointer: fine)').matches) {
+              setShowMenu(true);
+            }
+          }}
+          onMouseLeave={() => {
+            if (window.matchMedia('(pointer: fine)').matches) {
+              setShowMenu(false);
+            }
+          }}
         >
           <div 
             onClick={() => setShowMenu(!showMenu)}
@@ -113,7 +124,6 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.15 }}
                 className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg dark:shadow-gray-900/50 border border-gray-100 dark:border-gray-700 overflow-hidden py-2"
-                onMouseLeave={() => setShowMenu(false)}
               >
                 {/* User Info Header */}
                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">

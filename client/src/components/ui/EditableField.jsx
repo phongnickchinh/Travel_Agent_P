@@ -233,10 +233,10 @@ export default function EditableField({
                 Cancel
               </motion.button>
 
-              {/* Hint */}
+              {/* Hint
               <span className="text-xs text-gray-400 ml-2">
                 {type === 'textarea' ? 'Ctrl+Enter to save' : 'Enter to save, Esc to cancel'}
-              </span>
+              </span> */}
             </div>
           </motion.div>
         ) : (

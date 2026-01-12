@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Loader2, Lock, Mail, X } from 'lucide-react';
+import { Loader2, Lock, Mail, X, AlertTriangle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +17,7 @@ const loadGoogleScript = () => {
     script.async = true;
     script.defer = true;
     script.onload = resolve;
-    script.onerror = reject;
+    script.onerror = () => reject(new Error('Google Sign-In blocked by browser/extension'));
     document.head.appendChild(script);
   });
 };
@@ -33,6 +33,7 @@ export default function Login({ isModal = false, onClose }) {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [googleClientId, setGoogleClientId] = useState(null);
+  const [googleBlocked, setGoogleBlocked] = useState(false);
 
   // Fetch Google Client ID from backend
   useEffect(() => {
@@ -80,6 +81,7 @@ export default function Login({ isModal = false, onClose }) {
       }
     }).catch(err => {
       console.error('Failed to load Google Sign-In script:', err);
+      setGoogleBlocked(true);
     });
   }, [googleClientId]);
 
@@ -249,7 +251,14 @@ export default function Login({ isModal = false, onClose }) {
           </div>
 
           <div className="flex justify-center">
-            <div id="googleSignInButton" className="flex w-full max-w-xs items-center justify-center" />
+            {googleBlocked ? (
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 rounded-lg">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>Google Sign-In bị chặn. Hãy tắt ad blocker hoặc dùng email đăng nhập.</span>
+              </div>
+            ) : (
+              <div id="googleSignInButton" className="flex w-full max-w-xs items-center justify-center" />
+            )}
           </div>
 
           <div className="text-center text-sm text-gray-600 dark:text-gray-300">

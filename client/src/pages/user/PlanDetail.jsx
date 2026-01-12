@@ -64,7 +64,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DayItinerary from '../../components/features/plan/DayItinerary';
 import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
 import { EditableDate, EditableTitle } from '../../components/ui/EditableField';
-import MarqueeText from '../../components/ui/MarqueeText';
 import Tooltip from '../../components/ui/Tooltip';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';

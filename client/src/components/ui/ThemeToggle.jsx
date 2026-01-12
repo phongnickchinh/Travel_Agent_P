@@ -15,7 +15,7 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       whileHover={{ scale: 1.03, y: -2 }}
       whileTap={{ scale: 0.97 }}
-      className="fixed bottom-6 right-12 z-50 flex items-center rounded-full shadow-lg border bg-white/90 backdrop-blur dark:bg-gray-900/90 dark:border-gray-700 text-gray-700 dark:text-gray-100"
+      className="fixed bottom-6 right-12 z-50 flex items-center justify-center min-h-11 min-w-14 rounded-full shadow-lg border bg-white/90 backdrop-blur dark:bg-gray-900/90 dark:border-gray-700 text-gray-700 dark:text-gray-100 p-2"
     >
       <div className="relative w-12 h-6 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors">
         <motion.span

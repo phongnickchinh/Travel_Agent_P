@@ -63,7 +63,7 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
           >
             <div className="flex items-center justify-between">
               <h3 className="font-poppins font-semibold text-lg text-gray-900">Thêm hoạt động</h3>
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+              <button onClick={onClose} className="p-2.5 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -89,7 +89,7 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700"
+                className="px-4 py-2.5 min-h-11 rounded-lg bg-gray-100 text-gray-700"
               >
                 Hủy
               </motion.button>
@@ -101,7 +101,7 @@ const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
                   onClose();
                 }}
                 disabled={!selected}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white ${selected ? 'bg-brand-primary' : 'bg-gray-300 cursor-not-allowed'}`}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 min-h-11 rounded-lg text-white ${selected ? 'bg-brand-primary' : 'bg-gray-300 cursor-not-allowed'}`}
               >
                 <Plus className="w-4 h-4" /> Thêm
               </motion.button>

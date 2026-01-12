@@ -528,9 +528,9 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
               whileTap={{ scale: 0.95 }}
               onClick={handleClose}
               aria-label="Close"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-gray-700 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-primary/30 bg-white text-gray-700 shadow-sm hover:border-brand-primary hover:text-brand-primary dark:border-brand-primary/50 dark:bg-gray-800 dark:text-gray-100 dark:hover:border-white"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </motion.button>
           </div>
         </div>

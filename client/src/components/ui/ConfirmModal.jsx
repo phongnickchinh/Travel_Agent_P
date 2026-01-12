@@ -61,7 +61,7 @@ export default function ConfirmModal({
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              className="px-4 py-2.5 min-h-11 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 transition-colors dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
               disabled={loading}
             >
               {cancelLabel}
@@ -70,7 +70,7 @@ export default function ConfirmModal({
               type="button"
               onClick={onConfirm}
               disabled={loading}
-              className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-70 dark:bg-red-700 dark:hover:bg-red-600"
+              className="px-4 py-2.5 min-h-11 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-70 dark:bg-red-700 dark:hover:bg-red-600"
             >
               {loading ? 'Deleting...' : confirmLabel}
             </button>

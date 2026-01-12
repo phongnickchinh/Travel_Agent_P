@@ -6,6 +6,8 @@ from ...service.edit_service import EditService
 from ...middleware import JWT_required
 from ...utils.response_helpers import build_success_response
 from ...core.di_container import DIContainer
+from ...core.rate_limiter import rate_limit, get_identifier_from_auth_token
+from config import Config
 
 
 class UserController:
@@ -16,16 +18,37 @@ class UserController:
     
     def _register_routes(self):
         """Register all routes with Flask."""
-        user_api.add_url_rule("/", "get_user", self._wrap_jwt_required(self.get_user), methods=["GET"])
-        user_api.add_url_rule("/", "update_user", self._wrap_jwt_required(self.update_user), methods=["PUT"])
-        user_api.add_url_rule("/avatar", "upload_avatar", self._wrap_jwt_required(self.upload_avatar), methods=["POST"])
-        user_api.add_url_rule("/", "delete_user", self._wrap_jwt_required(self.delete_user), methods=["DELETE"])
+        user_api.add_url_rule("/", "get_user", self._wrap_jwt_with_rate_limit(self.get_user), methods=["GET"])
+        user_api.add_url_rule("/", "update_user", self._wrap_jwt_with_rate_limit(self.update_user), methods=["PUT"])
+        user_api.add_url_rule("/avatar", "upload_avatar", self._wrap_jwt_with_avatar_limit(self.upload_avatar), methods=["POST"])
+        user_api.add_url_rule("/", "delete_user", self._wrap_jwt_with_rate_limit(self.delete_user), methods=["DELETE"])
     
-    def _wrap_jwt_required(self, f):
-        """Helper to maintain JWT required middleware while using class methods."""
+    def _wrap_jwt_with_rate_limit(self, f):
+        """Wrap with JWT required and moderate rate limiting (30/min)."""
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_USER,
+            window_seconds=Config.RATE_LIMIT_USER_WINDOW,
+            identifier_func=get_identifier_from_auth_token,
+            key_prefix='user'
+        )
         @JWT_required
         def wrapper(user):
             return f(user)
+        wrapper.__name__ = f.__name__
+        return wrapper
+    
+    def _wrap_jwt_with_avatar_limit(self, f):
+        """Wrap with JWT required and strict rate limiting for avatar upload (5/hour)."""
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_AVATAR_UPLOAD,
+            window_seconds=Config.RATE_LIMIT_AVATAR_UPLOAD_WINDOW,
+            identifier_func=get_identifier_from_auth_token,
+            key_prefix='avatar_upload'
+        )
+        @JWT_required
+        def wrapper(user):
+            return f(user)
+        wrapper.__name__ = f.__name__
         return wrapper
     
     def get_user(self, user):
@@ -126,11 +149,6 @@ class UserController:
     
     def delete_user(self, user):
         self.user_service.delete_user_account(user)
-        return build_success_response(
-            "The user account has been deleted successfully.",
-            "Tài khoản người dùng đã được xóa thành công.",
-            "00092"
-        )
         return build_success_response(
             "The user account has been deleted successfully.",
             "Tài khoản người dùng đã được xóa thành công.",

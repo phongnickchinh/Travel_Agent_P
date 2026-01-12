@@ -95,7 +95,7 @@ class PlanController:
         return wrapper
     
     @rate_limit(
-        max_requests=10000,
+        max_requests=Config.RATE_LIMIT_PLAN_CREATION,
         window_seconds=Config.RATE_LIMIT_PLAN_CREATION_WINDOW,
         identifier_func=get_identifier_from_auth_token,
         key_prefix='plan_creation'
@@ -310,8 +310,7 @@ class PlanController:
             )
     
     @rate_limit(
-        # max_requests=Config.RATE_LIMIT_PLAN_CREATION,
-        max_requests=10000,
+        max_requests=Config.RATE_LIMIT_PLAN_CREATION,
         window_seconds=Config.RATE_LIMIT_PLAN_CREATION_WINDOW,
         identifier_func=get_identifier_from_auth_token,
         key_prefix='plan_regeneration'

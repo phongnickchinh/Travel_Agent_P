@@ -15,7 +15,7 @@ from ...utils.response_helpers import (
     build_success_response
 )
 from ...core.di_container import DIContainer
-from ...core.rate_limiter import rate_limit, get_identifier_by_email
+from ...core.rate_limiter import rate_limit, get_identifier_by_email, get_identifier_from_auth_token
 from config import Config
 
 
@@ -114,43 +114,51 @@ class AuthController:
     
     def google_login(self):
         """Handle Google OAuth login."""
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        error = validate_required_fields(data, ["token"])
-        if error:
-            return error
-        
-        try:
-            user, tokens, role = self.auth_service.authenticate_google_user(data["token"])
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_GOOGLE_LOGIN,
+            window_seconds=Config.RATE_LIMIT_GOOGLE_LOGIN_WINDOW,
+            key_prefix='google_login'
+        )
+        def _google_login_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
             
-            if not user:
-                return build_error_response(
-                    "Google authentication failed. Please try again.",
-                    "Xác thực Google thất bại. Vui lòng thử lại.",
-                    "00090"
+            error = validate_required_fields(data, ["token"])
+            if error:
+                return error
+            
+            try:
+                user, tokens, role = self.auth_service.authenticate_google_user(data["token"])
+                
+                if not user:
+                    return build_error_response(
+                        "Google authentication failed. Please try again.",
+                        "Xác thực Google thất bại. Vui lòng thử lại.",
+                        "00090"
+                    )
+                
+                access_token, refresh_token = tokens
+                
+                return build_success_response(
+                    "You have successfully logged in with Google.",
+                    "Bạn đã đăng nhập thành công bằng Google.",
+                    "00091",
+                    {
+                        "user": user.as_dict(exclude=["password_hash"]),
+                        "role": role,
+                        "access_token": access_token,
+                        "refresh_token": refresh_token
+                    }
                 )
-            
-            access_token, refresh_token = tokens
-            
-            return build_success_response(
-                "You have successfully logged in with Google.",
-                "Bạn đã đăng nhập thành công bằng Google.",
-                "00091",
-                {
-                    "user": user.as_dict(exclude=["password_hash"]),
-                    "role": role,
-                    "access_token": access_token,
-                    "refresh_token": refresh_token
-                }
-            )
-        except Exception as e:
-            return build_error_response(
-                "An error occurred during Google authentication.",
-                "Đã xảy ra lỗi trong quá trình xác thực Google.",
-                "00092"
-            )
+            except Exception as e:
+                return build_error_response(
+                    "An error occurred during Google authentication.",
+                    "Đã xảy ra lỗi trong quá trình xác thực Google.",
+                    "00092"
+                )
+        
+        return _google_login_handler()
     
     def link_google(self, user_id):
         """Link Google account to existing user account."""
@@ -186,31 +194,39 @@ class AuthController:
             )
     
     def refresh_token(self):
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        error = validate_required_fields(data, ["refresh_token"])
-        if error:
-            return error
-        
-        user_id = self.auth_service.verify_refresh_token(data["refresh_token"])
-        
-        if user_id is None:
-            return build_error_response(
-                "Invalid token. Token may have expired.",
-                "Token không hợp lệ. Token có thể đã hết hạn.",
-                "00012"
-            )
-            
-        new_access_token = self.auth_service.generate_access_token(user_id)
-
-        return build_success_response(
-            "Token refreshed successfully.",
-            "Token đã được làm mới thành công.",
-            "00065",
-            {"access_token": new_access_token}
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_REFRESH_TOKEN,
+            window_seconds=Config.RATE_LIMIT_REFRESH_TOKEN_WINDOW,
+            key_prefix='refresh_token'
         )
+        def _refresh_token_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
+            
+            error = validate_required_fields(data, ["refresh_token"])
+            if error:
+                return error
+            
+            user_id = self.auth_service.verify_refresh_token(data["refresh_token"])
+            
+            if user_id is None:
+                return build_error_response(
+                    "Invalid token. Token may have expired.",
+                    "Token không hợp lệ. Token có thể đã hết hạn.",
+                    "00012"
+                )
+                
+            new_access_token = self.auth_service.generate_access_token(user_id)
+
+            return build_success_response(
+                "Token refreshed successfully.",
+                "Token đã được làm mới thành công.",
+                "00065",
+                {"access_token": new_access_token}
+            )
+        
+        return _refresh_token_handler()
     
     def logout(self, user_id):
         auth_header = request.headers.get("Authorization")
@@ -321,38 +337,47 @@ class AuthController:
         return _register_handler()
     
     def send_verification_code(self):
-        data, error = get_json_or_error(request)
-        if error:
-            return error
-        
-        error = validate_required_fields(data, ["email"])
-        if error:
-            return error
-            
-        error = validate_email(data["email"])
-        if error:
-            return error
-
-        registered_user = self.auth_service.check_email_registered(data["email"])
-        if not registered_user:
-            return build_error_response(
-                "Your email has not been activated, please register first.",
-                "Email không liên kết với tài khoản nào, vui lòng đăng ký trước.",
-                "00043"
-            )
-            
-        if self.auth_service.is_verified(data["email"]):
-            return build_error_response(
-                "Your email has already been verified.",
-                "Email của bạn đã được xác minh.",
-                "00046"
-            )
-        
-        return build_success_response(
-            "Registration successful.",
-            "Đã đăng ký thành công.",
-            "00053"
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_VERIFICATION_CODE,
+            window_seconds=Config.RATE_LIMIT_VERIFICATION_CODE_WINDOW,
+            identifier_func=get_identifier_by_email,
+            key_prefix='send_verification'
         )
+        def _send_verification_handler():
+            data, error = get_json_or_error(request)
+            if error:
+                return error
+            
+            error = validate_required_fields(data, ["email"])
+            if error:
+                return error
+                
+            error = validate_email(data["email"])
+            if error:
+                return error
+
+            registered_user = self.auth_service.check_email_registered(data["email"])
+            if not registered_user:
+                return build_error_response(
+                    "Your email has not been activated, please register first.",
+                    "Email không liên kết với tài khoản nào, vui lòng đăng ký trước.",
+                    "00043"
+                )
+                
+            if self.auth_service.is_verified(data["email"]):
+                return build_error_response(
+                    "Your email has already been verified.",
+                    "Email của bạn đã được xác minh.",
+                    "00046"
+                )
+            
+            return build_success_response(
+                "Registration successful.",
+                "Đã đăng ký thành công.",
+                "00053"
+            )
+        
+        return _send_verification_handler()
     
     def verify_email(self):
         data, error = get_json_or_error(request)

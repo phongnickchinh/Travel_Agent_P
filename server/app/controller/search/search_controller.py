@@ -21,6 +21,8 @@ from . import search_bp
 from app.service.search_service import SearchService
 from app.utils.response_helpers import build_error_response, build_success_response
 from app.core.di_container import DIContainer
+from app.core.rate_limiter import rate_limit
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +64,35 @@ class SearchController:
     
     def _register_routes(self):
         """Register all routes with Flask Blueprint."""
-        search_bp.add_url_rule("", "search", self.search, methods=["GET"])
+        search_bp.add_url_rule("", "search", self._wrap_rate_limit(self.search), methods=["GET"])
         # REMOVED: /autocomplete route - Use /v2/autocomplete instead
-        search_bp.add_url_rule("/nearby", "nearby", self.get_nearby, methods=["GET"])
-        search_bp.add_url_rule("/type/<poi_type>", "by_type", self.get_by_type, methods=["GET"])
-        search_bp.add_url_rule("/popular", "popular", self.get_popular, methods=["GET"])
+        search_bp.add_url_rule("/nearby", "nearby", self._wrap_rate_limit(self.get_nearby), methods=["GET"])
+        search_bp.add_url_rule("/type/<poi_type>", "by_type", self._wrap_rate_limit_with_arg(self.get_by_type), methods=["GET"])
+        search_bp.add_url_rule("/popular", "popular", self._wrap_rate_limit(self.get_popular), methods=["GET"])
+    
+    def _wrap_rate_limit(self, f):
+        """Wrap endpoint with rate limiting (60 requests per minute per IP)."""
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_SEARCH,
+            window_seconds=Config.RATE_LIMIT_SEARCH_WINDOW,
+            key_prefix='search'
+        )
+        def wrapper():
+            return f()
+        wrapper.__name__ = f.__name__
+        return wrapper
+    
+    def _wrap_rate_limit_with_arg(self, f):
+        """Wrap endpoint with rate limiting for routes with path parameters."""
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_SEARCH,
+            window_seconds=Config.RATE_LIMIT_SEARCH_WINDOW,
+            key_prefix='search'
+        )
+        def wrapper(poi_type):
+            return f(poi_type)
+        wrapper.__name__ = f.__name__
+        return wrapper
     
     def search(self):
         """

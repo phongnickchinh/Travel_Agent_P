@@ -111,10 +111,10 @@ GOOGLE_TYPE_TO_CATEGORY = {
     # ===========================================
     # FOOD (all restaurants, food establishments)
     # Changed from RESTAURANT to FOOD for unified category
+    # NOTE: "food" is a Table B type (response-only), NOT valid for requests
     # ===========================================
     "restaurant": CategoryEnum.FOOD,
-    "food": CategoryEnum.FOOD,
-    # Restaurant types
+    # Restaurant types (prioritized - most common first)
     "acai_shop": CategoryEnum.FOOD,
     "afghani_restaurant": CategoryEnum.FOOD,
     "african_restaurant": CategoryEnum.FOOD,
@@ -372,53 +372,138 @@ def map_user_interests_to_categories(interests: List[str]) -> List[CategoryEnum]
     return categories
 
 
-def map_user_interests_to_google_types(interests: List[str]) -> List[str]:
+# Priority types per category (most common/useful first)
+# Used to limit to 50 types while keeping the best ones
+PRIORITY_TYPES_PER_CATEGORY = {
+    CategoryEnum.FOOD: [
+        "restaurant", "bakery", "fast_food_restaurant", "cafe",
+        "vietnamese_restaurant", "japanese_restaurant", "korean_restaurant",
+        "chinese_restaurant", "italian_restaurant", "seafood_restaurant",
+        "barbecue_restaurant", "pizza_restaurant", "sushi_restaurant",
+        "ramen_restaurant", "thai_restaurant", "indian_restaurant",
+        "french_restaurant", "fine_dining_restaurant", "buffet_restaurant",
+        "ice_cream_shop", "coffee_shop", "dessert_shop",
+    ],
+    CategoryEnum.CAFE: [
+        "cafe", "coffee_shop", "tea_house", "internet_cafe",
+    ],
+    CategoryEnum.NIGHTLIFE: [
+        "bar", "night_club", "pub", "karaoke", "wine_bar",
+    ],
+    CategoryEnum.SHOPPING: [
+        "shopping_mall", "market", "supermarket", "department_store",
+        "convenience_store", "gift_shop", "clothing_store", "book_store",
+    ],
+    CategoryEnum.LANDMARK: [
+        "tourist_attraction", "landmark", "point_of_interest",
+        "observation_deck", "plaza", "town_square",
+    ],
+    CategoryEnum.CULTURAL: [
+        "performing_arts_theater", "cultural_center", "art_studio",
+        "concert_hall", "amphitheatre", "opera_house",
+    ],
+    CategoryEnum.HISTORICAL: [
+        "historical_landmark", "historical_place", "monument",
+    ],
+    CategoryEnum.MUSEUM: [
+        "museum", "art_gallery", "planetarium",
+    ],
+    CategoryEnum.BEACH: [
+        "beach",
+    ],
+    CategoryEnum.NATURE: [
+        "park", "national_park", "botanical_garden", "garden",
+        "nature_preserve", "wildlife_park", "dog_park",
+    ],
+    CategoryEnum.ADVENTURE: [
+        "hiking_area", "ski_resort", "marina", "adventure_sports_center",
+    ],
+    CategoryEnum.WELLNESS: [
+        "spa", "massage", "sauna", "yoga_studio", "wellness_center",
+    ],
+    CategoryEnum.SPORTS: [
+        "gym", "fitness_center", "stadium", "sports_club",
+        "golf_course", "swimming_pool", "sports_complex",
+    ],
+    CategoryEnum.FAMILY: [
+        "zoo", "aquarium", "playground", "amusement_park",
+    ],
+    CategoryEnum.ENTERTAINMENT: [
+        "amusement_park", "water_park", "movie_theater", "casino",
+        "bowling_alley", "video_arcade", "event_venue",
+    ],
+    CategoryEnum.RELIGIOUS: [
+        "church", "hindu_temple", "mosque", "synagogue", "place_of_worship",
+    ],
+}
+
+# Max types allowed by Google Nearby Search API
+GOOGLE_MAX_TYPES = 50
+
+
+def map_user_interests_to_google_types(interests: List[str], max_types: int = GOOGLE_MAX_TYPES) -> List[str]:
     """Map frontend user interests to Google Place Types via CategoryEnum intermediate mapping.
     
     This function provides extended coverage by:
     1. Mapping user interests → CategoryEnum (using USER_INTEREST_TO_CATEGORY)
-    2. Mapping CategoryEnum → Google types (reverse lookup of GOOGLE_TYPE_TO_CATEGORY)
-    3. Deduplicating results
+    2. Mapping CategoryEnum → Google types (using PRIORITY_TYPES_PER_CATEGORY first, then fallback)
+    3. Limiting to max_types (default 50 - Google API limit)
+    4. Deduplicating results
     
     Args:
         interests: List of user interest strings from frontend (e.g., ['photography', 'romantic', 'beach', 'cafe'])
+        max_types: Maximum number of types to return (default: 50, Google API limit)
         
     Returns:
-        List of Google Place Type strings (de-duplicated)
+        List of Google Place Type strings (de-duplicated, max 50)
         
     Example:
         >>> map_user_interests_to_google_types(['photography', 'beach', 'cafe'])
         ['tourist_attraction', 'landmark', 'point_of_interest', 'beach', 'cafe', 'coffee_shop']
         
     Note:
-        - Returns multiple Google types per CategoryEnum (e.g., LANDMARK → 'tourist_attraction', 'landmark', 'point_of_interest')
+        - Returns priority types first (most common/useful)
+        - Limited to 50 types (Google Nearby Search API limit)
         - Excludes accommodation types (HOTEL category) - those are fetched separately
         - Returns empty list if no valid mappings found (fallback handled by caller)
     """
     # Step 1: Map interests to CategoryEnum
     categories = map_user_interests_to_categories(interests)
     
-    # Step 2: Reverse map CategoryEnum to Google types
-    # Build reverse mapping: CategoryEnum → List[Google types]
-    category_to_google_types = {}
-    for google_type, category in GOOGLE_TYPE_TO_CATEGORY.items():
-        if category not in category_to_google_types:
-            category_to_google_types[category] = []
-        category_to_google_types[category].append(google_type)
-    
-    # Step 3: Collect all Google types for the given categories
+    # Step 2: Collect Google types with priority ordering
     google_types: List[str] = []
     seen = set()
     
+    # First pass: Add priority types for each category
     for category in categories:
         # Exclude HOTEL category (handled separately for accommodations)
         if category == CategoryEnum.HOTEL:
             continue
-            
-        types = category_to_google_types.get(category, [])
-        for t in types:
-            if t not in seen:
+        
+        # Add priority types first
+        priority_types = PRIORITY_TYPES_PER_CATEGORY.get(category, [])
+        for t in priority_types:
+            if t not in seen and len(google_types) < max_types:
                 seen.add(t)
                 google_types.append(t)
+    
+    # Second pass: Add remaining types from GOOGLE_TYPE_TO_CATEGORY if space available
+    if len(google_types) < max_types:
+        # Build reverse mapping: CategoryEnum → List[Google types]
+        category_to_google_types = {}
+        for google_type, category in GOOGLE_TYPE_TO_CATEGORY.items():
+            if category not in category_to_google_types:
+                category_to_google_types[category] = []
+            category_to_google_types[category].append(google_type)
+        
+        for category in categories:
+            if category == CategoryEnum.HOTEL:
+                continue
+                
+            types = category_to_google_types.get(category, [])
+            for t in types:
+                if t not in seen and len(google_types) < max_types:
+                    seen.add(t)
+                    google_types.append(t)
     
     return google_types

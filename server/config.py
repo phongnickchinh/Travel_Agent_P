@@ -98,13 +98,38 @@ class Config:
     RATE_LIMIT_ENABLED = os.environ.get("RATE_LIMIT_ENABLED", "True").lower() == "true"
     RATE_LIMIT_LOGIN = int(os.environ.get("RATE_LIMIT_LOGIN", 5))  # 5 attempts
     RATE_LIMIT_LOGIN_WINDOW = int(os.environ.get("RATE_LIMIT_LOGIN_WINDOW", 300))  # 5 minutes
-    RATE_LIMIT_REGISTER = int(os.environ.get("RATE_LIMIT_REGISTER", 3))  # 3 attempts
+    RATE_LIMIT_REGISTER = int(os.environ.get("RATE_LIMIT_REGISTER", 60))  # 60 attempts
     RATE_LIMIT_REGISTER_WINDOW = int(os.environ.get("RATE_LIMIT_REGISTER_WINDOW", 3600))  # 1 hour
-    RATE_LIMIT_RESET_PASSWORD = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD", 3))
+    RATE_LIMIT_RESET_PASSWORD = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD", 10))
     RATE_LIMIT_RESET_PASSWORD_WINDOW = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD_WINDOW", 3600))
-    # Plan creation rate limit (default: 5 plans per hour)
-    RATE_LIMIT_PLAN_CREATION = int(os.environ.get("RATE_LIMIT_PLAN_CREATION", 5))
+    # Plan creation rate limit (default: 12 plans per hour)
+    RATE_LIMIT_PLAN_CREATION = int(os.environ.get("RATE_LIMIT_PLAN_CREATION", 12))
     RATE_LIMIT_PLAN_CREATION_WINDOW = int(os.environ.get("RATE_LIMIT_PLAN_CREATION_WINDOW", 3600))
+    
+    # Search API rate limit (default: 60 requests per minute)
+    RATE_LIMIT_SEARCH = int(os.environ.get("RATE_LIMIT_SEARCH", 60))
+    RATE_LIMIT_SEARCH_WINDOW = int(os.environ.get("RATE_LIMIT_SEARCH_WINDOW", 60))
+    
+    # User profile API rate limit (default: 30 requests per minute)
+    RATE_LIMIT_USER = int(os.environ.get("RATE_LIMIT_USER", 30))
+    RATE_LIMIT_USER_WINDOW = int(os.environ.get("RATE_LIMIT_USER_WINDOW", 60))
+    
+    # Avatar upload rate limit (default: 5 uploads per hour)
+    RATE_LIMIT_AVATAR_UPLOAD = int(os.environ.get("RATE_LIMIT_AVATAR_UPLOAD", 5))
+    RATE_LIMIT_AVATAR_UPLOAD_WINDOW = int(os.environ.get("RATE_LIMIT_AVATAR_UPLOAD_WINDOW", 3600))
+    
+    # Google OAuth rate limit (default: 10 attempts per 5 minutes)
+    RATE_LIMIT_GOOGLE_LOGIN = int(os.environ.get("RATE_LIMIT_GOOGLE_LOGIN", 10))
+    RATE_LIMIT_GOOGLE_LOGIN_WINDOW = int(os.environ.get("RATE_LIMIT_GOOGLE_LOGIN_WINDOW", 300))
+    
+    # Refresh token rate limit (default: 30 per minute, prevent token refresh abuse)
+    RATE_LIMIT_REFRESH_TOKEN = int(os.environ.get("RATE_LIMIT_REFRESH_TOKEN", 30))
+    RATE_LIMIT_REFRESH_TOKEN_WINDOW = int(os.environ.get("RATE_LIMIT_REFRESH_TOKEN_WINDOW", 60))
+    
+    # Verification code rate limit (default: 3 per 10 minutes, prevent email spam)
+    RATE_LIMIT_VERIFICATION_CODE = int(os.environ.get("RATE_LIMIT_VERIFICATION_CODE", 3))
+    RATE_LIMIT_VERIFICATION_CODE_WINDOW = int(os.environ.get("RATE_LIMIT_VERIFICATION_CODE_WINDOW", 600))
+    
     # Generic rate limit key prefix
     RATE_LIMIT_KEY_PREFIX = os.environ.get("RATE_LIMIT_KEY_PREFIX", "travel_agent:rate_limit")
     

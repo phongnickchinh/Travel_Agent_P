@@ -9,70 +9,224 @@ from typing import Iterable, List, Optional
 from app.model.mongo.poi import CategoryEnum
 
 # Google Places type -> internal CategoryEnum mapping
+# Extended from Google Places API Table A & Table B (dd.txt)
+# Last updated: January 2026
 GOOGLE_TYPE_TO_CATEGORY = {
-    # Nature & outdoors
+    # ===========================================
+    # BEACH
+    # ===========================================
     "beach": CategoryEnum.BEACH,
+    
+    # ===========================================
+    # NATURE (parks, gardens, natural areas)
+    # ===========================================
     "park": CategoryEnum.NATURE,
     "national_park": CategoryEnum.NATURE,
     "state_park": CategoryEnum.NATURE,
     "garden": CategoryEnum.NATURE,
     "botanical_garden": CategoryEnum.NATURE,
     "nature_preserve": CategoryEnum.NATURE,
+    "dog_park": CategoryEnum.NATURE,
+    "picnic_ground": CategoryEnum.NATURE,
+    "wildlife_park": CategoryEnum.NATURE,
+    "wildlife_refuge": CategoryEnum.NATURE,
+    
+    # ===========================================
+    # NATURAL_FEATURE (geographic features)
+    # ===========================================
     "natural_feature": CategoryEnum.NATURAL_FEATURE,
+    "archipelago": CategoryEnum.NATURAL_FEATURE,
+    
+    # ===========================================
+    # ADVENTURE (outdoor activities, sports adventures)
+    # ===========================================
     "hiking_area": CategoryEnum.ADVENTURE,
-
-    # Landmarks & attractions
+    "adventure_sports_center": CategoryEnum.ADVENTURE,
+    "off_roading_area": CategoryEnum.ADVENTURE,
+    "cycling_park": CategoryEnum.ADVENTURE,
+    "skateboard_park": CategoryEnum.ADVENTURE,
+    "ski_resort": CategoryEnum.ADVENTURE,
+    "marina": CategoryEnum.ADVENTURE,
+    "fishing_charter": CategoryEnum.ADVENTURE,
+    "fishing_pond": CategoryEnum.ADVENTURE,
+    
+    # ===========================================
+    # LANDMARK (tourist attractions, points of interest)
+    # ===========================================
     "tourist_attraction": CategoryEnum.LANDMARK,
     "point_of_interest": CategoryEnum.LANDMARK,
     "landmark": CategoryEnum.LANDMARK,
+    "observation_deck": CategoryEnum.LANDMARK,
+    "plaza": CategoryEnum.LANDMARK,
+    "town_square": CategoryEnum.LANDMARK,
+    "visitor_center": CategoryEnum.LANDMARK,
+    "establishment": CategoryEnum.LANDMARK,
+    # Transport hubs as landmarks
+    "airport": CategoryEnum.LANDMARK,
+    "international_airport": CategoryEnum.LANDMARK,
+    "train_station": CategoryEnum.LANDMARK,
+    "bus_station": CategoryEnum.LANDMARK,
+    "ferry_terminal": CategoryEnum.LANDMARK,
+    "transit_station": CategoryEnum.LANDMARK,
+    
+    # ===========================================
+    # HISTORICAL (monuments, historical places)
+    # ===========================================
     "monument": CategoryEnum.HISTORICAL,
     "historical_place": CategoryEnum.HISTORICAL,
     "historical_landmark": CategoryEnum.HISTORICAL,
+    
+    # ===========================================
+    # CULTURAL (cultural centers, theaters, art)
+    # ===========================================
     "cultural_landmark": CategoryEnum.CULTURAL,
-
-    # Culture & museums
+    "performing_arts_theater": CategoryEnum.CULTURAL,
+    "cultural_center": CategoryEnum.CULTURAL,
+    "art_studio": CategoryEnum.CULTURAL,
+    "auditorium": CategoryEnum.CULTURAL,
+    "sculpture": CategoryEnum.CULTURAL,
+    "amphitheatre": CategoryEnum.CULTURAL,
+    "concert_hall": CategoryEnum.CULTURAL,
+    "opera_house": CategoryEnum.CULTURAL,
+    "philharmonic_hall": CategoryEnum.CULTURAL,
+    "comedy_club": CategoryEnum.CULTURAL,
+    "dance_hall": CategoryEnum.CULTURAL,
+    
+    # ===========================================
+    # MUSEUM (museums, art galleries)
+    # ===========================================
     "museum": CategoryEnum.MUSEUM,
     "art_gallery": CategoryEnum.MUSEUM,
-    "performing_arts_theater": CategoryEnum.CULTURAL,
-
-    # Religious
+    "planetarium": CategoryEnum.MUSEUM,
+    
+    # ===========================================
+    # RELIGIOUS (places of worship)
+    # ===========================================
     "church": CategoryEnum.RELIGIOUS,
-    "temple": CategoryEnum.RELIGIOUS,
+    "hindu_temple": CategoryEnum.RELIGIOUS,
     "mosque": CategoryEnum.RELIGIOUS,
     "synagogue": CategoryEnum.RELIGIOUS,
-    "hindu_temple": CategoryEnum.RELIGIOUS,
-
-    # Food & drink
-    "restaurant": CategoryEnum.RESTAURANT,
-    "fast_food_restaurant": CategoryEnum.RESTAURANT,
-    "seafood_restaurant": CategoryEnum.RESTAURANT,
-    "barbecue_restaurant": CategoryEnum.RESTAURANT,
-    "vietnamese_restaurant": CategoryEnum.RESTAURANT,
-    "japanese_restaurant": CategoryEnum.RESTAURANT,
-    "korean_restaurant": CategoryEnum.RESTAURANT,
-    "chinese_restaurant": CategoryEnum.RESTAURANT,
-    "italian_restaurant": CategoryEnum.RESTAURANT,
-    "french_restaurant": CategoryEnum.RESTAURANT,
-    "fine_dining_restaurant": CategoryEnum.RESTAURANT,
+    "place_of_worship": CategoryEnum.RELIGIOUS,
+    
+    # ===========================================
+    # FOOD (all restaurants, food establishments)
+    # Changed from RESTAURANT to FOOD for unified category
+    # ===========================================
+    "restaurant": CategoryEnum.FOOD,
+    "food": CategoryEnum.FOOD,
+    # Restaurant types
+    "acai_shop": CategoryEnum.FOOD,
+    "afghani_restaurant": CategoryEnum.FOOD,
+    "african_restaurant": CategoryEnum.FOOD,
+    "american_restaurant": CategoryEnum.FOOD,
+    "asian_restaurant": CategoryEnum.FOOD,
+    "bagel_shop": CategoryEnum.FOOD,
+    "bakery": CategoryEnum.FOOD,
+    "bar_and_grill": CategoryEnum.FOOD,
+    "barbecue_restaurant": CategoryEnum.FOOD,
+    "brazilian_restaurant": CategoryEnum.FOOD,
+    "breakfast_restaurant": CategoryEnum.FOOD,
+    "brunch_restaurant": CategoryEnum.FOOD,
+    "buffet_restaurant": CategoryEnum.FOOD,
+    "cafeteria": CategoryEnum.FOOD,
+    "candy_store": CategoryEnum.FOOD,
+    "chinese_restaurant": CategoryEnum.FOOD,
+    "chocolate_factory": CategoryEnum.FOOD,
+    "chocolate_shop": CategoryEnum.FOOD,
+    "confectionery": CategoryEnum.FOOD,
+    "deli": CategoryEnum.FOOD,
+    "dessert_restaurant": CategoryEnum.FOOD,
+    "dessert_shop": CategoryEnum.FOOD,
+    "diner": CategoryEnum.FOOD,
+    "donut_shop": CategoryEnum.FOOD,
+    "fast_food_restaurant": CategoryEnum.FOOD,
+    "fine_dining_restaurant": CategoryEnum.FOOD,
+    "food_court": CategoryEnum.FOOD,
+    "french_restaurant": CategoryEnum.FOOD,
+    "greek_restaurant": CategoryEnum.FOOD,
+    "hamburger_restaurant": CategoryEnum.FOOD,
+    "ice_cream_shop": CategoryEnum.FOOD,
+    "indian_restaurant": CategoryEnum.FOOD,
+    "indonesian_restaurant": CategoryEnum.FOOD,
+    "italian_restaurant": CategoryEnum.FOOD,
+    "japanese_restaurant": CategoryEnum.FOOD,
+    "juice_shop": CategoryEnum.FOOD,
+    "korean_restaurant": CategoryEnum.FOOD,
+    "lebanese_restaurant": CategoryEnum.FOOD,
+    "meal_delivery": CategoryEnum.FOOD,
+    "meal_takeaway": CategoryEnum.FOOD,
+    "mediterranean_restaurant": CategoryEnum.FOOD,
+    "mexican_restaurant": CategoryEnum.FOOD,
+    "middle_eastern_restaurant": CategoryEnum.FOOD,
+    "pizza_restaurant": CategoryEnum.FOOD,
+    "ramen_restaurant": CategoryEnum.FOOD,
+    "sandwich_shop": CategoryEnum.FOOD,
+    "seafood_restaurant": CategoryEnum.FOOD,
+    "spanish_restaurant": CategoryEnum.FOOD,
+    "steak_house": CategoryEnum.FOOD,
+    "sushi_restaurant": CategoryEnum.FOOD,
+    "thai_restaurant": CategoryEnum.FOOD,
+    "turkish_restaurant": CategoryEnum.FOOD,
+    "vegan_restaurant": CategoryEnum.FOOD,
+    "vegetarian_restaurant": CategoryEnum.FOOD,
+    "vietnamese_restaurant": CategoryEnum.FOOD,
+    # Food stores
+    "food_store": CategoryEnum.FOOD,
+    "grocery_store": CategoryEnum.FOOD,
+    "asian_grocery_store": CategoryEnum.FOOD,
+    "butcher_shop": CategoryEnum.FOOD,
+    
+    # ===========================================
+    # CAFE (coffee shops, tea houses)
+    # ===========================================
     "cafe": CategoryEnum.CAFE,
     "coffee_shop": CategoryEnum.CAFE,
-    "bakery": CategoryEnum.FOOD,
-    "food_court": CategoryEnum.FOOD,
-    "meal_takeaway": CategoryEnum.FOOD,
-    "meal_delivery": CategoryEnum.FOOD,
-    "bar": CategoryEnum.BAR,
-    "pub": CategoryEnum.BAR,
-    "night_club": CategoryEnum.NIGHTLIFE,
+    "tea_house": CategoryEnum.CAFE,
+    "cat_cafe": CategoryEnum.CAFE,
+    "dog_cafe": CategoryEnum.CAFE,
+    "internet_cafe": CategoryEnum.CAFE,
 
-    # Shopping
+    # ===========================================
+    # NIGHTLIFE (nightclubs, karaoke, bars, pubs, wine bars)
+    # ===========================================
+    "bar": CategoryEnum.NIGHTLIFE,
+    "pub": CategoryEnum.NIGHTLIFE,
+    "wine_bar": CategoryEnum.NIGHTLIFE,
+    "night_club": CategoryEnum.NIGHTLIFE,
+    "karaoke": CategoryEnum.NIGHTLIFE,
+    
+    # ===========================================
+    # SHOPPING (malls, stores, markets)
+    # ===========================================
     "shopping_mall": CategoryEnum.SHOPPING,
     "department_store": CategoryEnum.SHOPPING,
     "market": CategoryEnum.SHOPPING,
     "supermarket": CategoryEnum.SHOPPING,
     "gift_shop": CategoryEnum.SHOPPING,
     "convenience_store": CategoryEnum.SHOPPING,
-
-    # Lodging
+    "store": CategoryEnum.SHOPPING,
+    "auto_parts_store": CategoryEnum.SHOPPING,
+    "bicycle_store": CategoryEnum.SHOPPING,
+    "book_store": CategoryEnum.SHOPPING,
+    "cell_phone_store": CategoryEnum.SHOPPING,
+    "clothing_store": CategoryEnum.SHOPPING,
+    "discount_store": CategoryEnum.SHOPPING,
+    "electronics_store": CategoryEnum.SHOPPING,
+    "furniture_store": CategoryEnum.SHOPPING,
+    "hardware_store": CategoryEnum.SHOPPING,
+    "home_goods_store": CategoryEnum.SHOPPING,
+    "home_improvement_store": CategoryEnum.SHOPPING,
+    "jewelry_store": CategoryEnum.SHOPPING,
+    "liquor_store": CategoryEnum.SHOPPING,
+    "pet_store": CategoryEnum.SHOPPING,
+    "shoe_store": CategoryEnum.SHOPPING,
+    "sporting_goods_store": CategoryEnum.SHOPPING,
+    "warehouse_store": CategoryEnum.SHOPPING,
+    "wholesaler": CategoryEnum.SHOPPING,
+    
+    # ===========================================
+    # HOTEL (lodging, accommodations)
+    # ===========================================
     "hotel": CategoryEnum.HOTEL,
     "lodging": CategoryEnum.HOTEL,
     "resort_hotel": CategoryEnum.HOTEL,
@@ -80,27 +234,73 @@ GOOGLE_TYPE_TO_CATEGORY = {
     "hostel": CategoryEnum.HOTEL,
     "motel": CategoryEnum.HOTEL,
     "bed_and_breakfast": CategoryEnum.HOTEL,
-
-    # Entertainment & leisure
+    "budget_japanese_inn": CategoryEnum.HOTEL,
+    "campground": CategoryEnum.HOTEL,
+    "camping_cabin": CategoryEnum.HOTEL,
+    "cottage": CategoryEnum.HOTEL,
+    "extended_stay_hotel": CategoryEnum.HOTEL,
+    "farmstay": CategoryEnum.HOTEL,
+    "inn": CategoryEnum.HOTEL,
+    "japanese_inn": CategoryEnum.HOTEL,
+    "mobile_home_park": CategoryEnum.HOTEL,
+    "private_guest_room": CategoryEnum.HOTEL,
+    "rv_park": CategoryEnum.HOTEL,
+    
+    # ===========================================
+    # ENTERTAINMENT (amusement, movies, casinos)
+    # ===========================================
     "amusement_park": CategoryEnum.ENTERTAINMENT,
+    "amusement_center": CategoryEnum.ENTERTAINMENT,
     "water_park": CategoryEnum.ENTERTAINMENT,
     "casino": CategoryEnum.ENTERTAINMENT,
     "movie_theater": CategoryEnum.ENTERTAINMENT,
+    "movie_rental": CategoryEnum.ENTERTAINMENT,
     "bowling_alley": CategoryEnum.ENTERTAINMENT,
+    "video_arcade": CategoryEnum.ENTERTAINMENT,
+    "ferris_wheel": CategoryEnum.ENTERTAINMENT,
+    "roller_coaster": CategoryEnum.ENTERTAINMENT,
+    "banquet_hall": CategoryEnum.ENTERTAINMENT,
+    "convention_center": CategoryEnum.ENTERTAINMENT,
+    "event_venue": CategoryEnum.ENTERTAINMENT,
+    "wedding_venue": CategoryEnum.ENTERTAINMENT,
+    "community_center": CategoryEnum.ENTERTAINMENT,
+    
+    # ===========================================
+    # FAMILY (family-friendly attractions)
+    # ===========================================
     "zoo": CategoryEnum.FAMILY,
     "aquarium": CategoryEnum.FAMILY,
+    "childrens_camp": CategoryEnum.FAMILY,
+    "playground": CategoryEnum.FAMILY,
+    "barbecue_area": CategoryEnum.FAMILY,
+    
+    # ===========================================
+    # WELLNESS (spa, health, relaxation)
+    # ===========================================
     "spa": CategoryEnum.WELLNESS,
+    "sauna": CategoryEnum.WELLNESS,
+    "massage": CategoryEnum.WELLNESS,
+    "wellness_center": CategoryEnum.WELLNESS,
+    "yoga_studio": CategoryEnum.WELLNESS,
+    "skin_care_clinic": CategoryEnum.WELLNESS,
+    "tanning_studio": CategoryEnum.WELLNESS,
+    "public_bath": CategoryEnum.WELLNESS,
+    
+    # ===========================================
+    # SPORTS (gyms, sports facilities)
+    # ===========================================
     "gym": CategoryEnum.SPORTS,
     "fitness_center": CategoryEnum.SPORTS,
-
-    # Sports / activities
     "stadium": CategoryEnum.SPORTS,
     "sports_club": CategoryEnum.SPORTS,
-
-    # Transport (group to landmark/other as needed)
-    "airport": CategoryEnum.LANDMARK,
-    "train_station": CategoryEnum.LANDMARK,
-    "bus_station": CategoryEnum.LANDMARK,
+    "arena": CategoryEnum.SPORTS,
+    "athletic_field": CategoryEnum.SPORTS,
+    "golf_course": CategoryEnum.SPORTS,
+    "ice_skating_rink": CategoryEnum.SPORTS,
+    "sports_activity_location": CategoryEnum.SPORTS,
+    "sports_coaching": CategoryEnum.SPORTS,
+    "sports_complex": CategoryEnum.SPORTS,
+    "swimming_pool": CategoryEnum.SPORTS,
 }
 
 
@@ -143,7 +343,7 @@ USER_INTEREST_TO_CATEGORY = {
     "culture": CategoryEnum.CULTURAL,      # culture -> cultural
     "history": CategoryEnum.HISTORICAL,    # history -> historical
     "photography": CategoryEnum.LANDMARK,  # photography -> landmark (scenic spots)
-    "romantic": CategoryEnum.RESTAURANT,   # romantic -> restaurant (romantic dining)
+    "romantic": CategoryEnum.FOOD,   # romantic -> restaurant (romantic dining)
     "relaxation": CategoryEnum.WELLNESS,   # relaxation -> wellness (spa, massage)
 }
 

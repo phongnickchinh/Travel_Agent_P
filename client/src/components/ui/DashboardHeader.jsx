@@ -45,7 +45,7 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
         {/* Mobile Menu Toggle */}
         <button
           onClick={onMenuToggle}
-          className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          className="lg:hidden p-2.5 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
           aria-label="Toggle menu"
         >
           <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />

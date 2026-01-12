@@ -32,7 +32,7 @@ export default function DashboardSidebar({ isOpen, onClose, recentPlans = [], on
         {/* Mobile close button */}
         <button
           onClick={onClose}
-          className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          className="lg:hidden p-2.5 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
           aria-label="Close menu"
         >
           <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -78,7 +78,7 @@ export default function DashboardSidebar({ isOpen, onClose, recentPlans = [], on
                     onPlanClick?.(plan.plan_id);
                     onClose?.();
                   }}
-                  className="w-full text-left px-3 xl:px-4 py-1.5 xl:py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="w-full text-left px-3 xl:px-4 py-2.5 xl:py-3 min-h-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-200 line-clamp-1">
                     {plan.num_days} ngày • {plan.destination}

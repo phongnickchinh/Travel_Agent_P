@@ -149,7 +149,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               whileTap={{ scale: 0.98 }}
               onClick={handleRestore}
               disabled={isRestoring || isDeleting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand-primary dark:bg-brand-secondary text-white rounded-lg font-medium text-sm hover:bg-brand-dark dark:hover:bg-brand-primary transition disabled:opacity-60"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 min-h-11 bg-brand-primary dark:bg-brand-secondary text-white rounded-lg font-medium text-sm hover:bg-brand-dark dark:hover:bg-brand-primary transition disabled:opacity-60"
             >
               {isRestoring ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -165,7 +165,7 @@ function TrashPlanCard({ plan, onRestore, onPermanentDelete }) {
               whileTap={{ scale: 0.98 }}
               onClick={() => setConfirmDeleteOpen(true)}
               disabled={isRestoring || isDeleting}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium text-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition disabled:opacity-60"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-11 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium text-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition disabled:opacity-60"
             >
               <Trash2 className="w-4 h-4" />
             </motion.button>

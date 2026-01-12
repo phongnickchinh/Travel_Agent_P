@@ -121,12 +121,12 @@ export default function Welcome() {
             </motion.div> */}
 
             {/* Main Heading */}
-            <h1 className="font-inter font-bold text-15xl md:text-6xl lg:text-15xl text-white leading-tight mb-4">
+            <h1 className="font-inter font-bold text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-tight mb-4">
               WELCOME
             </h1>
 
             {/* Subtitle */}
-            <p className="text-lg md:text-xl text-white max-w-2xl mx-auto mb-10 font-dm leading-relaxed">
+            <p className="text-base md:text-lg lg:text-xl text-white max-w-2xl mx-auto mb-8 lg:mb-10 font-dm leading-relaxed">
 Chào mừng đến với Travel Agent P — nhận lịch trình được cá nhân hóa bằng AI, mẹo du lịch địa phương và các ưu đãi độc quyền trực tiếp vào hộp thư đến của bạn. Mỗi gói dịch vụ bao gồm lịch trình hàng ngày được tối ưu hóa, bản đồ và ước tính chi phí.
             </p>
 

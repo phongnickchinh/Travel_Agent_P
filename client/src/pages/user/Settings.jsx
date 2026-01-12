@@ -45,15 +45,15 @@ export default function Settings() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6 lg:py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header with Back Button */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-6 lg:mb-8"
         >
-          <div className="flex items-center gap-4 mb-2">
+          <div className="flex items-center gap-3 lg:gap-4 mb-2">
             <motion.button
               whileHover={{ scale: 1.05, x: -2 }}
               whileTap={{ scale: 0.95 }}
@@ -62,7 +62,7 @@ export default function Settings() {
             >
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
-            <h1 className="font-poppins font-bold text-3xl text-brand-primary dark:text-white">
+            <h1 className="font-poppins font-bold text-2xl lg:text-3xl text-brand-primary dark:text-white">
               Settings
             </h1>
           </div>

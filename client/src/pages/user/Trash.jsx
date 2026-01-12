@@ -279,9 +279,9 @@ export default function Trash() {
         />
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {/* Page Header */}
-          <div className="mb-8">
+          <div className="mb-6 lg:mb-8">
             <div className="flex items-center gap-3 mb-2">
               <Trash2 className="w-8 h-8 text-gray-700 dark:text-gray-300" />
               <h1 className="font-poppins font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">

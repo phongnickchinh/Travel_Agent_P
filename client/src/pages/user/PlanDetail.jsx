@@ -38,6 +38,7 @@ import {
   Palmtree,
   Plane,
   Plus,
+  Search,
   Settings2,
   Share2,
   ShoppingBag,
@@ -48,7 +49,8 @@ import {
   Utensils,
   UtensilsCrossed,
   Wallet,
-  Wine
+  Wine,
+  X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -56,6 +58,7 @@ import DayItinerary from '../../components/features/plan/DayItinerary';
 import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
 import { EditableDate, EditableTitle } from '../../components/ui/EditableField';
 import planAPI from '../../services/planApi';
+import searchAPI from '../../services/searchApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
 
 // Map container style
@@ -325,6 +328,16 @@ export default function PlanDetail() {
   const [hoveredImageCache, setHoveredImageCache] = useState({}); // Lazy-loaded images cache
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [regenerateLoading, setRegenerateLoading] = useState(false);
+  
+  // Nearby search states
+  const [nearbyPOIs, setNearbyPOIs] = useState([]);
+  const [nearbySearching, setNearbySearching] = useState(false);
+  const [showNearbyPanel, setShowNearbyPanel] = useState(false);
+  const [nearbyRadius, setNearbyRadius] = useState(3);
+  const [nearbyCategory, setNearbyCategory] = useState('');
+  const [hoveredNearbyPOI, setHoveredNearbyPOI] = useState(null);
+  const [addingToDayPOI, setAddingToDayPOI] = useState(null);
+  
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
   const hoverTimeoutRef = useRef(null); // Timeout for delayed hover (prevent accidental image loading)
@@ -443,6 +456,69 @@ export default function PlanDetail() {
       setRegenerateLoading(false);
     }
   }, [planId, isPublicView]);
+
+  // Search nearby POIs on map
+  const handleSearchNearby = useCallback(async () => {
+    if (!mapRef.current) return;
+    
+    const center = mapRef.current.getCenter();
+    const lat = center.lat();
+    const lng = center.lng();
+    
+    setNearbySearching(true);
+    try {
+      const options = { limit: 20 };
+      if (nearbyCategory) {
+        options.types = nearbyCategory;
+      }
+      
+      const result = await searchAPI.searchNearby(lat, lng, nearbyRadius, options);
+      
+      if (result?.results) {
+        const pois = result.results.map((poi, idx) => ({
+          id: `nearby_${poi.poi_id || idx}`,
+          poi_id: poi.poi_id,
+          name: poi.name,
+          lat: poi.location?.latitude || poi.location?.lat,
+          lng: poi.location?.longitude || poi.location?.lng,
+          address: poi.formatted_address || poi.address,
+          rating: poi.rating,
+          reviewCount: poi.total_reviews || poi.user_ratings_total,
+          category: poi.types?.[0] || poi.primary_type || 'attraction',
+          types: poi.types || [],
+          markerColor: getMarkerColor(poi.types?.[0] || 'attraction'),
+          imageUrl: poi.photo_url || null,
+          distance_km: poi.distance_km
+        }));
+        setNearbyPOIs(pois);
+      }
+    } catch (err) {
+      console.error('[SearchNearby] failed:', err);
+    } finally {
+      setNearbySearching(false);
+    }
+  }, [nearbyRadius, nearbyCategory]);
+
+  // Clear nearby search results
+  const handleClearNearby = useCallback(() => {
+    setNearbyPOIs([]);
+    setHoveredNearbyPOI(null);
+    setAddingToDayPOI(null);
+  }, []);
+
+  // Add nearby POI to specific day
+  const handleAddNearbyToDay = useCallback(async (poi, dayNumber) => {
+    if (!planId || isPublicView) return;
+    
+    try {
+      await handleAddActivityFromPOI(dayNumber, poi.poi_id, null);
+      setAddingToDayPOI(null);
+      // Remove added POI from nearby list
+      setNearbyPOIs(prev => prev.filter(p => p.id !== poi.id));
+    } catch (err) {
+      console.error('[AddNearbyToDay] failed:', err);
+    }
+  }, [planId, isPublicView, handleAddActivityFromPOI]);
 
   // ========================================
 
@@ -1366,6 +1442,114 @@ export default function PlanDetail() {
                 })}
 
 
+                {/* Nearby Search POI Markers (temporary, dashed border styling) */}
+                {nearbyPOIs.map((poi) => {
+                  const TypeIconComponent = getTypeIcon(poi.category);
+                  const isHovered = hoveredNearbyPOI === poi.id;
+                  const isAddingDay = addingToDayPOI === poi.id;
+                  
+                  return (
+                    <OverlayView
+                      key={poi.id}
+                      position={{ lat: poi.lat, lng: poi.lng }}
+                      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                    >
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ 
+                          scale: isHovered ? 1.1 : 1, 
+                          opacity: 1,
+                          zIndex: isHovered ? 150 : 50
+                        }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                        className="relative cursor-pointer flex flex-col items-center"
+                        onMouseEnter={() => setHoveredNearbyPOI(poi.id)}
+                        onMouseLeave={() => { 
+                          if (!isAddingDay) {
+                            setHoveredNearbyPOI(null);
+                          }
+                        }}
+                        style={{ 
+                          position: 'relative', 
+                          zIndex: isHovered ? 150 : 50,
+                          transform: 'translate(-50%, -100%)'
+                        }}
+                      >
+                        {/* Marker container - dashed border for temporary markers */}
+                        <div 
+                          className={`w-10 h-10 rounded-full border-2 border-dashed shadow-md flex items-center justify-center transition-all duration-200 ${
+                            isHovered 
+                              ? 'border-white ring-2 ring-brand-primary/50 shadow-xl' 
+                              : 'border-white/80 shadow-lg'
+                          }`}
+                          style={{
+                            backgroundColor: poi.markerColor,
+                            opacity: isHovered ? 1 : 0.85
+                          }}
+                        >
+                          {TypeIconComponent && <TypeIconComponent className="w-5 h-5 text-white" />}
+                          
+                          {/* Search badge */}
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-primary text-white text-xs rounded-full flex items-center justify-center shadow-md border border-white">
+                            <Search className="w-2.5 h-2.5" />
+                          </div>
+                        </div>
+                        
+                        {/* Name label */}
+                        <div className={`mt-1 px-2 py-0.5 bg-white/95 rounded-md shadow-sm border border-dashed transition-all duration-200 max-w-36 ${
+                          isHovered ? 'border-brand-primary shadow-md' : 'border-gray-300'
+                        }`}>
+                          <p className="text-xs font-medium text-gray-700 truncate text-center">
+                            {poi.name}
+                          </p>
+                        </div>
+
+                        {/* Day selector dropdown on hover */}
+                        {isHovered && plan?.itinerary && !isPublicView && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="absolute top-full mt-1 bg-white rounded-lg shadow-xl border border-gray-200 p-2 min-w-40 z-[200]"
+                            onMouseEnter={() => setHoveredNearbyPOI(poi.id)}
+                            onMouseLeave={() => {
+                              setHoveredNearbyPOI(null);
+                              setAddingToDayPOI(null);
+                            }}
+                          >
+                            {/* POI Info */}
+                            <div className="pb-2 mb-2 border-b border-gray-100">
+                              {poi.rating && (
+                                <div className="flex items-center gap-1 text-xs text-amber-600 mb-1">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  {poi.rating.toFixed(1)}
+                                  {poi.reviewCount && <span className="text-gray-400">({poi.reviewCount})</span>}
+                                </div>
+                              )}
+                              {poi.distance_km && (
+                                <p className="text-[10px] text-gray-400">{poi.distance_km.toFixed(1)} km away</p>
+                              )}
+                            </div>
+                            
+                            {/* Add to day buttons */}
+                            <p className="text-[10px] font-medium text-gray-500 mb-1.5">Add to:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {plan.itinerary.map((_, dayIdx) => (
+                                <button
+                                  key={dayIdx}
+                                  onClick={() => handleAddNearbyToDay(poi, dayIdx + 1)}
+                                  className="px-2 py-1 text-xs font-medium bg-brand-muted text-brand-primary rounded hover:bg-brand-primary hover:text-white transition-colors"
+                                >
+                                  Day {dayIdx + 1}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    </OverlayView>
+                  );
+                })}
+
                 {/* InfoWindow for hovered POI - Card-style design with image */}
                 {hoveredPOI && (() => {
                   const poi = activityPOIs.find(p => p.id === hoveredPOI) || accommodationPOIs.find(p => p.id === hoveredPOI);
@@ -1486,6 +1670,124 @@ export default function PlanDetail() {
                   );
                 })()}
               </GoogleMap>
+
+              {/* Nearby Search Floating Panel */}
+              {!isPublicView && (
+                <div className="absolute top-4 right-4 z-20">
+                  {/* Search Toggle Button */}
+                  {!showNearbyPanel && (
+                    <motion.button
+                      initial={{ scale: 0.9 }}
+                      animate={{ scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowNearbyPanel(true)}
+                      className="p-3 bg-white shadow-lg rounded-full border border-gray-200 hover:border-brand-primary hover:bg-brand-muted transition-colors group"
+                    >
+                      <Search className="w-5 h-5 text-gray-600 group-hover:text-brand-primary" />
+                    </motion.button>
+                  )}
+
+                  {/* Search Panel */}
+                  <AnimatePresence>
+                    {showNearbyPanel && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        className="bg-white rounded-xl shadow-xl border border-gray-200 p-4 min-w-64"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                            <Search className="w-4 h-4 text-brand-primary" />
+                            Search Nearby
+                          </h4>
+                          <button
+                            onClick={() => {
+                              setShowNearbyPanel(false);
+                              handleClearNearby();
+                            }}
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                          >
+                            <X className="w-4 h-4 text-gray-500" />
+                          </button>
+                        </div>
+
+                        {/* Radius Selector */}
+                        <div className="mb-3">
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Radius (km)</label>
+                          <div className="flex gap-1">
+                            {[1, 3, 5, 10].map(r => (
+                              <button
+                                key={r}
+                                onClick={() => setNearbyRadius(r)}
+                                className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                  nearbyRadius === r 
+                                    ? 'bg-brand-primary text-white' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {r} km
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="mb-3">
+                          <label className="text-xs font-medium text-gray-600 mb-1.5 block">Category (optional)</label>
+                          <select
+                            value={nearbyCategory}
+                            onChange={(e) => setNearbyCategory(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none"
+                          >
+                            <option value="">All categories</option>
+                            <option value="restaurant">Restaurant</option>
+                            <option value="cafe">Cafe</option>
+                            <option value="attraction">Attraction</option>
+                            <option value="museum">Museum</option>
+                            <option value="park">Park</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="hotel">Hotel</option>
+                          </select>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSearchNearby}
+                            disabled={nearbySearching}
+                            className="flex-1 py-2 px-4 bg-brand-primary text-white text-sm font-medium rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {nearbySearching ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Search className="w-4 h-4" />
+                            )}
+                            Search
+                          </button>
+                          {nearbyPOIs.length > 0 && (
+                            <button
+                              onClick={handleClearNearby}
+                              className="py-2 px-3 bg-gray-100 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Results Count */}
+                        {nearbyPOIs.length > 0 && (
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            Found {nearbyPOIs.length} place{nearbyPOIs.length > 1 ? 's' : ''}. Hover markers to add to your plan.
+                          </p>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Floating Info Panel */}
               <AnimatePresence>

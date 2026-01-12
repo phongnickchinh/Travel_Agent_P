@@ -1077,18 +1077,18 @@ export default function PlanDetail() {
 
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-full px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 lg:gap-4">
+        <div className="max-w-full px-4 lg:px-6 py-3 lg:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 lg:gap-4 flex-1 min-w-0">
             <button
               onClick={() => navigate('/dashboard')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors shrink-0"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
-            <div>
+            <div className="min-w-0 flex-1">
               {/* Editable Title - only for owner view */}
               {isPublicView ? (
-                <h1 className="font-poppins font-bold text-xl text-gray-900 dark:text-white">
+                <h1 className="font-poppins font-bold text-lg lg:text-xl text-gray-900 dark:text-white truncate">
                   {plan.title || plan.destination}
                 </h1>
               ) : (
@@ -1096,24 +1096,25 @@ export default function PlanDetail() {
                   value={plan.title || plan.destination}
                   onSave={handleSaveTitle}
                   level="h1"
+                  className="truncate"
                 />
               )}
-              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-4 h-4" />
-                  {plan.destination}
+              <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <span className="flex items-center gap-1 truncate">
+                  <MapPin className="w-3 h-3 lg:w-4 lg:h-4 shrink-0" />
+                  <span className="truncate">{plan.destination}</span>
                 </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
-                  {plan.itinerary?.length || 0} day{(plan.itinerary?.length || 0) !== 1 ? 's' : ''}
+                <span className="flex items-center gap-1 shrink-0">
+                  <Calendar className="w-3 h-3 lg:w-4 lg:h-4" />
+                  {plan.itinerary?.length || 0}d
                 </span>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 lg:gap-2 shrink-0">
             {isPublicView && (
-              <span className="text-xs font-medium text-brand-primary bg-brand-muted px-3 py-1 rounded-full">
+              <span className="hidden lg:inline text-xs font-medium text-brand-primary bg-brand-muted px-3 py-1 rounded-full">
                 Public shared version
               </span>
             )}
@@ -1124,14 +1125,15 @@ export default function PlanDetail() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowRegenerateModal(true)}
                 disabled={regenerateLoading}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                title="Regenerate plan"
+                className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
                   regenerateLoading
                     ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <Loader2 className={`w-4 h-4 ${regenerateLoading ? 'animate-spin' : ''}`} />
-                <span className="text-sm font-semibold">Regenerate plan</span>
+                <span className="hidden lg:inline text-sm font-semibold">Regenerate plan</span>
               </motion.button>
             )}
 
@@ -1141,14 +1143,15 @@ export default function PlanDetail() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleToggleShare}
                 disabled={shareLoading}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                title={shareState.isPublic ? 'Public' : 'Private'}
+                className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
                   shareState.isPublic
                     ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
                     : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 } ${shareLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
                 <Share2 className="w-4 h-4" />
-                <span className="text-sm font-semibold">
+                <span className="hidden lg:inline text-sm font-semibold">
                   {shareState.isPublic ? 'Public' : 'Private'}
                 </span>
               </motion.button>
@@ -1159,14 +1162,15 @@ export default function PlanDetail() {
               whileTap={{ scale: 0.98 }}
               onClick={handleCopyShareLink}
               disabled={!shareState.shareUrl}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+              title={shareCopied ? 'Copied!' : 'Copy link'}
+              className={`flex items-center gap-2 p-2 lg:px-3 lg:py-2 rounded-lg border transition-colors ${
                 shareState.shareUrl
                   ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-600 cursor-not-allowed'
               }`}
             >
               <Share2 className="w-4 h-4" />
-              <span className="text-sm font-semibold">
+              <span className="hidden lg:inline text-sm font-semibold">
                 {shareCopied ? 'Copied!' : 'Copy link'}
               </span>
             </motion.button>
@@ -1771,7 +1775,7 @@ export default function PlanDetail() {
 
               {/* Nearby Search Floating Panel */}
               {!isPublicView && (
-                <div className="absolute top-4 right-4 z-20">
+                <div className="absolute top-16 right-4 z-20">
                   {/* Search Toggle Button */}
                   {!showNearbyPanel && (
                     <motion.button
@@ -1906,16 +1910,16 @@ export default function PlanDetail() {
                 </div>
               )}
 
-              {/* Floating Info Panel */}
+              {/* Floating Info Panel - Fixed at bottom */}
               <AnimatePresence>
                 {tripSummary && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
-                    className="absolute bottom-4 left-4 right-4 z-10"
+                    className="absolute bottom-2 left-2 right-2 lg:bottom-4 lg:left-4 lg:right-4 z-10 max-h-48 lg:max-h-56"
                   >
-                    <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl lg:rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                       {/* Toggle Header */}
                       <button 
                         onClick={() => setShowInfoPanel(!showInfoPanel)}

@@ -36,26 +36,28 @@ export default function Welcome() {
   const backgroundImageUrlDark = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/vietnam-2731636.jpg?alt=media&token=b683d99b-d55b-4ccf-b760-fac6e942a0e3';
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Background Image */}
+    <div className="min-h-screen h-screen relative overflow-hidden">
+      {/* Background Image - Light mode */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat dark:hidden"
         style={{ backgroundImage: `url(${backgroundImageUrl})` }}
-      >
-        <img src={backgroundImageUrl} alt="" className="dark:hidden" />
-        <img src={backgroundImageUrlDark} alt="" className="hidden dark:block" />
-        {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-brand-secondary/20 dark:bg-black/10" />
-      </div>
+      />
+      {/* Background Image - Dark mode */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat hidden dark:block"
+        style={{ backgroundImage: `url(${backgroundImageUrlDark})` }}
+      />
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 bg-brand-secondary/20 dark:bg-black/10" />
 
       {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="relative z-10 h-full flex flex-col">
         {/* Header */}
         <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex items-center justify-between px-6 md:px-12 lg:px-20 py-6"
+          className="flex items-center justify-between px-4 md:px-12 lg:px-20 py-4 md:py-6"
         >
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -102,12 +104,12 @@ export default function Welcome() {
         </motion.header>
 
         {/* Hero Section */}
-        <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-12 lg:px-20 text-center">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 md:px-12 lg:px-20 text-center py-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-4xl"
+            className="max-w-4xl w-full"
           >
             {/* Badge */}
             {/* <motion.div 
@@ -121,22 +123,22 @@ export default function Welcome() {
             </motion.div> */}
 
             {/* Main Heading */}
-            <h1 className="font-inter font-bold text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-tight mb-4">
+            <h1 className="font-inter font-bold text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white leading-tight mb-3 md:mb-4">
               WELCOME
             </h1>
 
             {/* Subtitle */}
-            <p className="text-base md:text-lg lg:text-xl text-white max-w-2xl mx-auto mb-8 lg:mb-10 font-dm leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 max-w-2xl mx-auto mb-6 md:mb-8 lg:mb-10 font-dm leading-relaxed px-2">
 Chào mừng đến với Travel Agent P — nhận lịch trình được cá nhân hóa bằng AI, mẹo du lịch địa phương và các ưu đãi độc quyền trực tiếp vào hộp thư đến của bạn. Mỗi gói dịch vụ bao gồm lịch trình hàng ngày được tối ưu hóa, bản đồ và ước tính chi phí.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/register')}
-                className="group flex items-center gap-2 px-8 py-4 bg-brand-primary text-white font-poppins font-semibold rounded-full shadow-xl hover:bg-brand-secondary hover:shadow-2xl transition-all"
+                className="group flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 bg-brand-primary text-white font-poppins font-semibold rounded-full shadow-xl hover:bg-brand-secondary hover:shadow-2xl transition-all w-full sm:w-auto justify-center"
               >
                 Bắt đầu ngay
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -145,7 +147,7 @@ Chào mừng đến với Travel Agent P — nhận lịch trình được cá n
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/login')}
-                className="px-8 py-4 text-white font-poppins font-medium rounded-full border-2 border-white/40 hover:border-white hover:bg-white/10 transition-all"
+                className="px-6 py-3 md:px-8 md:py-4 text-white font-poppins font-medium rounded-full border-2 border-white/40 hover:border-white hover:bg-white/10 transition-all w-full sm:w-auto"
               >
                 Đã có tài khoản? Đăng nhập
               </motion.button>

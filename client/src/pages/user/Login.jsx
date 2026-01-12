@@ -55,10 +55,15 @@ export default function Login({ isModal = false, onClose }) {
 
     loadGoogleScript().then(() => {
       if (window.google) {
+        // Use redirect mode on mobile for better UX (avoid popup issues)
+        const isMobile = window.innerWidth < 768;
+        
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleLogin,
           auto_select: false,
+          ux_mode: isMobile ? 'redirect' : 'popup',
+          login_uri: isMobile ? window.location.origin + '/login' : undefined,
         });
         window.google.accounts.id.renderButton(
           document.getElementById('googleSignInButton'),
@@ -68,7 +73,8 @@ export default function Login({ isModal = false, onClose }) {
             theme: 'outline',
             text: 'signin_with',
             size: 'large',
-            logo_alignment: 'left'
+            logo_alignment: 'left',
+            width: window.innerWidth < 640 ? 280 : undefined,
           }
         );
       }

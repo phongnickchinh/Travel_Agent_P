@@ -21,17 +21,27 @@
   --font-dm: "DM Sans", sans-serif;
 }
 /* stylelint-enable */
+
 /* 
-:root {
-  --font-family-sans: 'Inter', sans-serif;
-  --font-family-poppins: 'Poppins', sans-serif;
-  --font-family-dm: 'DM Sans', sans-serif;
-  
-  --color-accent-primary: #000000;
-  --color-accent-success: #10B981;
-  --color-accent-warning: #F59E0B;
-  --color-accent-error: #EF4444;
-} */
+ * Base Styles & Responsive Utilities
+ * Stable base for all screen sizes and DPI levels
+ */
+
+/* Prevent text overflow globally */
+* {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Use box-sizing border-box globally */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Stable base font size - let browser/OS handle DPI scaling naturally */
+html {
+  font-size: 16px;
+}
 
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;

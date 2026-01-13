@@ -13,7 +13,7 @@ from ..base_provider import BaseProvider
 from ...utils.cost_meter import track_google_places_cost
 from ...utils.retry_backoff import retry_with_backoff
 from ...utils.circuit_breaker import CircuitBreakers
-from ..type_mapping import map_google_types_to_categories
+from ..type_mapping import map_google_types_to_categories, filter_types_for_request
 
 logger = logging.getLogger(__name__)
 
@@ -180,8 +180,13 @@ class GooglePlacesProvider(BaseProvider):
         # Note: Google Places API (New) only supports SINGLE type filter (not array)
         # Documentation: https://developers.google.com/maps/documentation/places/web-service/text-search#includedtype
         if types and len(types) > 0:
-            # Text Search only accepts ONE type - use first type from list
-            payload["includedType"] = types[0] if isinstance(types, list) else types
+            # Filter out Table B types (not allowed in requests)
+            valid_types = filter_types_for_request(types if isinstance(types, list) else [types])
+            if valid_types:
+                # Text Search only accepts ONE type - use first valid type from list
+                payload["includedType"] = valid_types[0]
+            else:
+                logger.warning(f"All provided types for Text Search were filtered out as invalid: {types}")
         
         if min_rating:
             payload["minRating"] = float(min_rating)
@@ -549,13 +554,18 @@ class GooglePlacesProvider(BaseProvider):
         if language_code:
             payload["languageCode"] = language_code
         
-        # Add types if provided
+        # Add types if provided (filter out Table B types which are not allowed in requests)
         if types:
-            # Nearby Search uses includedTypes (plural) with array
-            # Ref: https://developers.google.com/maps/documentation/places/web-service/nearby-search
-            payload["includedTypes"] = types if isinstance(types, list) else [types]
+            # Filter out invalid types (Table B types, non-existent types)
+            valid_types = filter_types_for_request(types if isinstance(types, list) else [types])
+            if valid_types:
+                # Nearby Search uses includedTypes (plural) with array
+                # Ref: https://developers.google.com/maps/documentation/places/web-service/nearby-search
+                payload["includedTypes"] = valid_types
+            else:
+                logger.warning(f"All provided types were filtered out as invalid: {types}")
         
-        logger.info(f"Google Places Nearby Search: location={location}, radius={radius}m, types={types}")
+        logger.info(f"Google Places Nearby Search: location={location}, radius={radius}m, types={payload.get('includedTypes', 'none')}")
         logger.debug(f"Request payload: {payload}")
         
         try:

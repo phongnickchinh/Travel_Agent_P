@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import planAPI from '../../services/planApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
-import ConfirmModal from './ConfirmModal';
+import ConfirmModal from '../common/ConfirmModal';
 
 /**
  * PlanCard Component

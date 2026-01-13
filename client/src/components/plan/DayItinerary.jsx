@@ -3,8 +3,8 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { motion } from 'framer-motion';
 import { GripVertical, Lightbulb, MapPin, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { openDirectionsByName } from '../../../utils/googleMapsHelper';
-import { EditableNotes } from '../../ui/EditableField';
+import { openDirectionsByName } from '../../utils/googleMapsHelper';
+import { EditableNotes } from '../common/EditableField';
 import { SortableActivityItem } from './ActivityItem';
 import AddActivityModal from './AddActivityModal';
 const DayItinerary = ({

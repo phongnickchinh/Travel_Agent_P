@@ -4,13 +4,88 @@ Type mapping utilities for external providers.
 Centralized mapping from Google Places types to internal CategoryEnum values to
 avoid scattering mappings across modules.
 """
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Set
 
 from app.model.mongo.poi import CategoryEnum
+
+# =============================================================================
+# TABLE B TYPES - RESPONSE ONLY (Cannot be used in Nearby Search/Text Search)
+# =============================================================================
+# These types from Google Places API Table B may be returned in responses but
+# CANNOT be used as includedTypes/excludedTypes in Nearby Search or Text Search.
+# Only valid for includedPrimaryTypes in Autocomplete (New) requests.
+# Reference: dd.txt - "Values from Table B may NOT be used as part of a request"
+TABLE_B_TYPES: Set[str] = {
+    "administrative_area_level_3",
+    "administrative_area_level_4",
+    "administrative_area_level_5",
+    "administrative_area_level_6",
+    "administrative_area_level_7",
+    "archipelago",
+    "colloquial_area",
+    "continent",
+    "establishment",           # Common in responses but NOT valid for requests
+    "finance",
+    "food",
+    "general_contractor",
+    "geocode",
+    "health",
+    "intersection",
+    "landmark",                # Common in responses but NOT valid for requests
+    "natural_feature",
+    "neighborhood",
+    "place_of_worship",
+    "plus_code",
+    "point_of_interest",       # Common in responses but NOT valid for requests
+    "political",
+    "postal_code_prefix",
+    "postal_code_suffix",
+    "postal_town",
+    "premise",
+    "route",
+    "street_address",
+    "sublocality",
+    "sublocality_level_1",
+    "sublocality_level_2",
+    "sublocality_level_3",
+    "sublocality_level_4",
+    "sublocality_level_5",
+    "subpremise",
+    "town_square",             # Added as per Google API error
+}
+
+# Types that don't exist in either Table A or Table B (typos or obsolete)
+INVALID_TYPES: Set[str] = {
+    "nature_preserve",         # Does NOT exist - use "wildlife_refuge" instead
+}
+
+# Combined set of types that should NOT be used in API requests
+NON_REQUESTABLE_TYPES: Set[str] = TABLE_B_TYPES | INVALID_TYPES
+
+
+def filter_types_for_request(types: List[str]) -> List[str]:
+    """Filter out types that cannot be used in Google Places API requests.
+    
+    Removes Table B types and invalid types from the list, as these will cause
+    400 Bad Request errors when used in Nearby Search or Text Search APIs.
+    
+    Args:
+        types: List of Google Place type strings
+        
+    Returns:
+        Filtered list containing only Table A types (valid for requests)
+        
+    Example:
+        >>> filter_types_for_request(['restaurant', 'point_of_interest', 'establishment'])
+        ['restaurant']
+    """
+    return [t for t in types if t not in NON_REQUESTABLE_TYPES]
+
 
 # Google Places type -> internal CategoryEnum mapping
 # Extended from Google Places API Table A & Table B (dd.txt)
 # Last updated: January 2026
+# NOTE: This mapping includes Table B types for RESPONSE parsing only
 GOOGLE_TYPE_TO_CATEGORY = {
     # ===========================================
     # BEACH
@@ -25,7 +100,7 @@ GOOGLE_TYPE_TO_CATEGORY = {
     "state_park": CategoryEnum.NATURE,
     "garden": CategoryEnum.NATURE,
     "botanical_garden": CategoryEnum.NATURE,
-    "nature_preserve": CategoryEnum.NATURE,
+    # Note: "nature_preserve" does NOT exist in Google Places API - removed
     "dog_park": CategoryEnum.NATURE,
     "picnic_ground": CategoryEnum.NATURE,
     "wildlife_park": CategoryEnum.NATURE,
@@ -374,6 +449,7 @@ def map_user_interests_to_categories(interests: List[str]) -> List[CategoryEnum]
 
 # Priority types per category (most common/useful first)
 # Used to limit to 50 types while keeping the best ones
+# IMPORTANT: Only Table A types allowed here (valid for Nearby Search requests)
 PRIORITY_TYPES_PER_CATEGORY = {
     CategoryEnum.FOOD: [
         "restaurant", "bakery", "fast_food_restaurant", "cafe",
@@ -395,12 +471,13 @@ PRIORITY_TYPES_PER_CATEGORY = {
         "convenience_store", "gift_shop", "clothing_store", "book_store",
     ],
     CategoryEnum.LANDMARK: [
-        "tourist_attraction", "landmark", "point_of_interest",
-        "observation_deck", "plaza", "town_square",
+        # Table A types only - removed: landmark, point_of_interest, town_square (Table B)
+        "tourist_attraction", "observation_deck", "plaza", "visitor_center",
     ],
     CategoryEnum.CULTURAL: [
         "performing_arts_theater", "cultural_center", "art_studio",
-        "concert_hall", "amphitheatre", "opera_house",
+        "concert_hall", "amphitheatre", "opera_house", "cultural_landmark",
+        "auditorium", "sculpture", "philharmonic_hall", "comedy_club", "dance_hall",
     ],
     CategoryEnum.HISTORICAL: [
         "historical_landmark", "historical_place", "monument",
@@ -412,28 +489,38 @@ PRIORITY_TYPES_PER_CATEGORY = {
         "beach",
     ],
     CategoryEnum.NATURE: [
+        # Table A types only - removed: nature_preserve (invalid type)
         "park", "national_park", "botanical_garden", "garden",
-        "nature_preserve", "wildlife_park", "dog_park",
+        "wildlife_park", "dog_park", "state_park", "picnic_ground", "wildlife_refuge",
     ],
     CategoryEnum.ADVENTURE: [
         "hiking_area", "ski_resort", "marina", "adventure_sports_center",
+        "off_roading_area", "cycling_park", "skateboard_park",
+        "fishing_charter", "fishing_pond",
     ],
     CategoryEnum.WELLNESS: [
         "spa", "massage", "sauna", "yoga_studio", "wellness_center",
+        "public_bath", "skin_care_clinic", "tanning_studio",
     ],
     CategoryEnum.SPORTS: [
         "gym", "fitness_center", "stadium", "sports_club",
         "golf_course", "swimming_pool", "sports_complex",
+        "arena", "athletic_field", "ice_skating_rink",
+        "sports_activity_location", "sports_coaching",
     ],
     CategoryEnum.FAMILY: [
         "zoo", "aquarium", "playground", "amusement_park",
+        "childrens_camp", "barbecue_area",
     ],
     CategoryEnum.ENTERTAINMENT: [
         "amusement_park", "water_park", "movie_theater", "casino",
         "bowling_alley", "video_arcade", "event_venue",
+        "amusement_center", "ferris_wheel", "roller_coaster",
+        "banquet_hall", "convention_center", "wedding_venue", "community_center",
     ],
     CategoryEnum.RELIGIOUS: [
-        "church", "hindu_temple", "mosque", "synagogue", "place_of_worship",
+        # Table A types only - removed: place_of_worship (Table B)
+        "church", "hindu_temple", "mosque", "synagogue",
     ],
 }
 
@@ -506,4 +593,5 @@ def map_user_interests_to_google_types(interests: List[str], max_types: int = GO
                     seen.add(t)
                     google_types.append(t)
     
-    return google_types
+    # Filter out Table B types and invalid types (not allowed in Nearby Search/Text Search)
+    return filter_types_for_request(google_types)

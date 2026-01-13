@@ -61,10 +61,10 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import DayItinerary from '../../components/features/plan/DayItinerary';
-import RegeneratePlanModal from '../../components/features/plan/RegeneratePlanModal';
-import { EditableDate, EditableTitle } from '../../components/ui/EditableField';
-import Tooltip from '../../components/ui/Tooltip';
+import { EditableDate, EditableTitle } from '../../components/common/EditableField';
+import Tooltip from '../../components/common/Tooltip';
+import DayItinerary from '../../components/plan/DayItinerary';
+import RegeneratePlanModal from '../../components/plan/RegeneratePlanModal';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';

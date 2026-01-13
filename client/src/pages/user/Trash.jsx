@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Calendar, FolderOpen, Loader2, MapPin, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import ConfirmModal from '../../components/ui/ConfirmModal';
-import DashboardHeader from '../../components/ui/DashboardHeader';
-import DashboardSidebar from '../../components/ui/DashboardSidebar';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import DashboardHeader from '../../components/layout/DashboardHeader';
+import DashboardSidebar from '../../components/layout/DashboardSidebar';
 import planAPI from '../../services/planApi';
 
 /**

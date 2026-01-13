@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import SearchAutocomplete from '../../SearchAutocomplete';
+import SearchAutocomplete from '../search/SearchAutocomplete';
 
 const AddActivityModal = ({ isOpen, onClose, onAdd, location }) => {
   const [selected, setSelected] = useState(null);

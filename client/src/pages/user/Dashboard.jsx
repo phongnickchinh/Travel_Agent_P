@@ -2,11 +2,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ChangePasswordModal from '../../components/modals/ChangePasswordModal';
-import ProfileSettingsModal from '../../components/modals/ProfileSettingsModal';
-import DashboardHeader from '../../components/ui/DashboardHeader';
-import DashboardSidebar from '../../components/ui/DashboardSidebar';
-import PlanCard from '../../components/ui/PlanCard';
+import DashboardHeader from '../../components/layout/DashboardHeader';
+import DashboardSidebar from '../../components/layout/DashboardSidebar';
+import PlanCard from '../../components/plan/PlanCard';
+import ChangePasswordModal from '../../components/profile/ChangePasswordModal';
+import ProfileSettingsModal from '../../components/profile/ProfileSettingsModal';
 import planAPI from '../../services/planApi';
 import CreatePlan from './CreatePlan';
 

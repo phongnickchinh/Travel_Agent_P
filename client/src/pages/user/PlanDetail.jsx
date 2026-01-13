@@ -303,14 +303,17 @@ const parseEstimatedTime = (timeSlot) => {
   }
 };
 
+// Check if Google Photos API is enabled via environment variable
+// Default: true (production), set VITE_ENABLE_GOOGLE_PHOTOS=false in dev to save costs
+const ENABLE_GOOGLE_PHOTOS = import.meta.env.VITE_ENABLE_GOOGLE_PHOTOS !== 'false';
+
 // Normalize photo URL (Google Places photo path → media URL) with caching
 const buildPhotoUrl = (url, apiKey) => {
   if (!url) return null;
   
-  // TEMPORARY: Disable Google Photos API to check costs
-  if (url.startsWith('places/')) {
-    // console.log('Skipping Google Photo API call for:', url);
-    return 'https://placehold.co/600x400?text=No+Photo+(Cost+Check)'; 
+  // Skip Google Photos API if disabled (saves ~$7/1000 photos)
+  if (!ENABLE_GOOGLE_PHOTOS && url.startsWith('places/')) {
+    return 'https://placehold.co/600x400?text=Photo+Disabled';
   }
   
   let finalUrl = url;

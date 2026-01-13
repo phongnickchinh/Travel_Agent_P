@@ -6,6 +6,10 @@ import planAPI from '../../services/planApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
 import ConfirmModal from '../common/ConfirmModal';
 
+// Check if Google Photos API is enabled via environment variable
+// Default: true (production), set VITE_ENABLE_GOOGLE_PHOTOS=false in dev to save costs
+const ENABLE_GOOGLE_PHOTOS = import.meta.env.VITE_ENABLE_GOOGLE_PHOTOS !== 'false';
+
 /**
  * PlanCard Component
  * 
@@ -21,9 +25,8 @@ export default function PlanCard({ plan, onDelete }) {
   // Preload and cache thumbnail on mount
   useEffect(() => {
     if (plan.thumbnail_url) {
-      // TEMP: Disable Google Photo API calls to prevent costs
-      // Check if URL is likely a Google Photo URL
-      if (plan.thumbnail_url.includes('google') || plan.thumbnail_url.startsWith('places/')) {
+      // Skip Google Photo API calls if disabled (saves ~$7/1000 photos)
+      if (!ENABLE_GOOGLE_PHOTOS && (plan.thumbnail_url.includes('google') || plan.thumbnail_url.startsWith('places/'))) {
         const destName = typeof plan.destination === 'string' ? plan.destination : (plan.destination?.city || 'Plan');
         setCachedThumbnail(`https://placehold.co/600x400?text=${encodeURIComponent(destName)}`);
         return;

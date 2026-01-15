@@ -289,11 +289,11 @@ export default function Dashboard() {
                 {hasMore && (
                   <div className="text-center py-8">
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: 1.02, y: -1 }}
+                      whileTap={{ scale: 0.97 }}
                       onClick={handleLoadMore}
                       disabled={loadingMore}
-                      className="px-8 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-full font-medium shadow-sm hover:shadow-md transition-shadow disabled:opacity-50"
+                      className="px-6 lg:px-8 py-2.5 lg:py-3 bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-600 text-gray-900 dark:text-white rounded-full font-semibold hover:bg-brand-primary hover:border-brand-primary hover:text-white dark:hover:bg-brand-primary dark:hover:border-brand-primary transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:border-gray-900 disabled:hover:text-gray-900 dark:disabled:hover:bg-gray-800 dark:disabled:hover:border-gray-600 dark:disabled:hover:text-white"
                     >
                       {loadingMore ? (
                         <span className="flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function Dashboard() {
                           Loading...
                         </span>
                       ) : (
-                        'Load more'
+                        'Load More'
                       )}
                     </motion.button>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">

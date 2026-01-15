@@ -61,7 +61,7 @@ export default function PlanCard({ plan, onDelete }) {
       })
       .catch((err) => {
         console.error('Delete plan error:', err);
-        window.alert('Không thể xoá kế hoạch, vui lòng thử lại.');
+        window.alert('Unable to delete plan. Please try again.');
       })
       .finally(() => {
         setIsDeleting(false);
@@ -79,7 +79,7 @@ export default function PlanCard({ plan, onDelete }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return 'Not set';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+    return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
   };
 
   // Get status color and text
@@ -95,12 +95,12 @@ export default function PlanCard({ plan, onDelete }) {
 
   const getStatusText = (status) => {
     const texts = {
-      pending: 'Đang chờ',
-      processing: 'Đang tạo',
-      completed: 'Hoàn thành',
-      failed: 'Lỗi'
+      pending: 'Pending',
+      processing: 'Processing',
+      completed: 'Completed',
+      failed: 'Failed'
     };
-    return texts[status] || 'Không rõ';
+    return texts[status] || 'Unknown';
   };
 
   return (
@@ -174,7 +174,7 @@ export default function PlanCard({ plan, onDelete }) {
               <MapPin className="w-4 h-4" />
               <span className="line-clamp-1">{plan.destination}</span>
               <span>•</span>
-              <span>{plan.num_days} ngày</span>
+              <span>{plan.num_days} days</span>
             </div>
 
             {/* Dates */}
@@ -203,10 +203,10 @@ export default function PlanCard({ plan, onDelete }) {
     </motion.div>
     <ConfirmModal
       open={confirmOpen}
-      title="Chuyển và thùng rác"
-      message="Bạn có muốn chuyển plan này vào thùng rác?"
-      confirmLabel="Xoá"
-      cancelLabel="Huỷ"
+      title="Move to Trash"
+      message="Do you want to move this plan to trash?"
+      confirmLabel="Delete"
+      cancelLabel="Cancel"
       onConfirm={performDelete}
       onCancel={() => !isDeleting && setConfirmOpen(false)}
       loading={isDeleting}

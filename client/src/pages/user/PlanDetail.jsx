@@ -1410,9 +1410,9 @@ export default function PlanDetail() {
                           transform: 'translate(-50%, -100%)' // Center marker on coordinates
                         }}
                       >
-                        {/* Marker container - Icon-first design */}
+                        {/* Marker container - Icon-first design (90% size) */}
                         <div 
-                          className={`w-11 h-11 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
+                          className={`w-10 h-10 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
                             isHovered 
                               ? 'border-white ring-3 ring-white/50 shadow-xl' 
                               : 'border-white shadow-lg'
@@ -1425,10 +1425,10 @@ export default function PlanDetail() {
                           }}
                         >
                           {/* Centered type icon */}
-                          {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
+                          {TypeIconComponent && <TypeIconComponent className="w-5 h-5 text-white" />}
                           
                           {/* Number badge at top-right (activity POIs have numbers) */}
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white">
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-gray-900 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md border border-white">
                             {poi.id}
                           </div>
                         </div>
@@ -1497,9 +1497,9 @@ export default function PlanDetail() {
                           transform: 'translate(-50%, -100%)' // Center marker on coordinates
                         }}
                       >
-                        {/* Marker container - Icon-first design */}
+                        {/* Marker container - Icon-first design (90% size) */}
                         <div 
-                          className={`w-11 h-11 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
+                          className={`w-10 h-10 rounded-full border-2 shadow-md flex items-center justify-center transition-all duration-200 ${
                             isHovered 
                               ? 'border-white ring-3 ring-white/50 shadow-xl' 
                               : 'border-white shadow-lg'
@@ -1512,10 +1512,10 @@ export default function PlanDetail() {
                           }}
                         >
                           {/* Centered type icon */}
-                          {TypeIconComponent && <TypeIconComponent className="w-6 h-6 text-white" />}
+                          {TypeIconComponent && <TypeIconComponent className="w-5 h-5 text-white" />}
                           
                           {/* Hotel icon badge at top-right (accommodations show hotel icon instead of numbers) */}
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md border border-white">
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md border border-white">
                             <Bed className="w-3 h-3" />
                           </div>
                         </div>

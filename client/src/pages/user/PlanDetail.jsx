@@ -31,6 +31,7 @@ import {
   Footprints,
   Globe,
   Hospital,
+  Heart,
   Landmark,
   List,
   Loader2,
@@ -372,6 +373,7 @@ export default function PlanDetail() {
   const hoverTimeoutRef = useRef(null); // Timeout for delayed hover (prevent accidental image loading)
   const closeTimeoutRef = useRef(null); // Timeout for delayed close (allow moving to popup)
   const [isMouseInPopup, setIsMouseInPopup] = useState(false); // Track if mouse is inside popup
+  const isMouseOnMarkerRef = useRef(false); // Track if mouse is on marker (use ref to avoid stale closure)
 
   // ========== INLINE EDITING HANDLERS ==========
   
@@ -1329,7 +1331,13 @@ export default function PlanDetail() {
                   // Handle marker hover with delay to prevent accidental image loading
                   // User must hover for 300ms before image is loaded (saves API costs)
                   const handleMarkerEnter = () => {
-                    // Clear any existing timeout
+                    isMouseOnMarkerRef.current = true;
+                    // Cancel any pending close timeout
+                    if (closeTimeoutRef.current) {
+                      clearTimeout(closeTimeoutRef.current);
+                      closeTimeoutRef.current = null;
+                    }
+                    // Clear any existing hover timeout
                     if (hoverTimeoutRef.current) {
                       clearTimeout(hoverTimeoutRef.current);
                     }
@@ -1357,13 +1365,15 @@ export default function PlanDetail() {
                   
                   // Handle marker leave - add delay before closing to allow moving to popup
                   const handleMarkerLeave = () => {
+                    isMouseOnMarkerRef.current = false;
                     if (hoverTimeoutRef.current) {
                       clearTimeout(hoverTimeoutRef.current);
                       hoverTimeoutRef.current = null;
                     }
                     // Add 500ms delay before closing to allow user to move mouse to popup
                     closeTimeoutRef.current = setTimeout(() => {
-                      if (!isMouseInPopup) {
+                      // Only close if mouse is not on marker AND not in popup
+                      if (!isMouseOnMarkerRef.current && !isMouseInPopup) {
                         setHoveredPOI(null);
                       }
                     }, 500);
@@ -1463,6 +1473,12 @@ export default function PlanDetail() {
                   
                   // Handle marker hover with delay (same as activity POIs)
                   const handleAccommodationEnter = () => {
+                    isMouseOnMarkerRef.current = true;
+                    // Cancel any pending close timeout
+                    if (closeTimeoutRef.current) {
+                      clearTimeout(closeTimeoutRef.current);
+                      closeTimeoutRef.current = null;
+                    }
                     if (hoverTimeoutRef.current) {
                       clearTimeout(hoverTimeoutRef.current);
                     }
@@ -1472,13 +1488,15 @@ export default function PlanDetail() {
                   };
                   
                   const handleAccommodationLeave = () => {
+                    isMouseOnMarkerRef.current = false;
                     if (hoverTimeoutRef.current) {
                       clearTimeout(hoverTimeoutRef.current);
                       hoverTimeoutRef.current = null;
                     }
                     // Add 500ms delay before closing to allow user to move mouse to popup
                     closeTimeoutRef.current = setTimeout(() => {
-                      if (!isMouseInPopup) {
+                      // Only close if mouse is not on marker AND not in popup
+                      if (!isMouseOnMarkerRef.current && !isMouseInPopup) {
                         setHoveredPOI(null);
                       }
                     }, 500);
@@ -1746,9 +1764,11 @@ export default function PlanDetail() {
                         }}
                         onMouseLeave={() => {
                           setIsMouseInPopup(false);
-                          // Close popup after 300ms when leaving popup
+                          // Close popup after 300ms when leaving popup (if not on marker)
                           closeTimeoutRef.current = setTimeout(() => {
-                            setHoveredPOI(null);
+                            if (!isMouseOnMarkerRef.current) {
+                              setHoveredPOI(null);
+                            }
                           }, 300);
                         }}
                       >

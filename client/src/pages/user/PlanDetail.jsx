@@ -30,7 +30,6 @@ import {
   Film,
   Footprints,
   Globe,
-  Heart,
   Hospital,
   Landmark,
   List,

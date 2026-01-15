@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getProfileApi, googleLoginApi, loginApi, logoutApi, refreshTokenApi } from '../services/authApi';
 
 const AuthContext = createContext();
@@ -6,6 +6,9 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isRefreshing = useRef(false);
+  const refreshRetryCount = useRef(0);
+  const MAX_REFRESH_RETRIES = 3;
 
   useEffect(() => {
     const checkUserAuthentication = async () => {
@@ -116,7 +119,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Đăng xuất
+  // Logout function
   const logout = async () => {
     // Optimistic logout: Clear state immediately
     localStorage.removeItem('access_token');
@@ -130,24 +133,49 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Tự động refresh token định kỳ
+  // Silent token refresh with retry logic (prevents aggressive logout on network hiccups)
   useEffect(() => {
-    const interval = setInterval(() => {
+    // Don't start interval until initial auth check completes
+    if (loading) return;
+    // Don't refresh if no user is logged in
+    if (!user) return;
+
+    const interval = setInterval(async () => {
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) return;
+      
+      // Prevent concurrent refresh requests
+      if (isRefreshing.current) return;
+      isRefreshing.current = true;
 
-      refreshTokenApi(refreshToken)
-        .then((res) => {
-          localStorage.setItem('access_token', res.access_token);
-          // localStorage.setItem('refresh_token', res.refresh_token);
-        })
-        .catch(() => {
+      try {
+        const res = await refreshTokenApi(refreshToken);
+        const data = res.data || res;
+        
+        if (data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+          if (data.refresh_token) {
+            localStorage.setItem('refresh_token', data.refresh_token);
+          }
+          // Reset retry count on success
+          refreshRetryCount.current = 0;
+        }
+      } catch (error) {
+        console.warn('Token refresh failed:', error);
+        refreshRetryCount.current += 1;
+        
+        // Only logout after multiple consecutive failures
+        if (refreshRetryCount.current >= MAX_REFRESH_RETRIES) {
+          console.error('Token refresh failed after max retries, logging out');
           logout();
-        });
-    }, 55 * 1000); // Gọi sau mỗi 55 giây
+        }
+      } finally {
+        isRefreshing.current = false;
+      }
+    }, 55 * 1000); // Refresh every 55 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loading, user]);
 
   return (
     <AuthContext.Provider value={{ user, login, register, googleLogin, logout, refreshUser, loading }}>

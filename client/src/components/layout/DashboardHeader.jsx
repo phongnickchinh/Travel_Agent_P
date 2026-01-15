@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LogOut, Menu, Plus, Settings, User } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Moon, Plus, Settings, Sun, User } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * DashboardHeader Component
@@ -16,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
  */
 export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile, onOpenPassword }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
 
@@ -149,6 +151,28 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
                     <span>{item.label}</span>
                   </button>
                 ))}
+
+                {/* Theme Toggle */}
+                <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+                  <button
+                    onClick={() => {
+                      toggleTheme();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted transition"
+                  >
+                    {theme === 'dark' ? (
+                      <>
+                        <Sun className="w-4 h-4" />
+                        <span>Light Mode</span>
+                      </>
+                    ) : (
+                      <>
+                        <Moon className="w-4 h-4" />
+                        <span>Dark Mode</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

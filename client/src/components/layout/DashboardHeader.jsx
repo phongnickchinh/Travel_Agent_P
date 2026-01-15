@@ -133,19 +133,15 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
                 </div>
 
-                {/* Menu Items */}
-                {menuItems.map((item, idx) => (
+                {/* Menu Items (non-danger items) */}
+                {menuItems.filter(item => !item.danger).map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
                       setShowMenu(false);
                       item.action();
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition ${
-                      item.danger
-                        ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted'
-                    }`}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted transition"
                   >
                     <item.icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -153,25 +149,40 @@ export default function DashboardHeader({ onNewPlan, onMenuToggle, onOpenProfile
                 ))}
 
                 {/* Theme Toggle */}
+                <button
+                  onClick={() => {
+                    toggleTheme();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted transition"
+                >
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="w-4 h-4" />
+                      <span>Light Mode</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-4 h-4" />
+                      <span>Dark Mode</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Logout (danger items) */}
                 <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
-                  <button
-                    onClick={() => {
-                      toggleTheme();
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-brand-primary/10 dark:hover:bg-brand-primary/20 hover:text-brand-primary dark:hover:text-brand-muted transition"
-                  >
-                    {theme === 'dark' ? (
-                      <>
-                        <Sun className="w-4 h-4" />
-                        <span>Light Mode</span>
-                      </>
-                    ) : (
-                      <>
-                        <Moon className="w-4 h-4" />
-                        <span>Dark Mode</span>
-                      </>
-                    )}
-                  </button>
+                  {menuItems.filter(item => item.danger).map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setShowMenu(false);
+                        item.action();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition"
+                    >
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
                 </div>
               </motion.div>
             )}

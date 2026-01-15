@@ -349,8 +349,8 @@ export function EditableDate({ value, onSave, disabled, variant = 'light' }) {
       disabled={disabled}
       className={`text-sm py-1 px-2 -mx-2 ${isDark ? 'text-white' : 'text-gray-600'}`}
       renderDisplay={(val) => (
-        <span className="flex items-center gap-1 cursor-pointer hover:underline">
-          <Calendar className="w-4 h-4" /> {formatDisplayDate(val) || 'Chọn ngày...'}
+        <span className={`flex items-center gap-1 cursor-pointer hover:underline ${isDark ? 'hover:text-white' : 'hover:text-brand-primary'}`}>
+          <Calendar className="w-4 h-4" /> {formatDisplayDate(val) || 'Select date...'}
         </span>
       )}
     />

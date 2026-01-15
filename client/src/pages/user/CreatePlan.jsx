@@ -613,7 +613,7 @@ export default function CreatePlan({ isModal = false, onClose, onSuccess }) {
                   </label>
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white"
+                    className="w-full rounded-xl border border-brand-primary/30 bg-white/80 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition focus:border-brand-primary focus:outline-none dark:border-brand-primary/50 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-white [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:dark:hue-rotate-[90deg] [&::-webkit-calendar-picker-indicator]:dark:brightness-[0.8]"
                     value={formData.startDate}
                     onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                     min={today}

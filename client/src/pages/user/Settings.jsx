@@ -255,9 +255,19 @@ function ProfileTab() {
       exit={{ opacity: 0, y: -20 }}
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 lg:p-8"
     >
-      <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white mb-6">
-        Profile Information
-      </h2>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-brand-primary/10 dark:bg-brand-secondary/10 rounded-full flex items-center justify-center">
+          <User className="w-6 h-6 text-brand-primary dark:text-brand-secondary" />
+        </div>
+        <div>
+          <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white">
+            Profile Information
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Update your personal details
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Avatar Upload */}
@@ -596,9 +606,19 @@ function AppearanceTab() {
       exit={{ opacity: 0, y: -20 }}
       className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 lg:p-8"
     >
-      <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white mb-6">
-        Appearance
-      </h2>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 bg-brand-primary/10 dark:bg-brand-secondary/10 rounded-full flex items-center justify-center">
+          <Palette className="w-6 h-6 text-brand-primary dark:text-brand-secondary" />
+        </div>
+        <div>
+          <h2 className="font-poppins font-bold text-xl text-brand-primary dark:text-white">
+            Appearance
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Customize your visual experience
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-6">
         {/* Theme Toggle */}

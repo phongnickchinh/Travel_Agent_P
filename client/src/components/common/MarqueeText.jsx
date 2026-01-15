@@ -52,25 +52,32 @@ export default function MarqueeText({
   return (
     <div 
       ref={containerRef}
-      className={`overflow-hidden ${className}`}
+      className={`overflow-hidden relative group ${className}`}
+      title={shouldAnimate ? text : undefined}
     >
       {shouldAnimate ? (
-        <motion.span
-          ref={textRef}
-          className="inline-block whitespace-nowrap"
-          initial={{ x: 0 }}
-          animate={{ 
-            x: [0, -distance, -distance, 0, 0],
-          }}
-          transition={{
-            duration: duration + pauseDuration * 2,
-            repeat: Infinity,
-            ease: "linear",
-            times: [0, duration / (duration + pauseDuration * 2), (duration + pauseDuration) / (duration + pauseDuration * 2), (duration + pauseDuration) / (duration + pauseDuration * 2) + 0.01, 1]
-          }}
-        >
-          {text}
-        </motion.span>
+        <>
+          <motion.span
+            ref={textRef}
+            className="inline-block whitespace-nowrap"
+            initial={{ x: 0 }}
+            animate={{ 
+              x: [0, -distance, -distance, 0, 0],
+            }}
+            transition={{
+              duration: duration + pauseDuration * 2,
+              repeat: Infinity,
+              ease: "linear",
+              times: [0, duration / (duration + pauseDuration * 2), (duration + pauseDuration) / (duration + pauseDuration * 2), (duration + pauseDuration) / (duration + pauseDuration * 2) + 0.01, 1]
+            }}
+          >
+            {text}
+          </motion.span>
+          {/* Tooltip on hover */}
+          <div className="absolute left-0 bottom-full mb-2 px-3 py-1.5 bg-brand-primary text-white text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-[9999] pointer-events-none">
+            {text}
+          </div>
+        </>
       ) : (
         <span 
           ref={textRef}

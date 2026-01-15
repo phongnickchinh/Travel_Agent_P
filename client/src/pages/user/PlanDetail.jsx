@@ -372,6 +372,8 @@ export default function PlanDetail() {
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
   const hoverTimeoutRef = useRef(null); // Timeout for delayed hover (prevent accidental image loading)
+  const closeTimeoutRef = useRef(null); // Timeout for delayed close (allow moving to popup)
+  const [isMouseInPopup, setIsMouseInPopup] = useState(false); // Track if mouse is inside popup
 
   // ========== INLINE EDITING HANDLERS ==========
   
@@ -1355,13 +1357,18 @@ export default function PlanDetail() {
                     }, 300); // 300ms delay before showing info window and loading image
                   };
                   
-                  // Handle marker leave - cancel pending hover timeout
+                  // Handle marker leave - add delay before closing to allow moving to popup
                   const handleMarkerLeave = () => {
                     if (hoverTimeoutRef.current) {
                       clearTimeout(hoverTimeoutRef.current);
                       hoverTimeoutRef.current = null;
                     }
-                    setHoveredPOI(null);
+                    // Add 500ms delay before closing to allow user to move mouse to popup
+                    closeTimeoutRef.current = setTimeout(() => {
+                      if (!isMouseInPopup) {
+                        setHoveredPOI(null);
+                      }
+                    }, 500);
                   };
                   
                   // Handle marker click - toggle info window for mobile (no hover on touch)
@@ -1471,7 +1478,12 @@ export default function PlanDetail() {
                       clearTimeout(hoverTimeoutRef.current);
                       hoverTimeoutRef.current = null;
                     }
-                    setHoveredPOI(null);
+                    // Add 500ms delay before closing to allow user to move mouse to popup
+                    closeTimeoutRef.current = setTimeout(() => {
+                      if (!isMouseInPopup) {
+                        setHoveredPOI(null);
+                      }
+                    }, 500);
                   };
                   
                   return (

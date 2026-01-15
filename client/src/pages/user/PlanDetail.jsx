@@ -9,7 +9,7 @@
  * - Info panels for costs, accommodation, preferences
  */
 
-import { Circle, GoogleMap, InfoWindow, OverlayView, useJsApiLoader } from '@react-google-maps/api';
+import { Circle, GoogleMap, OverlayView, useJsApiLoader } from '@react-google-maps/api';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -30,7 +30,6 @@ import {
   Film,
   Footprints,
   Globe,
-  Heart,
   Hospital,
   Landmark,
   List,
@@ -43,7 +42,6 @@ import {
   Music,
   Palmtree,
   Plane,
-  Plus,
   Scroll,
   Search,
   Settings2,
@@ -1696,123 +1694,156 @@ export default function PlanDetail() {
                   </>
                 )}
 
-                {/* InfoWindow for hovered POI - Card-style design with image */}
+                {/* Custom Popup for hovered POI - OverlayView with flexible positioning */}
                 {hoveredPOI && (() => {
                   const poi = activityPOIs.find(p => p.id === hoveredPOI) || accommodationPOIs.find(p => p.id === hoveredPOI);
                   if (!poi) return null;
                   const isAccomm = isAccommodation(poi.category);
-                  const cachedImage = hoveredImageCache[poi.id]; // Get cached image
+                  const cachedImage = hoveredImageCache[poi.id];
+                  const TypeIconComponent = getTypeIcon(poi.category);
+                  
+                  // Calculate popup position: show above or below POI based on viewport position
+                  const map = mapRef.current;
+                  let showAbove = true; // Default: show above POI
+                  if (map) {
+                    const projection = map.getProjection();
+                    if (projection) {
+                      const poiLatLng = new window.google.maps.LatLng(poi.lat, poi.lng);
+                      const poiPoint = projection.fromLatLngToPoint(poiLatLng);
+                      const bounds = map.getBounds();
+                      if (bounds) {
+                        const ne = bounds.getNorthEast();
+                        const sw = bounds.getSouthWest();
+                        const nePoint = projection.fromLatLngToPoint(ne);
+                        const swPoint = projection.fromLatLngToPoint(sw);
+                        // Check if POI is in top 30% of visible map area
+                        const mapHeight = Math.abs(nePoint.y - swPoint.y);
+                        const poiRelativeY = Math.abs(poiPoint.y - nePoint.y) / mapHeight;
+                        showAbove = poiRelativeY > 0.3; // If POI is in top 30%, show below
+                      }
+                    }
+                  }
                   
                   return (
-                    <InfoWindow
+                    <OverlayView
                       position={{ lat: poi.lat, lng: poi.lng }}
-                      onCloseClick={() => setHoveredPOI(null)}
-                      options={{ 
-                        disableAutoPan: true, 
-                        pixelOffset: new window.google.maps.Size(0, -60),
-                        maxWidth: 280
-                      }}
+                      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                     >
-                      <div className="w-60 overflow-hidden -m-2">
-                        {/* Featured image with overlay icons */}
-                        <div className="relative">
-                          {cachedImage ? (
-                            <img 
-                              src={cachedImage}
-                              alt={poi.name}
-                              className="w-full h-32 object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-32 bg-linear-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                              <MapPin className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                          
-                          {/* Overlay buttons on image */}
-                          <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                            <button className="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-colors">
-                              <Heart className="w-3.5 h-3.5 text-gray-600" />
-                            </button>
-                            <button className="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-colors">
-                              <Plus className="w-3.5 h-3.5 text-gray-600" />
-                            </button>
-                          </div>
-                          
-                          {/* Day badge */}
-                          <div className="absolute bottom-2 left-2">
-                            <span className={`text-[10px] font-medium px-2 py-1 rounded-full shadow-sm ${
-                              isAccomm 
-                                ? 'bg-purple-500 text-white' 
-                                : 'bg-brand-primary text-white'
-                            }`}>
-                              Day {poi.dayIndex}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Content section */}
-                        <div className="p-3 bg-white">
-                          {/* Location name with icon */}
-                          <div className="flex items-start gap-2">
-                            <MapPin className={`w-4 h-4 mt-0.5 shrink-0 ${
-                              isAccomm ? 'text-purple-500' : 'text-brand-primary'
-                            }`} />
-                            <div className="flex-1 min-w-0">
-                              <h4 className={`font-semibold text-sm leading-tight ${
-                                isAccomm ? 'text-purple-700' : 'text-gray-900'
+                      <div 
+                        className="relative"
+                        style={{ 
+                          transform: showAbove 
+                            ? 'translate(-50%, calc(-100% - 50px))' // Show above: move up by popup height + marker height
+                            : 'translate(-50%, 50px)', // Show below: move down by marker height
+                          zIndex: 200
+                        }}
+                        onMouseEnter={() => {
+                          setIsMouseInPopup(true);
+                          if (closeTimeoutRef.current) {
+                            clearTimeout(closeTimeoutRef.current);
+                            closeTimeoutRef.current = null;
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setIsMouseInPopup(false);
+                          // Close popup after 300ms when leaving popup
+                          closeTimeoutRef.current = setTimeout(() => {
+                            setHoveredPOI(null);
+                          }, 300);
+                        }}
+                      >
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9, y: showAbove ? 10 : -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          transition={{ duration: 0.15 }}
+                          className="w-56 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200"
+                        >
+                          {/* Featured image - square, edge-to-edge, rounded top corners only */}
+                          <div className="relative w-full aspect-square">
+                            {cachedImage ? (
+                              <img 
+                                src={cachedImage}
+                                alt={poi.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-linear-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                {TypeIconComponent && <TypeIconComponent className="w-12 h-12 text-gray-300" />}
+                              </div>
+                            )}
+                            
+                            {/* Day badge on image */}
+                            <div className="absolute bottom-2 left-2">
+                              <span className={`text-[10px] font-medium px-2 py-1 rounded-full shadow-sm ${
+                                isAccomm 
+                                  ? 'bg-purple-500 text-white' 
+                                  : 'bg-brand-primary text-white'
                               }`}>
-                                {poi.name}
-                              </h4>
-                              {poi.address && (
-                                <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                                  {poi.address}
-                                </p>
-                              )}
+                                Day {poi.dayIndex}
+                              </span>
                             </div>
                           </div>
                           
-                          {/* Description or activity info */}
-                          {poi.description && (
-                            <p className="text-xs text-gray-500 mt-2 line-clamp-2">
-                              {poi.description}
-                            </p>
-                          )}
-                          
-                          {/* Rating & Time row */}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                            <div className="flex items-center gap-2">
-                              {poi.rating && (
-                                <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600">
-                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                                  {poi.rating.toFixed(1)}
-                                </span>
+                          {/* Content section */}
+                          <div className="p-3">
+                            {/* Location name with type-based icon */}
+                            <div className="flex items-start gap-2">
+                              {TypeIconComponent && (
+                                <TypeIconComponent className={`w-4 h-4 mt-0.5 shrink-0 ${
+                                  isAccomm ? 'text-purple-500' : 'text-brand-primary'
+                                }`} />
                               )}
-                              {poi.reviewCount && (
-                                <span className="text-[10px] text-gray-400">
-                                  ({poi.reviewCount.toLocaleString()})
+                              <div className="flex-1 min-w-0">
+                                <h4 className={`font-semibold text-sm leading-tight ${
+                                  isAccomm ? 'text-purple-700' : 'text-gray-900'
+                                }`}>
+                                  {poi.name}
+                                </h4>
+                                {poi.address && (
+                                  <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                    {poi.address}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Rating & Time row */}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+                              <div className="flex items-center gap-2">
+                                {poi.rating && (
+                                  <span className="inline-flex items-center gap-0.5 text-xs font-medium text-amber-600">
+                                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                    {poi.rating.toFixed(1)}
+                                  </span>
+                                )}
+                                {poi.reviewCount && (
+                                  <span className="text-[10px] text-gray-400">
+                                    ({poi.reviewCount.toLocaleString()})
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {poi.time && (
+                                <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {poi.time}
                                 </span>
                               )}
                             </div>
                             
-                            {poi.time && (
-                              <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {poi.time}
-                              </span>
+                            {/* Accommodation badge */}
+                            {isAccomm && (
+                              <div className="mt-2">
+                                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1">
+                                  <Bed className="w-3 h-3" /> Stay
+                                </span>
+                              </div>
                             )}
                           </div>
-                          
-                          {/* Accommodation badge */}
-                          {isAccomm && (
-                            <div className="mt-2 flex items-center gap-1.5">
-                              <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                                <Bed className="w-3 h-3" /> Stay
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        </motion.div>
                       </div>
-                    </InfoWindow>
+                    </OverlayView>
                   );
                 })()}
               </GoogleMap>

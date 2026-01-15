@@ -31,6 +31,7 @@ import {
   Footprints,
   Globe,
   Hospital,
+  Heart,
   Landmark,
   List,
   Loader2,

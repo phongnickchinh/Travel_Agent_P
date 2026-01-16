@@ -4,6 +4,9 @@ from firebase_admin import credentials, storage
 from .firebase_interface import FirebaseInterface
 import time
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FirebaseHelper(FirebaseInterface):
@@ -27,7 +30,7 @@ class FirebaseHelper(FirebaseInterface):
                 self.bucket = storage.bucket()
                 self._initialized = True
             except Exception as e:
-                print(f"Firebase initialization error: {str(e)}")
+                logger.error(f"Firebase initialization error: {str(e)}")
                 raise
 
     def upload_image(self, file, filename):
@@ -56,7 +59,7 @@ class FirebaseHelper(FirebaseInterface):
             blob.make_public()
             return blob.public_url
         except Exception as e:
-            print(f"Upload error: {str(e)}")
+            logger.error(f"Firebase upload error: {str(e)}")
             return None
 
     def delete_image(self, image_url):
@@ -79,8 +82,8 @@ class FirebaseHelper(FirebaseInterface):
                 blob.delete()
                 return True
             else:
-                print(f"Invalid image URL format: {image_url}")
+                logger.warning(f"Invalid image URL format: {image_url}")
                 return False
         except Exception as e:
-            print(f"Delete error: {str(e)}")
+            logger.error(f"Firebase delete error: {str(e)}")
             return False

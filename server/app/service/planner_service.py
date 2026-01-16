@@ -42,6 +42,15 @@ from ..providers.places.google_places_provider import GooglePlacesProvider
 from ..providers.type_mapping import map_user_interests_to_categories
 from .lc_chain import TravelPlannerChain
 from .cost_usage_service import CostUsageService
+from ..common.exceptions import (
+    MongoDBError,
+    GooglePlacesAPIError,
+    ValidationError,
+    PlanGenerationError,
+    POIFetchError,
+    ClusteringError,
+    NotFoundError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -297,11 +306,14 @@ class PlannerService:
                 
                 return place_detail.to_dict()
                 
-            except Exception as cache_error:
+            except (MongoDBError, Exception) as cache_error:
                 logger.error(f"[RESOLVE] Error caching to MongoDB: {cache_error}")
                 # Still return google_data even if caching fails
                 return google_data
             
+        except GooglePlacesAPIError as e:
+            logger.error(f"[RESOLVE] Google API failed for destination {place_id}: {e}")
+            return None
         except Exception as e:
             logger.error(f"[RESOLVE] Failed to resolve destination {place_id}: {e}")
             return None
@@ -388,6 +400,8 @@ class PlannerService:
             )
             all_pois.extend(mongo_pois)
             logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs (radius={mongodb_radius_km}km, full_random={is_one_day})")
+        except MongoDBError as e:
+            logger.warning(f"[MongoDB] POI search failed (MongoDBError): {e}")
         except Exception as e:
             logger.warning(f"[MongoDB] POI search failed: {e}")
         
@@ -414,6 +428,8 @@ class PlannerService:
                 
                 all_pois.extend(google_pois)
                 logger.info(f"[Google] Fetched {len(google_pois)} POIs, cached: {cached_count}, failed: {failed_count}")
+            except GooglePlacesAPIError as e:
+                logger.warning(f"[Google] POI search failed (GooglePlacesAPIError): {e}")
             except Exception as e:
                 logger.warning(f"[Google] POI search failed: {e}")
         
@@ -517,6 +533,9 @@ class PlannerService:
             
             return filtered_results[:limit]
             
+        except MongoDBError as e:
+            logger.warning(f"[MongoDB] Search failed (MongoDBError): {e}")
+            return []
         except Exception as e:
             logger.warning(f"[MongoDB] Search failed: {e}")
             return []
@@ -633,6 +652,9 @@ class PlannerService:
                 # if len(results) >= limit + 10:
                 #     break
                     
+            except GooglePlacesAPIError as e:
+                logger.warning(f"[Google] Search for types {group['types']} failed (GooglePlacesAPIError): {e}")
+                continue
             except Exception as e:
                 logger.warning(f"[Google] Search for types {group['types']} failed: {e}")
                 continue
@@ -728,6 +750,8 @@ class PlannerService:
             )
             accommodations.extend(mongo_accommodations)
             logger.info(f"[ACCOMMODATION] Found {len(mongo_accommodations)} cached accommodations in MongoDB")
+        except MongoDBError as e:
+            logger.warning(f"[ACCOMMODATION] MongoDB search failed (MongoDBError): {e}")
         except Exception as e:
             logger.warning(f"[ACCOMMODATION] MongoDB search failed: {e}")
         
@@ -748,6 +772,8 @@ class PlannerService:
                 
                 accommodations.extend(google_accommodations)
                 logger.info(f"[ACCOMMODATION] Fetched {len(google_accommodations)} from Google")
+            except GooglePlacesAPIError as e:
+                logger.warning(f"[ACCOMMODATION] Google search failed (GooglePlacesAPIError): {e}")
             except Exception as e:
                 logger.warning(f"[ACCOMMODATION] Google search failed: {e}")
         
@@ -801,6 +827,12 @@ class PlannerService:
             
             return filtered if filtered else accommodations[:limit]
             
+        except MongoDBError as e:
+            logger.warning(f"[ACCOMMODATION] MongoDB search failed (MongoDBError): {e}")
+            return []
+        except ValidationError as e:
+            logger.warning(f"[ACCOMMODATION] Validation error in search request: {e}")
+            return []
         except Exception as e:
             logger.warning(f"[ACCOMMODATION] MongoDB search failed: {e}")
             return []
@@ -848,6 +880,9 @@ class PlannerService:
             logger.info(f"[ACCOMMODATION] Google returned {len(results)} lodging POIs")
             return results[:limit]
             
+        except GooglePlacesAPIError as e:
+            logger.warning(f"[ACCOMMODATION] Google search failed (GooglePlacesAPIError): {e}")
+            return []
         except Exception as e:
             logger.warning(f"[ACCOMMODATION] Google search failed: {e}")
             return []
@@ -938,7 +973,7 @@ class PlannerService:
             # Create POI model from dict (this validates the schema)
             try:
                 poi_model = POI(**poi_data)
-            except Exception as validation_error:
+            except (ValidationError, ValueError, TypeError) as validation_error:
                 logger.warning(f"[CACHE] POI validation failed for {poi_id}: {validation_error}")
                 logger.debug(f"[CACHE] Failed POI data: {poi_data}")
                 return False
@@ -946,8 +981,11 @@ class PlannerService:
             # Upsert to MongoDB (insert new or update if stale)
             try:
                 result = self.poi_repo.upsert(poi_model)
-            except Exception as upsert_error:
+            except MongoDBError as upsert_error:
                 logger.error(f"[CACHE] MongoDB upsert failed for {poi_id}: {upsert_error}")
+                return False
+            except Exception as upsert_error:
+                logger.error(f"[CACHE] Unexpected error during upsert for {poi_id}: {upsert_error}")
                 return False
             
             operation = result.get('_operation', 'unknown')
@@ -964,6 +1002,9 @@ class PlannerService:
                 logger.warning(f"[CACHE] Unknown operation: {operation}")
                 return False
             
+        except POIFetchError as e:
+            logger.warning(f"[CACHE] POI fetch error during caching: {e}")
+            return False
         except Exception as e:
             logger.warning(f"[CACHE] Failed to cache POI: {e}")
             return False
@@ -1242,6 +1283,8 @@ class PlannerService:
                 else:
                     logger.warning("[CLUSTERING] ML returned empty clusters, falling back to BFS")
                     
+            except ClusteringError as e:
+                logger.warning(f"[CLUSTERING] ML clustering failed (ClusteringError): {e}. Falling back to BFS")
             except Exception as e:
                 logger.warning(f"[CLUSTERING] ML clustering failed: {e}. Falling back to BFS")
         
@@ -1636,6 +1679,9 @@ class PlannerService:
                             else:
                                 logger.warning(f"[THUMBNAIL] Failed to get thumbnail URL")
                                 
+                        except GooglePlacesAPIError as e:
+                            logger.warning(f"[THUMBNAIL] Google API error getting thumbnail URL: {e}")
+                            # Continue without thumbnail - not critical for plan creation
                         except Exception as e:
                             logger.warning(f"[THUMBNAIL] Error getting thumbnail URL: {e}")
                             # Continue without thumbnail - not critical for plan creation
@@ -1666,9 +1712,15 @@ class PlannerService:
             
             return created_plan
             
+        except ValidationError as e:
+            logger.error(f"[ERROR] Validation error creating plan: {e}")
+            raise PlanGenerationError(f"Invalid plan data: {e}")
+        except MongoDBError as e:
+            logger.error(f"[ERROR] MongoDB error creating plan: {e}")
+            raise PlanGenerationError(f"Database error: {e}")
         except Exception as e:
             logger.error(f"[ERROR] Failed to create plan: {e}")
-            raise
+            raise PlanGenerationError(f"Failed to create plan: {e}")
     
     def generate_itinerary(self, plan_id: str) -> bool:
         """
@@ -1784,6 +1836,25 @@ class PlannerService:
             
             return True
             
+        except PlanGenerationError as e:
+            logger.error(f"[ERROR] Plan generation error for {plan_id}: {e}")
+            
+            # Update plan status to FAILED
+            try:
+                self.plan_repo.update(plan_id, {
+                    'status': PlanStatusEnum.FAILED.value,
+                    'error_message': str(e),
+                    'metadata': {
+                        'generation_time_sec': time.time() - start_time,
+                        'error': str(e)
+                    }
+                })
+            except MongoDBError:
+                pass
+            except Exception:
+                pass
+            
+            return False
         except Exception as e:
             logger.error(f"[ERROR] Failed to generate itinerary for {plan_id}: {e}")
             
@@ -1797,6 +1868,8 @@ class PlannerService:
                         'error': str(e)
                     }
                 })
+            except MongoDBError:
+                pass
             except Exception:
                 pass
             
@@ -1852,6 +1925,9 @@ class PlannerService:
         try:
             poi_map = self.poi_repo.get_by_ids(list(all_poi_ids))
             logger.debug(f"[ENRICH] Fetched {len(poi_map)}/{len(all_poi_ids)} POIs for plan {plan.get('plan_id')}")
+        except MongoDBError as e:
+            logger.warning(f"[ENRICH] MongoDB error fetching POI locations: {e}")
+            return plan
         except Exception as e:
             logger.warning(f"[ENRICH] Failed to fetch POI locations: {e}")
             return plan
@@ -2377,6 +2453,8 @@ class PlannerService:
                 poi = self.poi_repo.get_by_google_id(place_id)
                 if poi:
                     logger.info(f"[PLANNER] Found POI {place_id} in MongoDB cache")
+            except MongoDBError as e:
+                logger.warning(f"[PLANNER] MongoDB POI fetch failed (MongoDBError): {e}")
             except Exception as e:
                 logger.warning(f"[PLANNER] MongoDB POI fetch failed: {e}")
             
@@ -2386,6 +2464,8 @@ class PlannerService:
                     poi = self.place_detail_repo.get_by_place_id(place_id)
                     if poi:
                         logger.info(f"[PLANNER] Found POI {place_id} in PlaceDetail cache")
+                except MongoDBError as e:
+                    logger.warning(f"[PLANNER] PlaceDetail fetch failed (MongoDBError): {e}")
                 except Exception as e:
                     logger.warning(f"[PLANNER] PlaceDetail fetch failed: {e}")
             
@@ -2399,10 +2479,15 @@ class PlannerService:
                         try:
                             self._cache_poi_to_mongodb(google_poi)
                             poi = self.poi_repo.get_by_google_id(place_id)
-                        except Exception as upsert_error:
+                        except MongoDBError as upsert_error:
                             logger.error(f"[CACHE] MongoDB upsert failed for {place_id}: {upsert_error}")
+                        except Exception as upsert_error:
+                            logger.error(f"[CACHE] Unexpected error during upsert for {place_id}: {upsert_error}")
                                 
                         logger.info(f"[PLANNER] Fetched POI {place_id} from Google API")
+                except GooglePlacesAPIError as e:
+                    logger.error(f"[PLANNER] Google API fetch failed (GooglePlacesAPIError): {e}")
+                    return None
                 except Exception as e:
                     logger.error(f"[PLANNER] Google API fetch failed: {e}")
                     return None

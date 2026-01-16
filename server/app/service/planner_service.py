@@ -338,7 +338,7 @@ class PlannerService:
         preferences = plan.get('preferences', {}) or {}
         interests = preferences.get('interests', [])
         target_poi_count = max(30, num_days*10) # At least 30 POIs for variety
-        print(f"Target POI count: {target_poi_count}")
+        logger.debug(f"Target POI count: {target_poi_count}")
         
         # Get location from plan or resolve from place_id
         if destination_location:
@@ -377,7 +377,7 @@ class PlannerService:
         
         # Step 1: Search MongoDB first (with dynamic radius)
         try:
-            print(interests)
+            logger.debug(f"User interests: {interests}")
             # Use full random sampling for 1-day trips to increase variety
             is_one_day = (num_days == 1)
             mongo_pois = self._search_pois_mongodb(

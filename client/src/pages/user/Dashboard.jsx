@@ -104,11 +104,7 @@ export default function Dashboard() {
     });
 
     if (generatingPlans.length > 0) {
-      console.log('[Dashboard] Found', generatingPlans.length, 'generating plans, starting status polling...');
-      
       const statusInterval = setInterval(async () => {
-        console.log('[Dashboard] Polling status for generating plans...');
-        
         try {
           // Fetch status for each generating plan
           const updates = await Promise.all(
@@ -138,9 +134,7 @@ export default function Dashboard() {
             prevPlans.map(plan => {
               const update = updates.find(u => u && u.plan_id === plan.plan_id);
               if (update) {
-                // Chỉ update nếu status thay đổi
                 if (update.status !== plan.status) {
-                  console.log(`[Dashboard] Plan ${plan.plan_id} status: ${plan.status} → ${update.status}`);
                   return { ...plan, ...update };
                 }
               }
@@ -163,7 +157,6 @@ export default function Dashboard() {
       }, 3000); // Poll status every 3 seconds (faster than full reload)
 
       return () => {
-        console.log('[Dashboard] Clearing status polling interval');
         clearInterval(statusInterval);
       };
     }

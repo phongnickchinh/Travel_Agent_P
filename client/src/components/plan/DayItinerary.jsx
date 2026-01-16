@@ -67,23 +67,19 @@ const DayItinerary = ({
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
-    console.log('[DayItinerary] Drag started:', event.active.id);
   };
 
   const handleDragCancel = () => {
     setActiveId(null);
-    console.log('[DayItinerary] Drag cancelled');
   };
 
   useEffect(() => {
     // Skip prop sync if we're in the middle of an optimistic update
     // This prevents the "bounce back" effect during drag operations
     if (isPendingUpdate.current) {
-      console.log('[DayItinerary] Skipping prop sync - pending update');
       return;
     }
     
-    console.log('[DayItinerary] Syncing props to state');
     setItems(mergeActivitiesWithTypes(day.activities, day.types, day.poi_ids, day.estimated_times, day.featured_images));
   }, [day]); // eslint-disable-line react-hooks/exhaustive-deps
 

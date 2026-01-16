@@ -2140,7 +2140,6 @@ export default function PlanDetail() {
       </div>
 
       {!isPublicView && (
-        console.log("plan before regenerate modal: ", plan),
         <RegeneratePlanModal
           isOpen={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}

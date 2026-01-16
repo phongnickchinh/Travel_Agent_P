@@ -31,8 +31,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             return;
           } catch (error) {
-            console.log('Access token invalid or expired, trying refresh token...');
-            // If failed, fall through to refresh token logic
+            // Access token invalid or expired, fall through to refresh token logic
           }
         }
 

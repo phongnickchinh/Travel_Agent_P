@@ -78,7 +78,6 @@ class PlanAPI {
   async getPlanById(planId) {
     try {
       const response = await api.get(`/plan/${planId}`);
-      console.log('[DEBUG] getPlanById response:', response);
       return {
         success: true,
         data: response.data.plan || response.data.data?.plan || response.data
@@ -496,15 +495,12 @@ class PlanAPI {
    * @returns {Promise<Object>} - Updated plan
    */
   async addActivityFromPOI(planId, dayNumber, poiId, note = null) {
-    console.log('[PlanAPI] addActivityFromPOI called:', { planId, dayNumber, poiId, note });
     try {
       const url = `/plan/${planId}/day/${dayNumber}/add-activity`;
-      console.log('[PlanAPI] POST request to:', url, 'Body:', { poi_id: poiId, note });
       const response = await api.post(url, {
         poi_id: poiId,
         note: note
       });
-      console.log('[PlanAPI] Response:', response.data);
       return {
         success: true,
         data: response.data

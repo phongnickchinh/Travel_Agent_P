@@ -161,7 +161,6 @@ const RegeneratePlanModal = ({
         deep_search: deepSearch
       },
     };
-    console.log('[RegenerateModal] Submitting:', payload);
     onSubmit(payload);
   };
 

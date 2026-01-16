@@ -14,6 +14,13 @@ from ..utils.jwt_helpers import (
     verify_token_and_get_user_id
 )
 from ..core.cache.redis_blacklist import RedisBlacklist
+from ..common.exceptions import (
+    AuthenticationError,
+    TokenError,
+    PostgreSQLError,
+    RedisError,
+    ValidationError
+)
 from config import access_token_expire_sec, refresh_token_expire_sec
 
 class AuthService:
@@ -67,9 +74,12 @@ class AuthService:
             if expires_in is None:
                 expires_in = access_token_expire_sec
             return jwt_generate_access_token(user_id, expires_in)
+        except TokenError as e:
+            logging.error(f"Token error generating access token: {str(e)}")
+            raise
         except Exception as e:
             logging.error(f"Error generating access token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate access token: {str(e)}")
 
 
     def generate_refresh_token(self, user_id, expires_in=None): 
@@ -81,9 +91,15 @@ class AuthService:
             new_refresh_token = generate_refresh_token_jwt(user_id, expires_in)
             self.token_repo.save_new_refresh_token(user_id, new_refresh_token)
             return new_refresh_token
+        except PostgreSQLError as e:
+            logging.error(f"Database error saving refresh token: {str(e)}")
+            raise TokenError(f"Failed to save refresh token: {str(e)}")
+        except TokenError as e:
+            logging.error(f"Token error generating refresh token: {str(e)}")
+            raise
         except Exception as e:
             logging.error(f"Error generating refresh token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate refresh token: {str(e)}")
         
         
     def verify_temp_access_token(self, token):
@@ -93,9 +109,12 @@ class AuthService:
             if not user_id:
                 logging.warning("Access token verification failed.")
             return user_id
+        except TokenError as e:
+            logging.error(f"Token error verifying access token: {str(e)}")
+            raise
         except Exception as e:
             logging.error(f"Error verifying access token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to verify access token: {str(e)}")
         
         
     def verify_refresh_token(self, token):
@@ -116,9 +135,15 @@ class AuthService:
                 return None
             
             return user_id
+        except TokenError as e:
+            logging.error(f"Token error verifying refresh token: {str(e)}")
+            raise
+        except PostgreSQLError as e:
+            logging.error(f"Database error verifying refresh token: {str(e)}")
+            raise TokenError(f"Failed to verify refresh token: {str(e)}")
         except Exception as e:
             logging.error(f"Error verifying refresh token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to verify refresh token: {str(e)}")
         
         
     def validate_password(self, password):
@@ -151,9 +176,12 @@ class AuthService:
             
             return new_user
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error saving new user: {str(e)}")
+            raise AuthenticationError(f"Failed to create user: {str(e)}")
         except Exception as e:
             logging.error(f"Error saving new user: {str(e)}")
-            raise
+            raise AuthenticationError(f"Failed to create user: {str(e)}")
     
     def create_admin_user(self, username, password, email=None, name=None):
         """
@@ -209,6 +237,9 @@ class AuthService:
             logging.info(f"Created admin user: {username}")
             return new_admin
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error creating admin user: {str(e)}")
+            return None
         except Exception as e:
             logging.error(f"Error creating admin user: {str(e)}")
             return None
@@ -237,9 +268,12 @@ class AuthService:
             logging.error(f"VERIFICATION CODE: {verification_code}")
             return verification_code
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error generating verification code: {str(e)}")
+            raise TokenError(f"Failed to generate verification code: {str(e)}")
         except Exception as e:
             logging.error(f"Error generating verification code: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate verification code: {str(e)}")
         
         
     def generate_reset_code(self, email):
@@ -251,9 +285,12 @@ class AuthService:
             logging.error(f"RESET CODE: {reset_code}")
             return reset_code
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error generating reset code: {str(e)}")
+            raise TokenError(f"Failed to generate reset code: {str(e)}")
         except Exception as e:
             logging.error(f"Error generating reset code: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate reset code: {str(e)}")
 
 
     def verify_verification_code(self, confirm_token, verification_code):
@@ -279,9 +316,15 @@ class AuthService:
                 return None
             
             return self.user_repo.get_user_by_id(user_id)
+        except TokenError as e:
+            logging.error(f"Token error verifying verification code: {str(e)}")
+            raise
+        except PostgreSQLError as e:
+            logging.error(f"Database error verifying verification code: {str(e)}")
+            raise TokenError(f"Failed to verify verification code: {str(e)}")
         except Exception as e:
             logging.error(f"Error verifying verification code: {str(e)}")
-            raise
+            raise TokenError(f"Failed to verify verification code: {str(e)}")
         
         
     def verify_reset_code(self, reset_token, reset_code):
@@ -306,9 +349,15 @@ class AuthService:
                 return None
             
             return self.user_repo.get_user_by_id(user_id)
+        except TokenError as e:
+            logging.error(f"Token error verifying reset code: {str(e)}")
+            raise
+        except PostgreSQLError as e:
+            logging.error(f"Database error verifying reset code: {str(e)}")
+            raise TokenError(f"Failed to verify reset code: {str(e)}")
         except Exception as e:
             logging.error(f"Error verifying reset code: {str(e)}")
-            raise
+            raise TokenError(f"Failed to verify reset code: {str(e)}")
         
         
     def generate_confirm_token(self, email, expires_in=1800):
@@ -318,9 +367,12 @@ class AuthService:
             new_confirm_token = encode_jwt_token(user_id, expires_in)
             self.token_repo.save_confirm_token(user_id, new_confirm_token)
             return new_confirm_token
+        except PostgreSQLError as e:
+            logging.error(f"Database error generating confirm token: {str(e)}")
+            raise TokenError(f"Failed to generate confirm token: {str(e)}")
         except Exception as e:
             logging.error(f"Error generating confirm token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate confirm token: {str(e)}")
         
         
     def generate_reset_token(self, email, expires_in=1800):
@@ -330,9 +382,12 @@ class AuthService:
             new_reset_token = encode_jwt_token(user_id, expires_in)
             self.token_repo.save_reset_token(user_id, new_reset_token)
             return new_reset_token
+        except PostgreSQLError as e:
+            logging.error(f"Database error generating reset token: {str(e)}")
+            raise TokenError(f"Failed to generate reset token: {str(e)}")
         except Exception as e: 
             logging.error(f"Error generating reset token: {str(e)}")
-            raise
+            raise TokenError(f"Failed to generate reset token: {str(e)}")
         
         
     def is_verified(self, email):
@@ -352,9 +407,12 @@ class AuthService:
                 return False
             return True
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error verifying user email: {str(e)}")
+            raise AuthenticationError(f"Failed to verify user email: {str(e)}")
         except Exception as e:
             logging.error(f"Error verifying user email: {str(e)}")
-            raise
+            raise AuthenticationError(f"Failed to verify user email: {str(e)}")
         
         
     def invalidate_token(self, user_id, access_token):
@@ -394,9 +452,15 @@ class AuthService:
                 logging.error(f"[LOGOUT] Failed to delete refresh token from DB for user {user_id}")
                 return False
                 
+        except RedisError as e:
+            logging.error(f"[LOGOUT] Redis error invalidating token: {str(e)}", exc_info=True)
+            raise TokenError(f"Failed to invalidate token: {str(e)}")
+        except PostgreSQLError as e:
+            logging.error(f"[LOGOUT] Database error invalidating token: {str(e)}", exc_info=True)
+            raise TokenError(f"Failed to invalidate token: {str(e)}")
         except Exception as e:
             logging.error(f"[LOGOUT] Error invalidating token: {str(e)}", exc_info=True)
-            raise
+            raise TokenError(f"Failed to invalidate token: {str(e)}")
         
         
     def set_password(self, user_id, new_password):
@@ -416,9 +480,12 @@ class AuthService:
             
             return True
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error setting password: {str(e)}")
+            raise AuthenticationError(f"Failed to set password: {str(e)}")
         except Exception as e: 
             logging.error(f"Error setting password: {str(e)}")
-            raise
+            raise AuthenticationError(f"Failed to set password: {str(e)}")
                 
     # --- GOOGLE OAUTH METHODS ---
     def authenticate_google_user(self, google_token: str):
@@ -489,9 +556,15 @@ class AuthService:
             
             return user, (access_token, refresh_token), role.role_name if role else "user"
         
+        except TokenError as e:
+            logging.error(f"Token error authenticating Google user: {str(e)}")
+            raise
+        except PostgreSQLError as e:
+            logging.error(f"Database error authenticating Google user: {str(e)}")
+            raise AuthenticationError(f"Failed to authenticate Google user: {str(e)}")
         except Exception as e:
             logging.error(f"Error authenticating Google user: {str(e)}")
-            raise
+            raise AuthenticationError(f"Failed to authenticate Google user: {str(e)}")
     
     def link_google_account(self, user_id: str, google_token: str):
         """
@@ -531,8 +604,11 @@ class AuthService:
             logging.info(f"Linked Google account for user {user_id}, auth_provider={new_auth_provider}")
             return True, "Google account linked successfully"
         
+        except PostgreSQLError as e:
+            logging.error(f"Database error linking Google account: {str(e)}")
+            raise AuthenticationError(f"Failed to link Google account: {str(e)}")
         except Exception as e:
             logging.error(f"Error linking Google account: {str(e)}")
-            raise
+            raise AuthenticationError(f"Failed to link Google account: {str(e)}")
 
 

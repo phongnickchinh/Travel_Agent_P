@@ -1,4 +1,5 @@
 import pymysql
+import logging
 
 from flask import Flask
 from flask.json.provider import DefaultJSONProvider
@@ -63,38 +64,39 @@ def create_app(config_class=Config):
     
     # Initialize Redis connection
     from .core.clients.redis_client import RedisClient
+    init_logger = logging.getLogger(__name__)
     try:
         RedisClient.get_instance()
-        print("[INIT] Redis initialized successfully")
+        init_logger.info("[INIT] Redis initialized successfully")
     except Exception as e:
-        print(f"[INIT] WARNING: Redis initialization failed: {str(e)}")
-        print("[INIT] WARNING: Application will continue in degraded mode (without Redis features)")
+        init_logger.warning(f"[INIT] Redis initialization failed: {str(e)}")
+        init_logger.warning("[INIT] Application will continue in degraded mode (without Redis features)")
     
     # Initialize MongoDB connection and create indexes
     from .core.clients.mongodb_client import get_mongodb_client
     try:
         mongodb_client = get_mongodb_client()
         if mongodb_client.is_healthy():
-            print("[INIT] MongoDB initialized successfully")
+            init_logger.info("[INIT] MongoDB initialized successfully")
             # Create indexes on first startup
             mongodb_client.create_indexes()
-            print("[INIT] MongoDB indexes created/verified")
+            init_logger.info("[INIT] MongoDB indexes created/verified")
         else:
-            print("[INIT] WARNING: MongoDB connection not healthy")
+            init_logger.warning("[INIT] MongoDB connection not healthy")
     except Exception as e:
-        print(f"[INIT] WARNING: MongoDB initialization failed: {str(e)}")
-        print("[INIT] WARNING: POI and Itinerary features will not be available")
+        init_logger.warning(f"[INIT] MongoDB initialization failed: {str(e)}")
+        init_logger.warning("[INIT] POI and Itinerary features will not be available")
     
     # Initialize Elasticsearch and sync data from MongoDB
     from .core.es_initializer import initialize_elasticsearch
     try:
         es_success = initialize_elasticsearch()
         if es_success:
-            print("[INIT] Elasticsearch initialized and synced successfully")
+            init_logger.info("[INIT] Elasticsearch initialized and synced successfully")
         else:
-            print("[INIT] WARNING: Elasticsearch initialization incomplete")
+            init_logger.warning("[INIT] Elasticsearch initialization incomplete")
     except Exception as es_error:
-        print(f"[INIT] WARNING: Elasticsearch initialization failed: {str(es_error)}")
+        init_logger.warning(f"[INIT] Elasticsearch initialization failed: {str(es_error)}")
     
     from .utils.blacklist_cleaner import cleanup_expired_tokens
     db.init_app(app)
@@ -151,12 +153,12 @@ def create_app(config_class=Config):
     with app.app_context():
         try:
             from flask_migrate import upgrade
-            print("Running database migration...")
+            init_logger.info("Running database migration...")
             upgrade()
-            print("Database migration completed successfully")
+            init_logger.info("Database migration completed successfully")
         except Exception as e:
-            print(f"Database migration failed: {str(e)}")
-            print("Server will continue startup - please check migrations manually if needed")
+            init_logger.error(f"Database migration failed: {str(e)}")
+            init_logger.warning("Server will continue startup - please check migrations manually if needed")
             # Continue startup even if migration fails
     
     from .core.base_model import BaseModel

@@ -452,18 +452,13 @@ export default function PlanDetail() {
 
   // Add activity from POI search
   const handleAddActivityFromPOI = useCallback(async (dayNumber, poiId, note) => {
-    console.log('[PlanDetail] handleAddActivityFromPOI called:', { dayNumber, poiId, note });
     if (!planId || isPublicView) {
-      console.log('[PlanDetail] Skipping - no planId or isPublicView');
       return;
     }
-    console.log('[PlanDetail] Calling planAPI.addActivityFromPOI...');
     const result = await planAPI.addActivityFromPOI(planId, dayNumber, poiId, note);
-    console.log('[PlanDetail] API result:', result);
     if (result.success && result.data) {
       const planData = result.data.plan || result.data;
       setPlan(planData);
-      console.log('[PlanDetail] Plan updated successfully');
     } else {
       throw new Error(result.error || 'Failed to add activity');
     }
@@ -623,8 +618,6 @@ export default function PlanDetail() {
     
     const status = plan.status?.toLowerCase();
     if (status === 'pending' || status === 'processing') {
-      console.log(`[PlanDetail] Plan status is ${status}, starting polling...`);
-      
       const pollInterval = setInterval(async () => {
         try {
           const result = await planAPI.getPlanById(planId);
@@ -632,14 +625,11 @@ export default function PlanDetail() {
             const planData = result.data.plan || result.data;
             const newStatus = planData.status?.toLowerCase();
             
-            console.log(`[PlanDetail] Poll result: status=${newStatus}`);
-            
             // Update plan data
             setPlan(planData);
             
             // Stop polling if status changed to completed or failed
             if (newStatus === 'completed' || newStatus === 'failed') {
-              console.log(`[PlanDetail] Status changed to ${newStatus}, stopping polling`);
               clearInterval(pollInterval);
             }
           }
@@ -650,7 +640,6 @@ export default function PlanDetail() {
       
       // Cleanup on unmount or when status changes
       return () => {
-        console.log('[PlanDetail] Clearing polling interval');
         clearInterval(pollInterval);
       };
     }
@@ -2075,10 +2064,7 @@ export default function PlanDetail() {
                                         className="flex items-center gap-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate cursor-pointer hover:text-brand-primary dark:hover:text-brand-muted transition-colors" 
                                         title={acc.name}
                                         onMouseEnter={() => {
-                                          console.log("acc: ", acc);
                                           const accPOI = accommodationPOIs.find((poi) => {
-                                            console.log("poi: ", poi);
-                                            
                                             const matchId = acc.accommodation_id && poi.accommodationId === acc.accommodation_id;
                                             const matchLocation = acc.location && Math.abs(poi.lat - acc.location[1]) < 1e-6 && Math.abs(poi.lng - acc.location[0]) < 1e-6; // GeoJSON: [lng, lat]
                                             const matchName = poi.name === acc.name;

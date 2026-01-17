@@ -16,9 +16,9 @@ def setup_dependencies():
     if _is_initialized:
         return
     
-    from ..providers import GooglePlacesProvider
+    from ...providers import GooglePlacesProvider
     # Import PostgreSQL interfaces
-    from ..repo.postgre.interfaces import (
+    from ...repo.postgre.interfaces import (
         UserInterface,
         TokenInterface,
         RoleInterface,
@@ -27,20 +27,20 @@ def setup_dependencies():
     )
 
     # Import MongoDB interfaces
-    from ..repo.mongo.interfaces import (
+    from ...repo.mongo.interfaces import (
         POIRepositoryInterface,
         PlanRepositoryInterface,
         PlaceDetailRepositoryInterface,
         AutocompleteRepositoryInterface
         )
     # Import Elasticsearch interfaces
-    from ..repo.es.interfaces import (
+    from ...repo.es.interfaces import (
         ESPOIRepositoryInterface,
         ESAutocompleteRepositoryInterface
         )
     
     # Import PostgreSQL repository implementations
-    from ..repo.postgre.implementations import (
+    from ...repo.postgre.implementations import (
         UserRepository,
         TokenRepository,
         RoleRepository,
@@ -49,27 +49,27 @@ def setup_dependencies():
     )
     
     # Import MongoDB repository implementations
-    from ..repo.mongo.poi_repository import POIRepository
-    from ..repo.mongo.plan_repository import PlanRepository
-    from ..repo.mongo.place_detail_repository import PlaceDetailRepository
-    from ..repo.mongo.autocomplete_repository import AutocompleteRepository
+    from ...repo.mongo.poi_repository import POIRepository
+    from ...repo.mongo.plan_repository import PlanRepository
+    from ...repo.mongo.place_detail_repository import PlaceDetailRepository
+    from ...repo.mongo.autocomplete_repository import AutocompleteRepository
     
     # Import Elasticsearch repository implementations
-    from ..repo.es.es_poi_repository import ESPOIRepository
-    from ..repo.es.es_autocomplete_repository import ESAutocompleteRepository
+    from ...repo.es.es_poi_repository import ESPOIRepository
+    from ...repo.es.es_autocomplete_repository import ESAutocompleteRepository
 
-    from ..utils.firebase_interface import FirebaseInterface
-    from ..utils.firebase_helper import FirebaseHelper
+    from ...providers.firebase.firebase_interface import FirebaseInterface
+    from ...providers.firebase.firebase_helper import FirebaseHelper
 
     # Import services
-    from ..service.user_service import UserService
-    from ..service.edit_service import EditService
-    from ..service.auth_service import AuthService
-    from ..service.cost_usage_service import CostUsageService
-    from ..service.places_service import PlacesService
-    from ..service.search_service import SearchService
-    from ..service.planner_service import PlannerService
-    from ..service.autocomplete_service import AutocompleteService
+    from ...service.user_service import UserService
+    from ...service.edit_service import EditService
+    from ...service.auth_service import AuthService
+    from ...service.cost_usage_service import CostUsageService
+    from ...service.places_service import PlacesService
+    from ...service.search_service import SearchService
+    from ...service.planner_service import PlannerService
+    from ...service.autocomplete_service import AutocompleteService
     
     container = DIContainer.get_instance()
     

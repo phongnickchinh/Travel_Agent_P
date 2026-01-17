@@ -164,7 +164,7 @@ def create_app(config_class=Config):
     from .core.base_model import BaseModel
     
     # Import and initialize DI after models are imported
-    from .core.di_setup import init_di
+    from .core.di import init_di
     init_di()
     
     from .controller.auth import init_app as auth_api_init

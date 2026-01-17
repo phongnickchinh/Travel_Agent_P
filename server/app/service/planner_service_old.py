@@ -30,7 +30,7 @@ from ..repo.mongo.plan_repository import PlanRepository
 from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
 from ..providers.places.google_places_provider import GooglePlacesProvider
-from .lc_chain import TravelPlannerChain
+from ..ai.llm.lc_chain import TravelPlannerChain
 from .cost_usage_service import CostUsageService
 from ..utils.sanitization import sanitize_user_input
 

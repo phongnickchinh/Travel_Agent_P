@@ -24,9 +24,9 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
 from config import Config
-from ..utils.mock_pois import MOCK_POIS_DA_NANG, get_mock_poi_summary
-from ..utils.sanitization import escape_for_prompt
-from ..model.mongo.plan import DayPlan
+from ...utils.mock_pois import MOCK_POIS_DA_NANG, get_mock_poi_summary
+from ...utils.sanitization import escape_for_prompt
+from ...model.mongo.plan import DayPlan
 
 logger = logging.getLogger(__name__)
 
@@ -386,7 +386,7 @@ class TravelPlannerChain:
                 
                 # Calculate cost for Groq (currently FREE but tracking for future)
                 if self.provider == "groq":
-                    from ..providers.llm.groq_adapter import GROQ_PRICING
+                    from ...providers.llm.groq_adapter import GROQ_PRICING
                     pricing = GROQ_PRICING.get(self.model, {"input": 0.0, "output": 0.0})
                     usage.cost_usd = (
                         (usage.tokens_input / 1_000_000) * pricing["input"] +

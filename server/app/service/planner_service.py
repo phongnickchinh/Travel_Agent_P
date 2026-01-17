@@ -26,7 +26,7 @@ from typing import List, Dict, Any, Optional
 
 # ML Clustering (HDBSCAN)
 try:
-    from .clustering_ml import cluster_pois_ml, POIClustering
+    from ..ai.clustering.clustering_ml import POIClustering
     ML_CLUSTERING_ENABLED = True
 except ImportError:
     ML_CLUSTERING_ENABLED = False
@@ -40,7 +40,7 @@ from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
 from ..providers.places.google_places_provider import GooglePlacesProvider
 from ..providers.type_mapping import map_user_interests_to_categories
-from .lc_chain import TravelPlannerChain
+from ..ai.llm.lc_chain import TravelPlannerChain
 from .cost_usage_service import CostUsageService
 from ..common.exceptions import (
     MongoDBError,

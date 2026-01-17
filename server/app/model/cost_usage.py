@@ -18,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-from ..core.base_model import BaseModel
+from .base_model import BaseModel
 
 
 class CostUsage(BaseModel):

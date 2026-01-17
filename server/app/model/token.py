@@ -3,7 +3,7 @@ from sqlalchemy import String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 
-from ..core.base_model import BaseModel 
+from .base_model import BaseModel 
 
 class Token(BaseModel):
     __tablename__ = 'tokens'

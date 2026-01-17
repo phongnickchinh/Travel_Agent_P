@@ -161,7 +161,7 @@ def create_app(config_class=Config):
             init_logger.warning("Server will continue startup - please check migrations manually if needed")
             # Continue startup even if migration fails
     
-    from .core.base_model import BaseModel
+    from .model.base_model import BaseModel
     
     # Import and initialize DI after models are imported
     from .core.di import init_di

@@ -21,6 +21,7 @@ import logging
 from . import admin_bp
 from ...service.auth_service import AuthService
 from ...middleware import admin_required
+from ...middleware.validation_middleware import get_json_or_error, validate_required_fields
 from ...utils.response_helpers import (
     build_error_response,
     build_success_response
@@ -93,26 +94,16 @@ class AdminController:
         )
         def _login_handler():
             try:
-                data = request.get_json()
+                data, error = get_json_or_error(request)
+                if error:
+                    return error
                 
-                if not data:
-                    return build_error_response(
-                        "Request body is required",
-                        "Yêu cầu phải có body",
-                        "MISSING_BODY",
-                        400
-                    )
+                error = validate_required_fields(data, ["username", "password"])
+                if error:
+                    return error
                 
                 username = data.get('username', '').strip()
                 password = data.get('password', '')
-                
-                if not username or not password:
-                    return build_error_response(
-                        "Username and password are required",
-                        "Tên đăng nhập và mật khẩu là bắt buộc",
-                        "MISSING_CREDENTIALS",
-                        400
-                    )
                 
                 # Try login by username or email
                 user, role, verification_status = self.auth_service.validate_login(username, password)
@@ -205,28 +196,18 @@ class AdminController:
             }
         """
         try:
-            data = request.get_json()
+            data, error = get_json_or_error(request)
+            if error:
+                return error
             
-            if not data:
-                return build_error_response(
-                    "Request body is required",
-                    "Yêu cầu phải có body",
-                    "MISSING_BODY",
-                    400
-                )
+            error = validate_required_fields(data, ["username", "password"])
+            if error:
+                return error
             
             username = data.get('username', '').strip()
             password = data.get('password', '')
             email = data.get('email', '').strip()
             name = data.get('name', '').strip()
-            
-            if not username or not password:
-                return build_error_response(
-                    "Username and password are required",
-                    "Tên đăng nhập và mật khẩu là bắt buộc",
-                    "MISSING_CREDENTIALS",
-                    400
-                )
             
             # Password validation
             if len(password) < 8:

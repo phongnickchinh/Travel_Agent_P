@@ -4,6 +4,7 @@ from . import user_api
 from ...service.user_service import UserService
 from ...service.edit_service import EditService
 from ...middleware import JWT_required
+from ...middleware.validation_middleware import get_json_or_error
 from ...utils.response_helpers import build_success_response
 from ...core.di_container import DIContainer
 from ...core.rate_limiter import rate_limit, get_identifier_from_auth_token
@@ -61,15 +62,9 @@ class UserController:
     
     def update_user(self, user):
         """Update user profile information (username, name, language, timezone)."""
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({
-                "status": "error",
-                "message": "No data provided",
-                "message_vi": "Không có dữ liệu",
-                "code": "00004"
-            }), 400
+        data, error = get_json_or_error(request)
+        if error:
+            return error
         
         # Extract allowed fields only
         allowed_fields = ['username', 'name', 'language', 'timezone']

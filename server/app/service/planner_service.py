@@ -61,53 +61,53 @@ MIN_POI_COUNT = 10
 # DESTINATION TYPE → SEARCH RADIUS MAPPING
 # ============================================
 # Based on Google Places API types (Table A: Geographical Areas, Table B: Additional types)
-# Max 50km for large areas like cities/states, smaller for districts/neighborhoods
+# Radius should be large enough for multi-day trips to explore diverse areas
 # Country is excluded (too large to handle reasonably)
 
 DESTINATION_TYPE_RADIUS_MAP = {
     # Geographical Areas (Table A) - Large regions
-    'administrative_area_level_1': 50.0,  # State/Province level (e.g., California, Tokyo)
-    'locality': 50.0,                     # City (e.g., Da Nang, Ho Chi Minh City)
-    'administrative_area_level_2': 20.0,  # County/District (e.g., Son Tra District) - reduced from 40
-    'postal_code': 8.0,                   # Zip code area - reduced from 15
-    'school_district': 5.0,               # School district - reduced from 10
+    'administrative_area_level_1': 80.0,  # State/Province level (e.g., California, Tokyo)
+    'locality': 60.0,                     # City (e.g., Da Nang, Ho Chi Minh City)
+    'administrative_area_level_2': 40.0,  # County/District (e.g., Son Tra District)
+    'postal_code': 15.0,                  # Zip code area
+    'school_district': 10.0,              # School district
     
-    # Additional types (Table B) - Smaller regions (significantly reduced)
-    'administrative_area_level_3': 10.0,  # Ward/Commune - reduced from 30
-    'administrative_area_level_4': 5.0,  # Sub-ward - reduced from 20
-    'administrative_area_level_5': 3.0,   # Reduced from 15
-    'administrative_area_level_6': 2.0,   # Reduced from 10
-    'administrative_area_level_7': 1.0,   # Reduced from 8
-    'sublocality': 20.0,                  # Part of a city - reduced from 20
-    'sublocality_level_1': 12.0,          # Reduced from 20
-    'sublocality_level_2': 8.0,           # Reduced from 15
-    'sublocality_level_3': 6.0,           # Reduced from 12
-    'sublocality_level_4': 5.0,           # Reduced from 10
-    'sublocality_level_5': 3.0,           # Reduced from 8
-    'neighborhood': 5.0,                  # Neighborhood (e.g., My Khe area) - reduced from 10
-    'postal_town': 8.0,                   # Reduced from 15
-    'colloquial_area': 8.0,               # Common name for an area - reduced from 15
-    'archipelago': 50.0,                  # Island group - keep at max
-    'natural_feature': 10.0,              # Natural landmark - reduced from 20
-    'premise': 2.0,                       # Building/complex - reduced from 5
-    'subpremise': 1.0,                    # Unit within a building - reduced from 3
-    'town_square': 2.0,                   # Town square/plaza - reduced from 5
-    'point_of_interest': 5.0,             # Reduced from 10
-    'establishment': 5.0,                 # Reduced from 10
-    'geocode': 8.0,                       # Reduced from 15
-    'political': 20.0,                    # Political entity (varies) - reduced from 30
-    'route': 5.0,                         # Named road - reduced from 10
-    'street_address': 2.0,                # Reduced from 5
-    'intersection': 2.0,                  # Reduced from 5
-    'landmark': 5.0,                      # Reduced from 10
-    'plus_code': 2.0,                     # Reduced from 5
+    # Additional types (Table B) - Medium regions
+    'administrative_area_level_3': 25.0,  # Ward/Commune - expanded for variety
+    'administrative_area_level_4': 15.0,  # Sub-ward
+    'administrative_area_level_5': 12.0,  # Smaller admin area
+    'administrative_area_level_6': 10.0,  # Even smaller admin area
+    'administrative_area_level_7': 8.0,   # Smallest admin area
+    'sublocality': 30.0,                  # Part of a city - expanded
+    'sublocality_level_1': 25.0,          # Large sublocality
+    'sublocality_level_2': 20.0,          # Medium sublocality
+    'sublocality_level_3': 15.0,          # Smaller sublocality
+    'sublocality_level_4': 12.0,          # Even smaller
+    'sublocality_level_5': 10.0,          # Smallest sublocality
+    'neighborhood': 15.0,                 # Neighborhood (e.g., My Khe area) - expanded
+    'postal_town': 20.0,                  # Postal town
+    'colloquial_area': 20.0,              # Common name for an area
+    'archipelago': 80.0,                  # Island group - large for exploration
+    'natural_feature': 25.0,              # Natural landmark - expanded
+    'premise': 8.0,                       # Building/complex
+    'subpremise': 5.0,                    # Unit within a building
+    'town_square': 8.0,                   # Town square/plaza
+    'point_of_interest': 15.0,            # POI - expanded for variety
+    'establishment': 15.0,                # Establishment - expanded
+    'geocode': 20.0,                      # Geocode result
+    'political': 35.0,                    # Political entity (varies)
+    'route': 12.0,                        # Named road
+    'street_address': 8.0,                # Street address
+    'intersection': 8.0,                  # Intersection
+    'landmark': 15.0,                     # Landmark - expanded
+    'plus_code': 8.0,                     # Plus code area
     
     # Exclude country - too large
     # 'country': None,  # Excluded - requires special handling
 }
 
 # Default radius when type is unknown or not in mapping
-DEFAULT_SEARCH_RADIUS_KM = 5.0  # Reduced from 10.0 to be more conservative
+DEFAULT_SEARCH_RADIUS_KM = 15.0  # Increased for better coverage on multi-day trips
 
 
 class PlannerService:
@@ -211,7 +211,6 @@ class PlannerService:
                 matched_type = dtype
         
         # Google API uses meters, MongoDB uses km
-        # Google radius is typically smaller (more focused) - use 30% of MongoDB radius
         google_radius_km = min(min_radius * 0.3, 15.0)  # Cap at 15km for Google
         
         logger.info(
@@ -221,7 +220,7 @@ class PlannerService:
         
         return {
             'mongodb_radius_km': min_radius,
-            'google_radius_km': google_radius_km
+            'google_radius_km': min_radius
         }
     
     def _resolve_destination(self, place_id: str) -> Optional[Dict[str, Any]]:
@@ -527,9 +526,12 @@ class PlannerService:
                     
                     if len(remaining_pool) >= fill_needed:
                         random_fill = random.sample(remaining_pool, fill_needed)
-                    filtered_results = top_tier + random_fill
-            else:
-                filtered_results = top_tier + remaining_pool
+                        filtered_results = top_tier + random_fill
+                    else:
+                        # Not enough remaining, use all
+                        filtered_results = top_tier + remaining_pool
+            
+            # If len(filtered_results) <= limit, keep as-is (no need for sampling)
             
             return filtered_results[:limit]
             
@@ -1918,6 +1920,9 @@ class PlannerService:
             poi_ids = day.get('poi_ids', [])
             all_poi_ids.update(poi_ids)
         
+        # DEBUG: Log poi_ids from itinerary to check if LLM returned same IDs
+        logger.debug(f"[ENRICH_DEBUG] all_poi_ids from itinerary: {list(all_poi_ids)}")
+        
         if not all_poi_ids:
             return plan
         
@@ -1925,6 +1930,11 @@ class PlannerService:
         try:
             poi_map = self.poi_repo.get_by_ids(list(all_poi_ids))
             logger.debug(f"[ENRICH] Fetched {len(poi_map)}/{len(all_poi_ids)} POIs for plan {plan.get('plan_id')}")
+      
+            # DEBUG: Log each POI's location to identify duplicate location issue
+            for pid, poi in poi_map.items():
+                loc = poi.get('location', {}).get('coordinates', [])
+                logger.debug(f"[ENRICH_DEBUG] POI {pid}: coords={loc}, name={poi.get('name', 'N/A')[:30]}")
         except MongoDBError as e:
             logger.warning(f"[ENRICH] MongoDB error fetching POI locations: {e}")
             return plan

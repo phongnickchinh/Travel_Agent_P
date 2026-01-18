@@ -186,20 +186,20 @@ Chào mừng đến với Travel Agent P — nhận lịch trình được cá n
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate('/register')}
+                onClick={() => navigate('/login')}
                 className="group flex items-center gap-2 px-6 py-3 md:px-8 md:py-4 bg-brand-primary text-white font-poppins font-semibold rounded-full shadow-xl hover:bg-brand-secondary hover:shadow-2xl transition-all w-full sm:w-auto justify-center"
               >
                 Bắt đầu ngay
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
-              <motion.button
+              {/* <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/login')}
                 className="px-6 py-3 md:px-8 md:py-4 text-white font-poppins font-medium rounded-full border-2 border-white/40 hover:border-white hover:bg-white/10 transition-all w-full sm:w-auto"
               >
                 Đã có tài khoản? Đăng nhập
-              </motion.button>
+              </motion.button> */}
             </div>
           </motion.div>
 

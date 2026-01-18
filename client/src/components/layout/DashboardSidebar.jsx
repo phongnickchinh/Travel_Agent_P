@@ -13,7 +13,7 @@ import { NavLink } from 'react-router-dom';
 export default function DashboardSidebar({ isOpen, onClose, recentPlans = [], onPlanClick }) {
   const menuItems = [
     { icon: Home, label: 'Home', path: '/dashboard' },
-    { icon: Compass, label: 'Explore', path: '/dashboard/explore' },
+    // { icon: Compass, label: 'Explore', path: '/dashboard/explore' },
     { icon: Trash2, label: 'Trash can', path: '/dashboard/trash' },
     { icon: Settings, label: 'Setting', path: '/dashboard/settings' },
   ];

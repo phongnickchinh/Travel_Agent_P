@@ -26,7 +26,7 @@ from typing import List, Dict, Any, Optional
 
 # ML Clustering (HDBSCAN)
 try:
-    from ..ai.clustering.clustering_ml import POIClustering
+    from ..ai.clustering.clustering_ml import POIClustering, cluster_pois_ml
     ML_CLUSTERING_ENABLED = True
 except ImportError:
     ML_CLUSTERING_ENABLED = False

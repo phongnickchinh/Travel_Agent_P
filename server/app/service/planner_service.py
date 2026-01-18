@@ -2226,6 +2226,74 @@ class PlannerService:
 
         return plan
     
+    def copy_shared_plan(self, share_token: str, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Copy a shared plan to user's own plans.
+        
+        Args:
+            share_token: Share token of the public plan
+            user_id: User ID who wants to copy the plan
+            
+        Returns:
+            Dict with new plan_id and copied plan data if successful
+        """
+        # Get the original shared plan
+        original_plan = self.plan_repo.get_by_share_token(share_token)
+        if not original_plan:
+            logger.warning(f"[COPY_PLAN] Shared plan not found: {share_token}")
+            return None
+        
+        # Generate new plan_id
+        import uuid
+        import base64
+        new_plan_id = f"plan_{base64.urlsafe_b64encode(uuid.uuid4().bytes).decode('utf-8').rstrip('=')}"
+        
+        # Clean itinerary data - remove None values from featured_images
+        itinerary = original_plan.get('itinerary', [])
+        for day in itinerary:
+            if day.get('featured_images'):
+                day['featured_images'] = [img for img in day['featured_images'] if img is not None]
+            # Also clean POIs featured_images if present
+            for poi in day.get('pois', []):
+                if poi.get('featured_images'):
+                    poi['featured_images'] = [img for img in poi['featured_images'] if img is not None]
+        
+        # Create Plan model instance with copied data
+        copied_plan = Plan(
+            plan_id=new_plan_id,
+            user_id=user_id,
+            title=f"{original_plan.get('title', 'Copied Plan')} (Copy)",
+            destination=original_plan.get('destination'),
+            destination_place_id=original_plan.get('destination_place_id'),
+            num_days=original_plan.get('num_days'),
+            start_date=original_plan.get('start_date'),
+            end_date=original_plan.get('end_date'),
+            origin=original_plan.get('origin'),
+            preferences=original_plan.get('preferences', {}),
+            budget_level=original_plan.get('budget_level'),
+            pace=original_plan.get('pace'),
+            itinerary=itinerary,
+            accommodation=original_plan.get('accommodation'),
+            status=PlanStatusEnum.COMPLETED,  # Already generated
+            is_public=False,  # New plan is private by default
+            share_token=None,
+            is_deleted=False,
+            copied_from=original_plan.get('plan_id'),  # Track original plan
+        )
+        
+        # Insert copied plan
+        try:
+            result = self.plan_repo.create(copied_plan)
+            logger.info(f"[COPY_PLAN] Plan copied: {original_plan.get('plan_id')} -> {new_plan_id} by user {user_id}")
+            
+            return {
+                "plan_id": new_plan_id,
+                "plan": result
+            }
+        except Exception as e:
+            logger.error(f"[COPY_PLAN] Failed to create copied plan: {e}")
+            return None
+    
     def update_plan(
         self, 
         plan_id: str, 
@@ -2458,11 +2526,18 @@ class PlannerService:
             # Step 3: Fetch POI details (cache-first strategy)
             poi = None
             
-            # Try MongoDB POI cache first
+            # Try MongoDB POI cache first - check by poi_id format (poi_xxx) first
             try:
-                poi = self.poi_repo.get_by_google_id(place_id)
-                if poi:
-                    logger.info(f"[PLANNER] Found POI {place_id} in MongoDB cache")
+                if place_id.startswith('poi_'):
+                    poi = self.poi_repo.get_by_id(place_id)
+                    if poi:
+                        logger.info(f"[PLANNER] Found POI {place_id} in MongoDB by poi_id")
+                
+                # If not found by poi_id, try by google_place_id
+                if not poi:
+                    poi = self.poi_repo.get_by_google_id(place_id)
+                    if poi:
+                        logger.info(f"[PLANNER] Found POI {place_id} in MongoDB by google_place_id")
             except MongoDBError as e:
                 logger.warning(f"[PLANNER] MongoDB POI fetch failed (MongoDBError): {e}")
             except Exception as e:
@@ -2556,13 +2631,29 @@ class PlannerService:
             if 'featured_images' not in day_data:
                 day_data['featured_images'] = []
             
-            # Extract photo reference/name
+            # Extract photo URL from POI
+            # Try different possible photo sources in order of preference
+            photo_url = None
+            
+            # 1. Try 'images' array (from MongoDB POI cache)
             photos = poi.get('images', [])
             if photos and len(photos) > 0:
-                photo_url = photos[1].get('url', '')
-                day_data['featured_images'].append(photo_url)
-            else:
-                day_data['featured_images'].append(None)
+                photo_url = photos[0].get('url') if isinstance(photos[0], dict) else photos[0]
+            
+            # 2. Try 'photos' array with 'photo_reference' (from Google Places API)
+            if not photo_url:
+                google_photos = poi.get('photos', [])
+                if google_photos and len(google_photos) > 0:
+                    photo_ref = google_photos[0].get('photo_reference') or google_photos[0].get('name')
+                    if photo_ref:
+                        # Construct Google Photos URL
+                        photo_url = f"https://places.googleapis.com/v1/{photo_ref}/media?maxWidthPx=800&key={self.google_provider.api_key}" if photo_ref.startswith('places/') else None
+            
+            # 3. Try direct 'photo_url' or 'featured_image' field
+            if not photo_url:
+                photo_url = poi.get('photo_url') or poi.get('featured_image')
+            
+            day_data['featured_images'].append(photo_url)
             
             # Append placeholder to estimated_times (user can edit later)
             if 'estimated_times' not in day_data:

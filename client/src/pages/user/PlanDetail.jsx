@@ -26,12 +26,13 @@ import {
   Coffee,
   Copy,
   CreditCard,
+  Download,
   Dumbbell,
   Film,
   Footprints,
   Globe,
-  Hospital,
   Heart,
+  Hospital,
   Landmark,
   List,
   Loader2,
@@ -43,6 +44,7 @@ import {
   Music,
   Palmtree,
   Plane,
+  Plus,
   Scroll,
   Search,
   Settings2,
@@ -64,6 +66,7 @@ import { EditableDate, EditableTitle } from '../../components/common/EditableFie
 import Tooltip from '../../components/common/Tooltip';
 import DayItinerary from '../../components/plan/DayItinerary';
 import RegeneratePlanModal from '../../components/plan/RegeneratePlanModal';
+import { useAuth } from '../../contexts/AuthContext';
 import planAPI from '../../services/planApi';
 import searchAPI from '../../services/searchApi';
 import { getCachedImage, preloadAndCacheImage } from '../../utils/imageCache';
@@ -367,6 +370,14 @@ export default function PlanDetail() {
   const [hoveredNearbyPOI, setHoveredNearbyPOI] = useState(null);
   const [addingToDayPOI, setAddingToDayPOI] = useState(null);
   const [nearbySearchCenter, setNearbySearchCenter] = useState(null); // {lat, lng} for center marker
+  // Nearby POI add modal states
+  const [nearbyAddModal, setNearbyAddModal] = useState({ isOpen: false, poi: null, dayNumber: null });
+  const [nearbyNote, setNearbyNote] = useState('');
+  const [nearbyAdding, setNearbyAdding] = useState(false);
+  
+  // Copy shared plan states
+  const [copyingPlan, setCopyingPlan] = useState(false);
+  const { user } = useAuth();
   
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
@@ -387,6 +398,30 @@ export default function PlanDetail() {
       throw new Error(result.error || 'Failed to update title');
     }
   }, [planId, isPublicView]);
+
+  // Copy shared plan to user's own plans
+  const handleCopySharedPlan = useCallback(async () => {
+    if (!shareToken || !user) {
+      navigate('/login', { state: { from: `/shared/${shareToken}` } });
+      return;
+    }
+    
+    setCopyingPlan(true);
+    try {
+      const result = await planAPI.copySharedPlan(shareToken);
+      if (result.success && result.data?.plan_id) {
+        navigate(`/dashboard/plan/${result.data.plan_id}`, { 
+          state: { message: 'Plan saved to your collection!' } 
+        });
+      } else {
+        setError('Failed to copy plan. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to copy plan. Please try again.');
+    } finally {
+      setCopyingPlan(false);
+    }
+  }, [shareToken, user, navigate]);
 
   // Save start date (recalculates all day dates on backend)
   const handleSaveStartDate = useCallback(async (newDate) => {
@@ -538,19 +573,35 @@ export default function PlanDetail() {
     setNearbySearchCenter(null); // Clear center marker
   }, []);
 
-  // Add nearby POI to specific day
-  const handleAddNearbyToDay = useCallback(async (poi, dayNumber) => {
+  // Open modal to add nearby POI with note
+  const handleAddNearbyToDay = useCallback((poi, dayNumber) => {
     if (!planId || isPublicView) return;
-    
+    setNearbyAddModal({ isOpen: true, poi, dayNumber });
+    setNearbyNote('');
+    setAddingToDayPOI(null);
+    setHoveredNearbyPOI(null);
+  }, [planId, isPublicView]);
+
+  // Confirm add nearby POI with optional note
+  const handleConfirmAddNearby = useCallback(async () => {
+    const { poi, dayNumber } = nearbyAddModal;
+    if (!poi || !dayNumber) return;
+
+    setNearbyAdding(true);
     try {
-      await handleAddActivityFromPOI(dayNumber, poi.poi_id, null);
-      setAddingToDayPOI(null);
+      await handleAddActivityFromPOI(dayNumber, poi.poi_id, nearbyNote || null);
       // Remove added POI from nearby list
       setNearbyPOIs(prev => prev.filter(p => p.id !== poi.id));
+      // Close modal
+      setNearbyAddModal({ isOpen: false, poi: null, dayNumber: null });
+      setNearbyNote('');
     } catch (err) {
       console.error('[AddNearbyToDay] failed:', err);
+      alert('Failed to add activity. Please try again.');
+    } finally {
+      setNearbyAdding(false);
     }
-  }, [planId, isPublicView, handleAddActivityFromPOI]);
+  }, [nearbyAddModal, nearbyNote, handleAddActivityFromPOI]);
 
   // ========================================
 
@@ -1114,6 +1165,32 @@ export default function PlanDetail() {
               <span className="hidden lg:inline text-xs font-medium text-brand-primary bg-brand-muted px-3 py-1 rounded-full">
                 Public shared version
               </span>
+            )}
+
+            {/* Save to My Plans button - only for public view */}
+            {isPublicView && (
+              <Tooltip content={user ? "Save to My Plans" : "Login to save"} position="bottom">
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleCopySharedPlan}
+                  disabled={copyingPlan}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                    copyingPlan
+                      ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'border-brand-primary bg-brand-primary text-white hover:bg-brand-dark'
+                  }`}
+                >
+                  {copyingPlan ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span className="text-sm font-semibold">
+                    {copyingPlan ? 'Saving...' : 'Save to My Plans'}
+                  </span>
+                </motion.button>
+              </Tooltip>
             )}
 
             {!isPublicView && (
@@ -1894,7 +1971,8 @@ export default function PlanDetail() {
                           <button
                             onClick={() => {
                               setShowNearbyPanel(false);
-                              handleClearNearby();
+                              // Don't clear results when closing panel - user can still see markers on map
+                              // Use the "Clear" button to explicitly clear results
                             }}
                             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                           >
@@ -2154,6 +2232,114 @@ export default function PlanDetail() {
           loading={regenerateLoading}
         />
       )}
+
+      {/* Nearby POI Add Modal with Note Input */}
+      <AnimatePresence>
+        {nearbyAddModal.isOpen && nearbyAddModal.poi && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !nearbyAdding && setNearbyAddModal({ isOpen: false, poi: null, dayNumber: null })}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 10, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-5 space-y-4"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-poppins font-semibold text-lg text-gray-900">Add to Day {nearbyAddModal.dayNumber}</h3>
+                <button 
+                  onClick={() => !nearbyAdding && setNearbyAddModal({ isOpen: false, poi: null, dayNumber: null })} 
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                  disabled={nearbyAdding}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* POI Info */}
+              <div className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
+                {nearbyAddModal.poi.featured_image ? (
+                  <img 
+                    src={nearbyAddModal.poi.featured_image} 
+                    alt={nearbyAddModal.poi.name}
+                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{nearbyAddModal.poi.name}</p>
+                  {nearbyAddModal.poi.rating && (
+                    <p className="text-sm text-amber-600 flex items-center gap-1 mt-0.5">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      {nearbyAddModal.poi.rating.toFixed(1)}
+                      {nearbyAddModal.poi.reviewCount && (
+                        <span className="text-gray-400">({nearbyAddModal.poi.reviewCount})</span>
+                      )}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1 capitalize">{nearbyAddModal.poi.category}</p>
+                </div>
+              </div>
+
+              {/* Note Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Note (optional)
+                </label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none"
+                  rows={3}
+                  placeholder="Add a note for this activity..."
+                  value={nearbyNote}
+                  onChange={(e) => setNearbyNote(e.target.value)}
+                  disabled={nearbyAdding}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 pt-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setNearbyAddModal({ isOpen: false, poi: null, dayNumber: null })}
+                  className="px-4 py-2.5 rounded-lg bg-gray-100 text-gray-700 font-medium"
+                  disabled={nearbyAdding}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleConfirmAddNearby}
+                  disabled={nearbyAdding}
+                  className="px-4 py-2.5 rounded-lg bg-brand-primary text-white font-medium flex items-center gap-2 disabled:opacity-50"
+                >
+                  {nearbyAdding ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Activity
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

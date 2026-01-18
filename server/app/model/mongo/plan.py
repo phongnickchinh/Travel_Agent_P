@@ -268,6 +268,9 @@ class Plan(BaseModel):
     deleted_at: Optional[datetime] = Field(None, description="Timestamp when moved to trash")
     is_permanently_deleted: bool = Field(default=False, description="Permanent delete flag (cannot be restored)")
     
+    # Copy tracking
+    copied_from: Optional[str] = Field(None, description="Original plan_id if this is a copy")
+    
     # Versioning for regeneration
     version: int = Field(default=1, description="Plan version (increments on regenerate)")
     

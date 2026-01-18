@@ -83,6 +83,9 @@ class PlanController:
         # Public access (no auth required)
         plan_api.add_url_rule("/shared/<share_token>", "get_shared_plan", self.get_shared_plan, methods=["GET"])
         
+        # Copy shared plan (requires auth)
+        plan_api.add_url_rule("/shared/<share_token>/copy", "copy_shared_plan", self._wrap_jwt_required(self.copy_shared_plan), methods=["POST"])
+        
         # Add activity from POI
         plan_api.add_url_rule("/<plan_id>/day/<int:day_number>/add-activity", "add_activity_from_poi", self._wrap_jwt_required(self.add_activity_from_poi), methods=["POST"])
     
@@ -820,6 +823,47 @@ class PlanController:
                 "Failed to add activity.",
                 f"Không thể thêm hoạt động: {str(e)}",
                 "50016",
+                500
+            )
+    
+    def copy_shared_plan(self, user, share_token: str):
+        """
+        Copy a shared plan to user's own plans.
+        
+        POST /plan/shared/<share_token>/copy
+        
+        Response:
+        {
+            "message": "Plan copied successfully.",
+            "plan_id": "plan_new123",
+            "plan": { ... copied plan ... }
+        }
+        """
+        try:
+            result = self.planner_service.copy_shared_plan(share_token, user.id)
+            
+            if not result:
+                return build_error_response(
+                    "Shared plan not found or no longer public.",
+                    "Không tìm thấy kế hoạch chia sẻ hoặc đã không còn công khai.",
+                    "40406",
+                    404
+                )
+            
+            return build_success_response(
+                "Plan copied to your plans successfully.",
+                "Đã sao chép kế hoạch vào danh sách của bạn thành công.",
+                "20012",
+                result,
+                201
+            )
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to copy shared plan {share_token}: {e}")
+            return build_error_response(
+                "Failed to copy plan.",
+                f"Không thể sao chép kế hoạch: {str(e)}",
+                "50012",
                 500
             )
 

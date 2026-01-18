@@ -347,6 +347,28 @@ class PlanAPI {
     }
   }
 
+  /**
+   * Copy a shared plan to user's own plans (requires authentication)
+   * @param {string} shareToken - Share token of the public plan
+   * @returns {Promise<{success: boolean, data?: {plan_id: string, plan: object}, error?: string}>}
+   */
+  async copySharedPlan(shareToken) {
+    try {
+      const response = await api.post(`/plan/shared/${shareToken}/copy`);
+      return {
+        success: true,
+        data: response.data?.data || response.data,
+      };
+    } catch (error) {
+      console.error('[ERROR] Copy shared plan failed:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message,
+        errorVi: error.response?.data?.message_vi,
+      };
+    }
+  }
+
   // ========================================
   // PATCH (NON-CORE UPDATES)
   // ========================================

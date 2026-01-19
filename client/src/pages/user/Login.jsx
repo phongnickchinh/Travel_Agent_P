@@ -124,7 +124,7 @@ export default function Login({ isModal = false, onClose }) {
         navigate(`/dashboard/${loggedInUser.username}`);
       }, 1000);
     } catch (err) {
-      setError(err.message || 'Email or password is incorrect.');
+      setError('Email or password is incorrect.');
     } finally {
       setLoading(false);
     }

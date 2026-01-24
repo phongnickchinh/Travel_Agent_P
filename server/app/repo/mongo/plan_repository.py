@@ -16,7 +16,7 @@ from typing import List, Optional, Dict, Any
 from pymongo.collection import Collection
 from pymongo import DESCENDING
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 
 from ...core.clients.mongodb_client import get_mongodb_client
@@ -366,6 +366,7 @@ class PlanRepository(PlanRepositoryInterface):
                 {"$set": {
                     "is_deleted": False,
                     "deleted_at": None,
+                    "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 }}
             )
@@ -440,10 +441,12 @@ class PlanRepository(PlanRepositoryInterface):
             return []
         
         try:
+            #delete in 30 days
             query = {
                 "user_id": user_id,
                 "is_deleted": True,
-                "is_permanently_deleted": {"$ne": True}
+                "is_permanently_deleted": {"$ne": True},
+                "deleted_at": {"$gte": datetime.utcnow() - timedelta(days=15)}
             }
             
             # Projection: Only return basic info, NOT full itinerary
@@ -497,7 +500,8 @@ class PlanRepository(PlanRepositoryInterface):
             query = {
                 "user_id": user_id,
                 "is_deleted": True,
-                "is_permanently_deleted": {"$ne": True}
+                "is_permanently_deleted": {"$ne": True},
+                "deleted_at": {"$gte": datetime.utcnow() - timedelta(days=15)}
             }
             count = self.collection.count_documents(query)
             return count

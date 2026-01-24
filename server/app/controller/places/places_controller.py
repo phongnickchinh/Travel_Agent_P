@@ -21,32 +21,32 @@ from ...service.places_service import PlacesService
 from ...utils.response_helpers import build_error_response, build_success_response
 from ...core.di_container import DIContainer
 from ...middleware import admin_required
+from ...core.rate_limiter import rate_limit
+from config import Config
 
 logger = logging.getLogger(__name__)
 
 
 class PlacesController:
     """
-    Places Controller - ADMIN & TESTING ONLY
-    
-    WARNING: These endpoints are for debugging and testing purposes.
-    Regular users should NOT access these directly.
-    User-facing features should use ItineraryController instead.
-    
-    🔒 ALL ENDPOINTS REQUIRE ADMIN ROLE
+    Places Controller - POI Operations
     
     Endpoints:
+    - GET /api/places/public/{poi_id} - Get POI details (public, rate-limited)
     - GET /api/places/search - Search POIs (admin only)
     - GET /api/places/{poi_id} - Get POI details (admin only)
+    - GET /api/places/{poi_id}/detail - Force provider details fetch (admin only)
     - POST /api/places/refresh - Refresh stale POIs (admin only)
     - POST /api/places/import - Bulk import POIs (admin only)
     
     Example Requests:
-        # Login as admin first
+        # Public endpoint (no auth required, rate-limited)
+        GET /api/places/public/poi_mykhebeach_wecq6uk
+        
+        # Admin endpoints (require admin token)
         POST /api/admin/auth/login
         Body: {"username": "admin", "password": "..."}
         
-        # Use admin token
         GET /api/places/search?q=restaurant&lat=16.0544&lng=108.2428
         Headers: Authorization: Bearer {admin_token}
     """
@@ -58,14 +58,92 @@ class PlacesController:
         logger.info("[INFO] PlacesController initialized")
     
     def _register_routes(self):
-        """Register all routes with Flask Blueprint (admin-only)."""
-        # 🔒 All endpoints protected by @admin_required
+        """Register all routes with Flask Blueprint."""
+        # Public endpoint (rate-limited, no auth required)
+        places_bp.add_url_rule("/public/<poi_id>", "public_get_by_id", self._wrap_rate_limit(self.get_place_public), methods=["GET"])
+        
+        # Admin-only endpoints
         places_bp.add_url_rule("/search", "search", admin_required(self.search_places), methods=["GET"])
         places_bp.add_url_rule("/<poi_id>", "get_by_id", admin_required(self.get_place_by_id), methods=["GET"])
-        # GET /api/places/{poi_id}/detail - Force provider details fetch / return full details
         places_bp.add_url_rule("/<poi_id>/detail", "get_by_id_detail", admin_required(self.get_place_details), methods=["GET"])
         places_bp.add_url_rule("/refresh", "refresh", admin_required(self.refresh_stale_pois), methods=["POST"])
         places_bp.add_url_rule("/import", "bulk_import", admin_required(self.bulk_import_pois), methods=["POST"])
+    
+    def _wrap_rate_limit(self, f):
+        """Wrap endpoint with rate limiting for public POI access."""
+        @rate_limit(
+            max_requests=Config.RATE_LIMIT_SEARCH,
+            window_seconds=Config.RATE_LIMIT_SEARCH_WINDOW,
+            key_prefix='places_public'
+        )
+        def wrapper(poi_id):
+            return f(poi_id)
+        wrapper.__name__ = f.__name__
+        return wrapper
+    
+    def get_place_public(self, poi_id: str):
+        """
+        Get POI details by ID (public endpoint, rate-limited).
+        
+        Returns cached POI data including reviews. Does NOT trigger external API calls.
+        
+        Path Parameters:
+            poi_id: POI identifier (e.g., "poi_mykhebeach_wecq6uk")
+        
+        Response Success (200):
+            {
+                "resultMessage": {"en": "...", "vn": "..."},
+                "resultCode": "PLACE_FOUND",
+                "poi": {POI object with reviews}
+            }
+        
+        Response Error (404):
+            {
+                "resultMessage": {"en": "...", "vn": "..."},
+                "resultCode": "PLACE_NOT_FOUND"
+            }
+        
+        Examples:
+            GET /api/places/public/poi_mykhebeach_wecq6uk
+        """
+        try:
+            if not poi_id or not poi_id.strip():
+                return build_error_response(
+                    "POI ID is required",
+                    "ID địa điểm là bắt buộc",
+                    "MISSING_POI_ID",
+                    400
+                )
+            
+            logger.info(f"[PUBLIC] Get POI: {poi_id}")
+            
+            # Get from cache only (include_fresh=False to avoid API calls)
+            poi = self.places_service.get_by_id(poi_id, include_fresh=False)
+            
+            if not poi:
+                return build_error_response(
+                    f"Place with ID '{poi_id}' not found",
+                    f"Không tìm thấy địa điểm có ID '{poi_id}'",
+                    "PLACE_NOT_FOUND",
+                    404
+                )
+            
+            return build_success_response(
+                "Place found",
+                "Đã tìm thấy địa điểm",
+                "PLACE_FOUND",
+                data={"poi": poi},
+                status_code=200
+            )
+        
+        except Exception as e:
+            logger.error(f"[ERROR] Get public POI failed: {e}", exc_info=True)
+            return build_error_response(
+                "An error occurred while retrieving the place",
+                "Đã xảy ra lỗi khi lấy thông tin địa điểm",
+                "GET_PLACE_ERROR",
+                500
+            )
     
     def search_places(self):
         """

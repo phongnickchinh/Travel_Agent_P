@@ -28,6 +28,7 @@ import {
   CreditCard,
   Download,
   Dumbbell,
+  Eye,
   Film,
   Footprints,
   Globe,
@@ -65,6 +66,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { EditableDate, EditableTitle } from '../../components/common/EditableField';
 import Tooltip from '../../components/common/Tooltip';
 import DayItinerary from '../../components/plan/DayItinerary';
+import POIDetailPanel from '../../components/plan/POIDetailPanel';
 import RegeneratePlanModal from '../../components/plan/RegeneratePlanModal';
 import { useAuth } from '../../contexts/AuthContext';
 import planAPI from '../../services/planApi';
@@ -378,6 +380,9 @@ export default function PlanDetail() {
   // Copy shared plan states
   const [copyingPlan, setCopyingPlan] = useState(false);
   const { user } = useAuth();
+  
+  // POI Detail Modal state
+  const [poiDetailModal, setPoiDetailModal] = useState({ isOpen: false, poiId: null });
   
   const mapRef = useRef(null);
   const preHoverViewRef = useRef(null);
@@ -1338,6 +1343,7 @@ export default function PlanDetail() {
                     isPublicView={isPublicView}
                     onSave={handleSaveDayItinerary}
                     onAddActivityFromPOI={handleAddActivityFromPOI}
+                    onViewDetail={(poiId) => setPoiDetailModal({ isOpen: true, poiId })}
                     location={destinationLocation}
                     onHover={handleActivityHover}
                     onLeave={handleActivityLeave}
@@ -1817,8 +1823,8 @@ export default function PlanDetail() {
                         className="relative"
                         style={{ 
                           transform: showAbove 
-                            ? 'translate(-50%, calc(-100% - 50px))' // Show above: move up by popup height + marker height
-                            : 'translate(-50%, 50px)', // Show below: move down by marker height
+                            ? 'translate(-110px, calc(-100% - 20px))' // Show above: move up by popup height + marker height
+                            : 'translate(-110px, 50px)', // Show below: move down by marker height
                           zIndex: 200
                         }}
                         onMouseEnter={() => {
@@ -1925,6 +1931,22 @@ export default function PlanDetail() {
                                   <Bed className="w-3 h-3" /> Stay
                                 </span>
                               </div>
+                            )}
+                            
+                            {/* View Details button */}
+                            {poi.poi_id && (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPoiDetailModal({ isOpen: true, poiId: poi.poi_id });
+                                }}
+                                className="mt-2 w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-brand-primary bg-brand-muted hover:bg-brand-primary hover:text-white rounded-lg transition-colors"
+                              >
+                                <Eye className="w-3 h-3" />
+                                View Details & Reviews
+                              </motion.button>
                             )}
                           </div>
                         </motion.div>
@@ -2123,9 +2145,9 @@ export default function PlanDetail() {
                                 <p className="text-xs text-gray-500 dark:text-gray-400">
                                   ~{formatVND(Math.round(tripSummary.totalCost / tripSummary.numDays))}/day
                                 </p>
-                                {tripSummary.playfulBudgetTotal > 0 && (
+                                {/* {tripSummary.playfulBudgetTotal > 0 && (
                                   <p className="text-xs text-gray-500 dark:text-gray-400">Fun estimate: {formatVND(tripSummary.playfulBudgetTotal)}</p>
-                                )}
+                                )} */}
                               </div>
 
                               {/* Accommodation Info */}
@@ -2340,6 +2362,14 @@ export default function PlanDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* POI Detail Panel - Slide-in from right */}
+      <POIDetailPanel
+        isOpen={poiDetailModal.isOpen}
+        onClose={() => setPoiDetailModal({ isOpen: false, poiId: null })}
+        poiId={poiDetailModal.poiId}
+        googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+      />
     </div>
   );
 }

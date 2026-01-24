@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { Check, Clock, GripVertical, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Clock, Eye, GripVertical, MapPin, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 const categoryIconMap = {
@@ -56,6 +56,7 @@ const ActivityItem = ({
   globalIndex,
   onChange,
   onDelete,
+  onViewDetail,
   disabled = false,
   isAccommodation = false,
   onHover,
@@ -192,6 +193,18 @@ const ActivityItem = ({
 
           {!disabled && !isEditing && (
             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              {/* View Details button - only show if activity has poi_id */}
+              {localActivity.poi_id && onViewDetail && (
+                <>
+                  <button
+                    onClick={() => onViewDetail(localActivity.poi_id)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-brand-muted dark:hover:bg-brand-primary/20 text-brand-primary"
+                  >
+                    <Eye className="w-3 h-3" /> View Details
+                  </button>
+                  <span className="text-gray-300 dark:text-gray-600">•</span>
+                </>
+              )}
               <button
                 onClick={() => setIsEditing(true)}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"

@@ -141,6 +141,21 @@ class SearchAPI {
   }
 
   /**
+   * Get POI details including reviews (public endpoint)
+   * @param {string} poiId - POI identifier
+   * @returns {Promise<Object>} POI object with reviews
+   */
+  async getPOIDetail(poiId) {
+    try {
+      const response = await api.get(`/places/public/${poiId}`);
+      return response.data;
+    } catch (error) {
+      console.error('[ERROR] Get POI detail failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Recent searches management (localStorage)
    */
   getRecentSearches() {

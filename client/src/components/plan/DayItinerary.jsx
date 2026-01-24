@@ -14,6 +14,7 @@ const DayItinerary = ({
   isPublicView,
   onSave,
   onAddActivityFromPOI,
+  onViewDetail,
   location,
   onHover,
   onLeave
@@ -266,6 +267,7 @@ const DayItinerary = ({
                   isAccommodation={isAccommodationCategory(item?.category)}
                   onChange={(updatedActivity, updatedTime) => handleUpdate(idx, updatedActivity, updatedTime)}
                   onDelete={() => handleDelete(idx)}
+                  onViewDetail={onViewDetail}
                   onHover={onHover}
                   onLeave={onLeave}
                 />

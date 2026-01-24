@@ -457,7 +457,7 @@ class DayPlanPatch(BaseModel):
     )
     
     # Time and cost adjustments
-    estimated_times: Optional[List[str]] = Field(
+    estimated_times: Optional[List[Optional[str]]] = Field(
         None, 
         description="Visit times in format HH:MM-HH:MM (must match activities count)"
     )
@@ -470,10 +470,11 @@ class DayPlanPatch(BaseModel):
     check_out_time: Optional[str] = Field(None, pattern=r'^\d{2}:\d{2}$', description="Format: HH:MM")
     
     # Extended fields for full day update
-    poi_ids: Optional[List[str]] = Field(None, description="POI IDs in visit order")
-    types: Optional[List[List[str]]] = Field(None, description="POI types array (one array per POI)")
-    opening_hours: Optional[List[str]] = Field(None, description="Opening hours")
-    featured_images: Optional[List[str]] = Field(None, description="Featured images")
+    # Note: List elements can be None (e.g., activity without POI ID or without image)
+    poi_ids: Optional[List[Optional[str]]] = Field(None, description="POI IDs in visit order")
+    types: Optional[List[Optional[List[str]]]] = Field(None, description="POI types array (one array per POI)")
+    opening_hours: Optional[List[Optional[str]]] = Field(None, description="Opening hours")
+    featured_images: Optional[List[Optional[str]]] = Field(None, description="Featured images")
     viewport: Optional[Dict[str, Dict[str, float]]] = Field(None, description="Map viewport")
     location: Optional[List[float]] = Field(None, description="Central point")
     accommodation_id: Optional[str] = Field(None, description="Accommodation POI ID")

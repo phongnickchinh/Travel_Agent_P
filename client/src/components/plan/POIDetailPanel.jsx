@@ -226,10 +226,12 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] bg-black/95 flex flex-col"
+          className="fixed inset-0 h-dvh max-h-dvh overflow-hidden z-60 bg-black/95 flex flex-col"
+
+
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 text-white">
+          <div className="shrink-0 flex items-center justify-between px-4 py-3 text-white">
             <button
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -243,7 +245,7 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
           </div>
           
           {/* Main image area */}
-          <div className="flex-1 flex items-center justify-center relative px-16">
+          <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center relative px-16">
             {/* Previous button */}
             <button
               onClick={goToPrevious}
@@ -284,7 +286,7 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
           </div>
           
           {/* Thumbnail strip */}
-          <div className="px-4 py-3 overflow-x-auto">
+          <div className="shrink-0 px-4 py-3 overflow-x-auto">
             <div className="flex gap-2 justify-center">
               {images.map((img, idx) => (
                 <button
@@ -491,7 +493,7 @@ const LocationTab = ({ poi, apiKey }) => {
           <Marker position={center} />
         </GoogleMap>
       ) : (
-        <div className="w-full h-[300px] bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+        <div className="w-full h-75 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
         </div>
       )}

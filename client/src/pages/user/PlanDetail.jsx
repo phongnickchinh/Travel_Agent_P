@@ -1261,7 +1261,7 @@ export default function PlanDetail() {
       </header>
 
       {/* Mobile Tab Bar */}
-      <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-[57px] z-10">
+      <div className="lg:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-14.25 z-10">
         <div className="flex">
           <button
             onClick={() => setActiveTab('itinerary')}
@@ -2290,10 +2290,10 @@ export default function PlanDetail() {
                   <img 
                     src={nearbyAddModal.poi.featured_image} 
                     alt={nearbyAddModal.poi.name}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    className="w-16 h-16 rounded-lg object-cover shrink-0"
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                  <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
                     <MapPin className="w-6 h-6 text-gray-400" />
                   </div>
                 )}

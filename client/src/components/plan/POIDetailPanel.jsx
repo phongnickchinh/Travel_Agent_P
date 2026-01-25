@@ -35,9 +35,11 @@ import {
   User,
   UtensilsCrossed,
   Wifi,
-  X
+  X,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import searchAPI from '../../services/searchApi';
 
 // Check if Google Photos API is enabled via environment variable
@@ -163,9 +165,21 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
   const [loadedImages, setLoadedImages] = useState(new Set([0, 1, 2])); // Pre-load first 3
   const [imageLoading, setImageLoading] = useState(false);
   
+  // Zoom and Pan state
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  
   useEffect(() => {
     setCurrentIndex(initialIndex);
   }, [initialIndex]);
+  
+  // Reset zoom when changing image
+  useEffect(() => {
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  }, [currentIndex]);
   
   // Lazy load images as user navigates
   useEffect(() => {
@@ -198,11 +212,73 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
   };
   
   const goToPrevious = () => {
+    if (scale > 1) return; // Disable nav when zoomed
     setCurrentIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
   };
   
   const goToNext = () => {
+    if (scale > 1) return; // Disable nav when zoomed
     setCurrentIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+  
+  // Toggle zoom on click
+  const handleToggleZoom = (e) => {
+    // Prevent zoom toggle when dragging
+    if (isDragging) return;
+    
+    if (scale === 1) {
+      setScale(2);
+    } else {
+      setScale(1);
+      setPosition({ x: 0, y: 0 }); // Reset pan when zoom out
+    }
+  };
+  
+  // Pan handlers (only when zoomed)
+  const handleMouseDown = (e) => {
+    if (scale === 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    };
+  };
+  
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    setPosition({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y
+    });
+  };
+  
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+  
+  // Touch handlers for mobile
+  const handleTouchStart = (e) => {
+    if (scale === 1) return;
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragStart.current = {
+      x: touch.clientX - position.x,
+      y: touch.clientY - position.y
+    };
+  };
+  
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    setPosition({
+      x: touch.clientX - dragStart.current.x,
+      y: touch.clientY - dragStart.current.y
+    });
+  };
+  
+  const handleTouchEnd = () => {
+    setIsDragging(false);
   };
   
   // Keyboard navigation
@@ -211,11 +287,18 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
       if (!isOpen) return;
       if (e.key === 'ArrowLeft') goToPrevious();
       if (e.key === 'ArrowRight') goToNext();
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (scale > 1) {
+          setScale(1);
+          setPosition({ x: 0, y: 0 });
+        } else {
+          onClose();
+        }
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, scale]);
   
   if (!isOpen || !images || images.length === 0) return null;
   
@@ -238,36 +321,70 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
             >
               <X className="w-6 h-6" />
             </button>
-            <span className="text-sm font-medium">
-              {currentIndex + 1} / {images.length}
-            </span>
-            <div className="w-10" /> {/* Spacer for centering */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">
+                {currentIndex + 1} / {images.length}
+              </span>
+              {/* Zoom indicator */}
+              {scale > 1 && (
+                <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                  {scale}x zoom
+                </span>
+              )}
+            </div>
+            {/* Zoom toggle button */}
+            <button
+              onClick={handleToggleZoom}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              title={scale > 1 ? 'Zoom out' : 'Zoom in'}
+            >
+              {scale > 1 ? <ZoomOut className="w-5 h-5" /> : <ZoomIn className="w-5 h-5" />}
+            </button>
           </div>
           
           {/* Main image area */}
           <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center relative px-16">
-            {/* Previous button */}
+            {/* Previous button - disabled when zoomed */}
             <button
               onClick={goToPrevious}
-              className="absolute left-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              disabled={scale > 1}
+              className={`absolute left-4 p-3 rounded-full text-white transition-colors z-10 ${
+                scale > 1 
+                  ? 'bg-black/20 cursor-not-allowed opacity-50' 
+                  : 'bg-black/50 hover:bg-brand-primary/70'
+              }`}
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
             
-            {/* Current image */}
-            <div className="max-w-full max-h-full flex items-center justify-center">
+            {/* Current image with zoom/pan */}
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
               {loadedImages.has(currentIndex) ? (
                 <img
                   src={buildPhotoUrl(images[currentIndex], currentIndex)}
                   alt={`Photo ${currentIndex + 1}`}
-                  className="max-w-full max-h-full object-contain"
+                  onClick={handleToggleZoom}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  draggable={false}
+                  className="h-full w-auto max-w-full object-contain select-none"
+                  style={{
+                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                    transition: isDragging ? 'none' : 'transform 0.25s ease',
+                    cursor: scale > 1
+                      ? isDragging ? 'grabbing' : 'grab'
+                      : 'zoom-in'
+                  }}
                   onLoad={() => setImageLoading(false)}
                   onLoadStart={() => setImageLoading(true)}
                 />
               ) : (
-                <div className="flex items-center justify-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                </div>
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
               )}
               {imageLoading && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -276,17 +393,22 @@ const PhotoGalleryModal = ({ isOpen, onClose, images, apiKey, initialIndex = 0 }
               )}
             </div>
             
-            {/* Next button */}
+            {/* Next button - disabled when zoomed */}
             <button
               onClick={goToNext}
-              className="absolute right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+              disabled={scale > 1}
+              className={`absolute right-4 p-3 rounded-full text-white transition-colors z-10 ${
+                scale > 1 
+                  ? 'bg-black/20 cursor-not-allowed opacity-50' 
+                  : 'bg-black/50 hover:bg-brand-primary/70'
+              }`}
             >
               <ChevronRight className="w-6 h-6" />
             </button>
           </div>
           
-          {/* Thumbnail strip */}
-          <div className="shrink-0 px-4 py-3 overflow-x-auto">
+          {/* Thumbnail strip - hide when zoomed */}
+          <div className={`shrink-0 px-4 py-3 overflow-x-auto transition-opacity ${scale > 1 ? 'opacity-30 pointer-events-none' : ''}`}>
             <div className="flex gap-2 justify-center">
               {images.map((img, idx) => (
                 <button

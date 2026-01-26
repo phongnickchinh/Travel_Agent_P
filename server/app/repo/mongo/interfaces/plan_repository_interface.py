@@ -139,15 +139,16 @@ class PlanRepositoryInterface(ABC):
     
     @abstractmethod
     def count_by_user(self, user_id: str, status: Optional[PlanStatusEnum] = None) -> int:
-        """
-        Count user's plans.
-        
-        Args:
-            user_id: User identifier
-            status: Filter by status (optional)
-            
-        Returns:
-            Total plan count
-        """
+        pass
+    
+    @abstractmethod
+    def search_by_user(
+        self,
+        user_id: str,
+        query: str = "",
+        limit: int = 20,
+        offset: int = 0,
+        include_deleted: bool = False
+    ) -> List:
         pass
 

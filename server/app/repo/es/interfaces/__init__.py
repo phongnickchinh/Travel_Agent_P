@@ -6,8 +6,10 @@ Note: ESAdminLocationRepositoryInterface, ESRegionRepositoryInterface removed (2
 
 from .es_poi_repository_interface import ESPOIRepositoryInterface
 from .es_autocomplete_repository_interface import ESAutocompleteRepositoryInterface
+from .es_plan_repository_interface import ESPlanRepositoryInterface
 
 __all__ = [
     'ESPOIRepositoryInterface',
-    'ESAutocompleteRepositoryInterface'
+    'ESAutocompleteRepositoryInterface',
+    'ESPlanRepositoryInterface'
 ]

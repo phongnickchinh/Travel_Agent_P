@@ -36,7 +36,8 @@ def setup_dependencies():
     # Import Elasticsearch interfaces
     from ...repo.es.interfaces import (
         ESPOIRepositoryInterface,
-        ESAutocompleteRepositoryInterface
+        ESAutocompleteRepositoryInterface,
+        ESPlanRepositoryInterface
         )
     
     # Import PostgreSQL repository implementations
@@ -57,6 +58,7 @@ def setup_dependencies():
     # Import Elasticsearch repository implementations
     from ...repo.es.es_poi_repository import ESPOIRepository
     from ...repo.es.es_autocomplete_repository import ESAutocompleteRepository
+    from ...repo.es.es_plan_repository import ESPlanRepository
 
     from ...providers.firebase.firebase_interface import FirebaseInterface
     from ...providers.firebase.firebase_helper import FirebaseHelper
@@ -89,7 +91,7 @@ def setup_dependencies():
     # Register Elasticsearch repository implementations
     container.register(ESPOIRepositoryInterface.__name__, ESPOIRepository())
     container.register(ESAutocompleteRepositoryInterface.__name__, ESAutocompleteRepository())
-    
+    container.register(ESPlanRepositoryInterface.__name__, ESPlanRepository())
     # Register Firebase helper
     container.register(FirebaseInterface.__name__, FirebaseHelper())
     
@@ -122,16 +124,21 @@ def setup_dependencies():
     
     def create_search_service(container):
         poi_repo = container.resolve(POIRepositoryInterface.__name__)
+        plan_repo = container.resolve(PlanRepositoryInterface.__name__)
         es_repo = container.resolve(ESPOIRepositoryInterface.__name__)
+        es_plan_repo = container.resolve(ESPlanRepositoryInterface.__name__)
         google_provider = GooglePlacesProvider()
         return SearchService(
             poi_repo=poi_repo,
+            plan_repo=plan_repo,
             es_repo=es_repo,
+            es_plan_repo=es_plan_repo,
             google_provider=google_provider
         )
     
     def create_planner_service(container):
         plan_repo = container.resolve(PlanRepositoryInterface.__name__)
+        es_plan_repo = container.resolve(ESPlanRepositoryInterface.__name__)
         poi_repo = container.resolve(POIRepositoryInterface.__name__)
         place_detail_repo = container.resolve(PlaceDetailRepositoryInterface.__name__)
         cost_usage_service = container.resolve(CostUsageService.__name__)
@@ -139,6 +146,7 @@ def setup_dependencies():
         
         return PlannerService(
             plan_repository=plan_repo,
+            es_plan_repository=es_plan_repo,
             poi_repository=poi_repo,
             place_detail_repository=place_detail_repo,
             google_places_provider=google_provider,

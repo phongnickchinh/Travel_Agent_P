@@ -36,8 +36,9 @@ import logging
 import time
 from typing import List, Dict, Optional, Any, TYPE_CHECKING
 
-from ..repo.es.interfaces import ESPOIRepositoryInterface
-from ..repo.mongo.interfaces import POIRepositoryInterface
+from ..repo.es.interfaces import ESPOIRepositoryInterface, ESPlanRepositoryInterface
+from ..repo.mongo.interfaces import POIRepositoryInterface, PlanRepositoryInterface
+from ..repo.mongo.plan_repository import PlanRepositoryInterface
 from ..model.mongo.poi import POISearchRequest
 from ..core.clients.elasticsearch_client import ElasticsearchClient
 from ..providers.type_mapping import (
@@ -101,20 +102,16 @@ class SearchService:
         self, 
         poi_repo: POIRepositoryInterface,
         es_repo: ESPOIRepositoryInterface = None,
+        es_plan_repo: ESPlanRepositoryInterface = None,
+        plan_repo: PlanRepositoryInterface = None,
         google_provider: "GooglePlacesProvider" = None
     ):
-        """
-        Initialize search service with ES + MongoDB + Google fallback.
-        
-        Args:
-            poi_repo: MongoDB POI repository (required, used as fallback + cache)
-            es_repo: Elasticsearch POI repository (optional, primary search)
-            google_provider: Google Places Provider (optional, external API fallback)
-        """
         self.es_enabled = es_repo is not None and ElasticsearchClient.is_healthy()
         self.es_repo = es_repo if self.es_enabled else None
-        self.mongo_repo = poi_repo  # Always available as fallback + cache
-        self.google_provider = google_provider  # External API fallback
+        self.es_plan_repo = es_plan_repo if self.es_enabled else None
+        self.mongo_repo = poi_repo
+        self.plan_repo = plan_repo
+        self.google_provider = google_provider
         
         if self.es_enabled:
             logger.info("[SearchService] Initialized with Elasticsearch + MongoDB")
@@ -126,7 +123,7 @@ class SearchService:
         else:
             logger.warning("[SearchService] Google Places API fallback disabled")
     
-    def search(
+    def search_poi(
         self,
         query: str,
         latitude: Optional[float] = None,
@@ -660,193 +657,7 @@ class SearchService:
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         
         return round(R * c, 2)
-    
-    # ============================================
-    # NOTE: Old multi-index autocomplete methods REMOVED
-    # Use AutocompleteService (autocomplete_service.py) instead
-    # Hybrid architecture: ES autocomplete_cache + MongoDB + Google Places
-    # Migration date: 2025-01
-    # ============================================
-    
-    def get_nearby(
-        self,
-        latitude: float,
-        longitude: float,
-        radius_km: float = 5.0,
-        types: Optional[List[str]] = None,
-        interests: Optional[List[str]] = None,
-        min_rating: Optional[float] = None,
-        limit: int = 20
-    ) -> Dict[str, Any]:
-        """
-        Get POIs near a location (no text query).
-        
-        Use case: "What's nearby?" feature
-        
-        Args:
-            latitude: Center point latitude
-            longitude: Center point longitude
-            radius_km: Search radius in km (default: 5)
-            types: POI types filter (Google Place Types, direct pass-through)
-            interests: User interest IDs (e.g., 'beach', 'culture', 'food') - converted to Google types
-            min_rating: Minimum rating
-            limit: Max results (default: 20)
-        
-        Returns:
-            {
-                "results": [POI dicts with _distance_km],
-                "total": int,
-                "center": {"latitude": float, "longitude": float},
-                "radius_km": float
-            }
-        
-        Example:
-            >>> nearby = service.get_nearby(
-            ...     latitude=16.0544,
-            ...     longitude=108.2428,
-            ...     radius_km=2,
-            ...     interests=["beach", "food"]  # Converted to Google types internally
-            ... )
-        """
-        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km, interests={interests}")
-        
-        # Use search with empty query (geo-only)
-        # Pass interests directly - search() handles conversion for each backend
-        results = self.search(
-            query="",
-            latitude=latitude,
-            longitude=longitude,
-            radius_km=radius_km,
-            types=types,
-            interests=interests,  # Pass interests directly, search() converts per backend
-            min_rating=min_rating,
-            sort_by="distance",
-            limit=limit
-        )
-        
-        return {
-            "results": results.get('results', []),
-            "total": results.get('total', 0),
-            "center": {"latitude": latitude, "longitude": longitude},
-            "radius_km": radius_km,
-            "source": results.get('source', 'unknown')
-        }
-    
-    def get_by_type(
-        self,
-        poi_type: str,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-        radius_km: Optional[float] = None,
-        min_rating: Optional[float] = None,
-        limit: int = 20
-    ) -> Dict[str, Any]:
-        """
-        Get POIs by type (category).
-        
-        Use case: Browse by category (beaches, restaurants, museums, etc.)
-        
-        Args:
-            poi_type: POI type/category (e.g., "beach", "restaurant")
-            latitude: Optional center point
-            longitude: Optional center point
-            radius_km: Optional search radius
-            min_rating: Optional minimum rating
-            limit: Max results (default: 20)
-        
-        Returns:
-            {
-                "results": [POI dicts],
-                "total": int,
-                "type": str,
-                "source": str
-            }
-        
-        Example:
-            >>> beaches = service.get_by_type(
-            ...     poi_type="beach",
-            ...     latitude=16.0544,
-            ...     longitude=108.2428,
-            ...     radius_km=20,
-            ...     min_rating=4.0
-            ... )
-        """
-        logger.info(f"[SEARCH] Get by type: type='{poi_type}', lat={latitude}, lng={longitude}")
-        
-        results = self.search(
-            query=poi_type,  # Use type as query
-            latitude=latitude,
-            longitude=longitude,
-            radius_km=radius_km,
-            types=[poi_type],  # Filter by type
-            min_rating=min_rating,
-            sort_by="rating" if not latitude else "distance",
-            limit=limit
-        )
-        
-        return {
-            "results": results.get('results', []),
-            "total": results.get('total', 0),
-            "type": poi_type,
-            "source": results.get('source', 'unknown')
-        }
-    
-    def get_popular(
-        self,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-        radius_km: Optional[float] = None,
-        types: Optional[List[str]] = None,
-        limit: int = 20
-    ) -> Dict[str, Any]:
-        """
-        Get popular POIs (by rating + review count).
-        
-        Use case: "Top rated" or "Most popular" listings
-        
-        Args:
-            latitude: Optional center point
-            longitude: Optional center point
-            radius_km: Optional search radius
-            types: Optional type filters
-            limit: Max results (default: 20)
-        
-        Returns:
-            {
-                "results": [POI dicts sorted by popularity],
-                "total": int,
-                "source": str
-            }
-        
-        Example:
-            >>> popular = service.get_popular(
-            ...     latitude=16.0544,
-            ...     longitude=108.2428,
-            ...     radius_km=10,
-            ...     limit=10
-            ... )
-        """
-        logger.info(f"[RATING] Get popular: lat={latitude}, lng={longitude}, radius={radius_km}km")
-        
-        results = self.search(
-            query="",
-            latitude=latitude,
-            longitude=longitude,
-            radius_km=radius_km,
-            types=types,
-            min_rating=4.0,  # Filter for quality
-            sort_by="popularity",
-            limit=limit
-        )
-        
-        return {
-            "results": results.get('results', []),
-            "total": results.get('total', 0),
-            "source": results.get('source', 'unknown')
-        }
-    
-    # ========== PRIVATE HELPER METHODS ==========
-    
+
     def _search_mongodb(
         self,
         query: str,
@@ -898,3 +709,114 @@ class SearchService:
                 "page": page,
                 "limit": limit
             }
+
+
+    def get_poi_nearby(
+        self,
+        latitude: float,
+        longitude: float,
+        radius_km: float = 5.0,
+        types: Optional[List[str]] = None,
+        interests: Optional[List[str]] = None,
+        min_rating: Optional[float] = None,
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get POIs near a location (no text query).
+        
+        Use case: "What's nearby?" feature
+        
+        Args:
+            latitude: Center point latitude
+            longitude: Center point longitude
+            radius_km: Search radius in km (default: 5)
+            types: POI types filter (Google Place Types, direct pass-through)
+            interests: User interest IDs (e.g., 'beach', 'culture', 'food') - converted to Google types
+            min_rating: Minimum rating
+            limit: Max results (default: 20)
+        
+        Returns:
+            {
+                "results": [POI dicts with _distance_km],
+                "total": int,
+                "center": {"latitude": float, "longitude": float},
+                "radius_km": float
+            }
+        
+        Example:
+            >>> nearby = service.get_nearby(
+            ...     latitude=16.0544,
+            ...     longitude=108.2428,
+            ...     radius_km=2,
+            ...     interests=["beach", "food"]  # Converted to Google types internally
+            ... )
+        """
+        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km, interests={interests}")
+        
+        # Use search with empty query (geo-only)
+        # Pass interests directly - search() handles conversion for each backend
+        results = self.search_poi(
+            query="",
+            latitude=latitude,
+            longitude=longitude,
+            radius_km=radius_km,
+            types=types,
+            interests=interests,  # Pass interests directly, search() converts per backend
+            min_rating=min_rating,
+            sort_by="distance",
+            limit=limit
+        )
+        
+        return {
+            "results": results.get('results', []),
+            "total": results.get('total', 0),
+            "center": {"latitude": latitude, "longitude": longitude},
+            "radius_km": radius_km,
+            "source": results.get('source', 'unknown')
+        }
+
+    def search_user_plan(
+        self,
+        query: str,
+        user_id: str,
+        limit: int = 20,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        if not user_id:
+            return {"results": [], "total": 0, "source": "error"}
+        
+        start_time = time.time()
+        
+        if self.es_enabled and self.es_plan_repo:
+            try:
+                result = self.es_plan_repo.search(query=query, user_id=user_id, limit=limit, offset=offset)
+                took_ms = int((time.time() - start_time) * 1000)
+                return {
+                    "results": result.get("results", []),
+                    "total": result.get("total", 0),
+                    "took_ms": took_ms,
+                    "source": "elasticsearch"
+                }
+            except Exception as e:
+                logger.warning(f"[SEARCH_PLAN] ES failed, fallback to MongoDB: {e}")
+        
+        if self.plan_repo:
+            try:
+                plans = self.plan_repo.search_by_user(
+                    user_id=user_id,
+                    query=query,
+                    limit=limit,
+                    offset=offset
+                )
+                took_ms = int((time.time() - start_time) * 1000)
+                results = [{"plan_id": p.plan_id, "title": p.title, "destination": p.destination} for p in plans]
+                return {
+                    "results": results,
+                    "total": len(results),
+                    "took_ms": took_ms,
+                    "source": "mongodb"
+                }
+            except Exception as e:
+                logger.error(f"[SEARCH_PLAN] MongoDB search failed: {e}")
+        
+        return {"results": [], "total": 0, "source": "error"}

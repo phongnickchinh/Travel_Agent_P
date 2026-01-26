@@ -253,20 +253,9 @@ class MongoDBClient:
             
             # POI Collection Indexes
             poi_collection = db["poi"]
-            
-            # Unique deduplication key
             poi_collection.create_index("dedupe_key", unique=True, name="idx_dedupe_key")
-            logger.info("[MONGODB] Created unique index: poi.dedupe_key")
-            
-            # GeoJSON 2dsphere for location queries
             poi_collection.create_index([("location", "2dsphere")], name="idx_location_2dsphere")
-            logger.info("[MONGODB] Created 2dsphere index: poi.location")
-            
-            # Category filter
             poi_collection.create_index("categories", name="idx_categories")
-            logger.info("[MONGODB] Created index: poi.categories")
-            
-            # Text search (fallback if no Elasticsearch)
             poi_collection.create_index(
                 [
                     ("name", "text"),
@@ -276,70 +265,31 @@ class MongoDBClient:
                 name="idx_text_search",
                 default_language="english"
             )
-            logger.info("[MONGODB] Created text search index: poi.name/description")
-            
-            # Popularity & sorting
             poi_collection.create_index([("metadata.popularity_score", -1)], name="idx_popularity")
             poi_collection.create_index([("ratings.average", -1)], name="idx_ratings")
-            logger.info("[MONGODB] Created sorting indexes: poi.popularity/ratings")
-            
-            # POI ID for fast lookups
             poi_collection.create_index("poi_id", unique=True, name="idx_poi_id")
-            logger.info("[MONGODB] Created unique index: poi.poi_id")
+            logger.info("[MONGODB] Created indexes for poi collection: dedupe_key, location, categories, text search, popularity, ratings, poi_id")
             
-            # Itinerary Collection Indexes
-            itinerary_collection = db["itineraries"]
+            # Plan Collection Indexes
+            plan_collection = db["plan"]
+            plan_collection.create_index("plan_id", unique=True, name=f"idx_plan_plan_id")
+            plan_collection.create_index("user_id", name=f"idx_plan_user_id")
+            plan_collection.create_index([("user_id", 1), ("created_at", -1)], name=f"idx_plan_user_created")
+            plan_collection.create_index("status", name=f"idx_plan_status")
+            plan_collection.create_index("destination", name=f"idx_plan_destination")
+            logger.info(f"[MONGODB] Created indexes for plan collection: plan_id, user_id, created_at, status, destination")
             
-            # Plan ID (unique)
-            itinerary_collection.create_index("plan_id", unique=True, name="idx_plan_id")
-            logger.info("[MONGODB] Created unique index: itineraries.plan_id")
-            
-            # User's itineraries
-            itinerary_collection.create_index("metadata.user_id", name="idx_user_id")
-            logger.info("[MONGODB] Created index: itineraries.user_id")
-            
-            # Created date for sorting
-            itinerary_collection.create_index([("metadata.created_at", -1)], name="idx_created_at")
-            logger.info("[MONGODB] Created index: itineraries.created_at")
-            
-            # Public itineraries
-            itinerary_collection.create_index("metadata.is_public", name="idx_is_public")
-            logger.info("[MONGODB] Created index: itineraries.is_public")
-            
-            # Share token lookup
-            itinerary_collection.create_index("metadata.share_token", sparse=True, name="idx_share_token")
-            logger.info("[MONGODB] Created sparse index: itineraries.share_token")
-            
-            # Review Collection Indexes (Future)
-            review_collection = db["reviews"]
-            
-            # User's reviews
-            review_collection.create_index("user_id", name="idx_review_user_id")
-            logger.info("[MONGODB] Created index: reviews.user_id")
-            
-            # POI's reviews
-            review_collection.create_index("poi_id", name="idx_review_poi_id")
-            logger.info("[MONGODB] Created index: reviews.poi_id")
-            
-            # Created date
-            review_collection.create_index([("created_at", -1)], name="idx_review_created_at")
-            logger.info("[MONGODB] Created index: reviews.created_at")
+            # Autocomplete Collection Indexes
+            autocomplete_collection = db["autocomplete_cache"]
+            autocomplete_collection.create_index("place_id", unique=True, name="idx_autocomplete_place_id")
+            autocomplete_collection.create_index("main_text", name="idx_autocomplete_main_text")
+            autocomplete_collection.create_index("main_text_unaccented", name="idx_autocomplete_main_text_unaccented")
+            logger.info("[MONGODB] Created indexes for autocomplete_cache collection: place_id, main_text_unaccented, main_text")
             
             logger.info("[MONGODB] All indexes created successfully!")
-            
-            # Plan Collection Indexes (Week 4)
-            # NOTE: Some modules use collection name "plan" or "plans"; create indexes for both
-            try:
-                for name in ("plan", "plans"):
-                    plan_collection = db[name]
-                    plan_collection.create_index("plan_id", unique=True, name=f"idx_{name}_plan_id")
-                    plan_collection.create_index("user_id", name=f"idx_{name}_user_id")
-                    plan_collection.create_index([("user_id", 1), ("created_at", -1)], name=f"idx_{name}_user_created")
-                    plan_collection.create_index("status", name=f"idx_{name}_status")
-                    plan_collection.create_index("destination", name=f"idx_{name}_destination")
-                    logger.info(f"[MONGODB] Created indexes for plan collection: {name}")
-            except Exception as e:
-                logger.warning(f"[MONGODB] Failed to create plan collection indexes: {e}")
+        
+        
+        
             
         except Exception as e:
             logger.error(f"[MONGODB] Failed to create indexes: {e}")

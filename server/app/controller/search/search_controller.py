@@ -13,11 +13,13 @@ Author: Travel Agent P Team
 Date: November 27, 2025
 """
 
+from functools import wraps
 from flask import request, jsonify
 from typing import Optional, List
 import logging
 
 from . import search_bp
+from ...middleware import JWT_required
 from app.service.search_service import SearchService
 from app.utils.response_helpers import build_error_response, build_success_response
 from app.core.di_container import DIContainer
@@ -66,10 +68,16 @@ class SearchController:
         """Register all routes with Flask Blueprint."""
         search_bp.add_url_rule("", "search", self._wrap_rate_limit(self.search), methods=["GET"])
         # REMOVED: /autocomplete route - Use /v2/autocomplete instead
-        search_bp.add_url_rule("/nearby", "nearby", self._wrap_rate_limit(self.get_nearby), methods=["GET"])
-        search_bp.add_url_rule("/type/<poi_type>", "by_type", self._wrap_rate_limit_with_arg(self.get_by_type), methods=["GET"])
-        search_bp.add_url_rule("/popular", "popular", self._wrap_rate_limit(self.get_popular), methods=["GET"])
-    
+        search_bp.add_url_rule("/nearby", "nearby", self._wrap_rate_limit( self.get_nearby), methods=["GET"])
+        search_bp.add_url_rule("/plans", "search_user_plan", self._wrap_jwt_required(self.search_user_plan), methods=["GET"])
+        
+    def _wrap_jwt_required(self, f):
+        """Helper to maintain JWT required middleware."""
+        @wraps(f)
+        @JWT_required
+        def wrapper(user, *args, **kwargs):
+            return f(user, *args, **kwargs)
+        return wrapper
     def _wrap_rate_limit(self, f):
         """Wrap endpoint with rate limiting (60 requests per minute per IP)."""
         @rate_limit(
@@ -351,7 +359,7 @@ class SearchController:
             # Call service
             logger.info(f"[NEARBY] Get nearby: lat={lat}, lng={lng}, radius={radius}km, interests={interests_list}")
             
-            result = self.search_service.get_nearby(
+            result = self.search_service.get_poi_nearby(
                 latitude=lat,
                 longitude=lng,
                 radius_km=radius,
@@ -375,164 +383,99 @@ class SearchController:
                 "NEARBY_ERROR",
                 500
             )
-    
-    def get_by_type(self, poi_type: str):
+
+    def search_user_plan(self, user):
         """
-        Browse POIs by type/category.
-        
-        Path Parameters:
-            poi_type: POI type (e.g., "beach", "restaurant", "museum")
+        Search user plans by title or destination.
         
         Query Parameters:
-            lat (optional): Center latitude
-            lng (optional): Center longitude
-            radius (optional): Search radius in km
-            min_rating (optional): Minimum rating (0-5)
+            q (required): Search query
+            user_id (required): User identifier
             limit (optional): Max results (default: 20, max: 100)
+            offset (optional): Pagination offset (default: 0)
         
         Response Success (200):
             {
                 "resultMessage": {"en": "...", "vn": "..."},
-                "resultCode": "TYPE_SEARCH_SUCCESS",
-                "results": [POI objects],
-                "total": 18,
-                "type": "beach",
+                "resultCode": "PLAN_SEARCH_SUCCESS",
+                "results": [Plan objects],
+                "total": 10,
+                "took_ms": 15,
                 "source": "elasticsearch|mongodb"
             }
         
         Examples:
-            # Get all beaches
-            GET /api/search/type/beach
-            
-            # Get restaurants near location
-            GET /api/search/type/restaurant?lat=16.0544&lng=108.2428&radius=10&min_rating=4.0
+            # Search user plans
+            GET /api/search/plans?q=summer&user_id=12345&limit=10
         """
         try:
-            # Validate poi_type
-            if not poi_type or not poi_type.strip():
+            query = request.args.get('q', '').strip()
+            limit = request.args.get('limit', default=5, type=int)
+            offset = request.args.get('offset', default=0, type=int)
+            
+            # Validate required parameters
+            if not query:
                 return build_error_response(
-                    "POI type is required",
-                    "Loại địa điểm là bắt buộc",
-                    "MISSING_TYPE",
+                    "Query parameter 'q' is required",
+                    "Tham số 'q' là bắt buộc",
+                    "MISSING_QUERY",
                     400
                 )
-            lat = request.args.get('lat', type=float)
-            lng = request.args.get('lng', type=float)
-            radius = request.args.get('radius', type=float)
-            min_rating = request.args.get('min_rating', type=float)
-            limit = request.args.get('limit', default=20, type=int)
             
-            # Validate location if provided
-            if (lat is None) != (lng is None):
+            if not user or not user.id:
                 return build_error_response(
-                    "Both latitude and longitude are required",
-                    "Cả vĩ độ và kinh độ đều cần thiết",
-                    "INCOMPLETE_LOCATION",
+                    "User ID is required",
+                    "ID người dùng là bắt buộc",
+                    "MISSING_USER_ID",
+                    400
+                )
+            
+            if not (1 <= limit <= 100):
+                return build_error_response(
+                    "Limit must be between 1 and 100",
+                    "Giới hạn phải từ 1 đến 100",
+                    "INVALID_LIMIT",
+                    400
+                )
+            
+            if offset < 0:
+                return build_error_response(
+                    "Offset must be non-negative",
+                    "Offset phải không âm",
+                    "INVALID_OFFSET",
                     400
                 )
             
             # Call service
-            logger.info(f"[SEARCH] Get by type: type='{poi_type}', lat={lat}, lng={lng}")
+            logger.info(f"[PLAN SEARCH] User {user.id} searching plans: q='{query}'")
             
-            result = self.search_service.get_by_type(
-                poi_type=poi_type,
-                latitude=lat,
-                longitude=lng,
-                radius_km=radius,
-                min_rating=min_rating,
-                limit=limit
+            result = self.search_service.search_user_plan(
+                query=query,
+                user_id=user.id,
+                limit=limit,
+                offset=offset
             )
+            
+            total = result.get('total', 0)
+            took_ms = result.get('took_ms', 0)
+            
             return build_success_response(
-                f"Found {result['total']} {poi_type} places",
-                f"Tìm thấy {result['total']} địa điểm {poi_type}",
-                "TYPE_SEARCH_SUCCESS",
+                f"Found {total} plans",
+                f"Tìm thấy {total} kế hoạch",
+                "PLAN_SEARCH_SUCCESS",
                 data=result,
                 status_code=200
             )
-        
         except Exception as e:
-            logger.error(f"[ERROR] Get by type failed: {e}", exc_info=True)
+            logger.error(f"[ERROR] Plan search failed: {e}", exc_info=True)
             return build_error_response(
-                "An error occurred while searching by type",
-                "Đã xảy ra lỗi khi tìm kiếm theo loại",
-                "TYPE_SEARCH_ERROR",
+                "An error occurred while searching plans",
+                "Đã xảy ra lỗi khi tìm kiếm kế hoạch",
+                "PLAN_SEARCH_ERROR",
                 500
             )
-    
-    def get_popular(self):
-        """
-        Get popular POIs (by rating + review count).
-        
-        Query Parameters:
-            lat (optional): Center latitude
-            lng (optional): Center longitude
-            radius (optional): Search radius in km
-            types (optional): Comma-separated types filter
-            limit (optional): Max results (default: 20, max: 100)
-        
-        Response Success (200):
-            {
-                "resultMessage": {"en": "...", "vn": "..."},
-                "resultCode": "POPULAR_SUCCESS",
-                "results": [POI objects sorted by popularity],
-                "total": 30,
-                "source": "elasticsearch|mongodb"
-            }
-        
-        Examples:
-            # Get top popular POIs
-            GET /api/search/popular?limit=10
             
-            # Get popular restaurants near location
-            GET /api/search/popular?lat=16.0544&lng=108.2428&radius=10&types=restaurant&limit=20
-        """
-        try:
-            lat = request.args.get('lat', type=float)
-            lng = request.args.get('lng', type=float)
-            radius = request.args.get('radius', type=float)
-            types = request.args.get('types', '').strip()
-            limit = request.args.get('limit', default=20, type=int)
             
-            # Validate location if provided
-            if (lat is None) != (lng is None):
-                return build_error_response(
-                    "Both latitude and longitude are required",
-                    "Cả vĩ độ và kinh độ đều cần thiết",
-                    "INCOMPLETE_LOCATION",
-                    400
-                )
-            
-            # Parse types
-            types_list = [t.strip() for t in types.split(',') if t.strip()] if types else None
-            
-            # Call service
-            logger.info(f"[RATING] Get popular: lat={lat}, lng={lng}, types={types_list}")
-            
-            result = self.search_service.get_popular(
-                latitude=lat,
-                longitude=lng,
-                radius_km=radius,
-                types=types_list,
-                limit=limit
-            )
-            return build_success_response(
-                f"Found {result['total']} popular places",
-                f"Tìm thấy {result['total']} địa điểm phổ biến",
-                "POPULAR_SUCCESS",
-                data=result,
-                status_code=200
-            )
-        
-        except Exception as e:
-            logger.error(f"[ERROR] Get popular failed: {e}", exc_info=True)
-            return build_error_response(
-                "An error occurred while getting popular places",
-                "Đã xảy ra lỗi khi lấy địa điểm phổ biến",
-                "POPULAR_ERROR",
-                500
-            )
-
-
 # Initialize controller with DI
 def init_search_controller():
     """Initialize Search controller with dependency injection."""

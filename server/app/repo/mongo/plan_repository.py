@@ -586,30 +586,52 @@ class PlanRepository(PlanRepositoryInterface):
             return None
     
     def count_by_user(self, user_id: str, status: Optional[PlanStatusEnum] = None, include_deleted: bool = False) -> int:
-        """
-        Count user's plans.
-        
-        Args:
-            user_id: User identifier
-            status: Filter by status (optional)
-            include_deleted: Include soft-deleted plans (default: False)
-            
-        Returns:
-            Total plan count
-        """
         if self.collection is None:
             return 0
-        
         try:
             query = {"user_id": user_id}
             if not include_deleted:
                 query["is_deleted"] = {"$ne": True}
             if status:
                 query["status"] = status.value
-            
-            count = self.collection.count_documents(query)
-            return count
-            
+            return self.collection.count_documents(query)
         except Exception as e:
             logger.error(f"[ERROR] Failed to count plans for user {user_id}: {e}")
             return 0
+    
+    def search_by_user(
+        self,
+        user_id: str,
+        query: str = "",
+        limit: int = 20,
+        offset: int = 0,
+        include_deleted: bool = False
+    ) -> List[Plan]:
+        if self.collection is None:
+            return []
+        try:
+            mongo_query = {"user_id": user_id}
+            if not include_deleted:
+                mongo_query["is_deleted"] = {"$ne": True}
+            if query:
+                mongo_query["$or"] = [
+                    {"title": {"$regex": query, "$options": "i"}},
+                    {"destination": {"$regex": query, "$options": "i"}}
+                ]
+            docs = list(
+                self.collection.find(mongo_query)
+                .sort("created_at", DESCENDING)
+                .skip(offset)
+                .limit(limit)
+            )
+            plans = []
+            for doc in docs:
+                doc['_id'] = str(doc['_id'])
+                try:
+                    plans.append(Plan(**doc))
+                except Exception:
+                    pass
+            return plans
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to search plans for user {user_id}: {e}")
+            return []

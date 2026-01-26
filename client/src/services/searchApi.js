@@ -422,6 +422,32 @@ class SearchAPI {
       return null;
     }
   }
+
+  /**
+   * Search user's plans (hybrid ES + MongoDB)
+   */
+  async searchPlans(query, options = {}) {
+    const { limit = 5, offset = 0 } = options;
+    if (!query || query.trim().length < 2) {
+      return { results: [], total: 0 };
+    }
+    try {
+      const response = await api.get('/search/plans', {
+        params: { q: query.trim(), limit, offset }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[ERROR] Plan search failed:', error);
+      return { results: [], total: 0, error };
+    }
+  }
+
+  /**
+   * Debounced search plans
+   */
+  async searchPlansImmediate(query, options = {}) {
+    return this.searchPlans(query, options);
+  }
 }
 
 // Singleton instance

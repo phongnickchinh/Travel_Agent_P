@@ -46,6 +46,7 @@ class ESInitializer:
         self._es_client = None
         self._poi_repo = None
         self._autocomplete_repo = None
+        self._plan_repo = None
         self._mongodb_client = None
     
     @property
@@ -80,6 +81,14 @@ class ESInitializer:
             self._autocomplete_repo = ESAutocompleteRepository(self.es_client)
         return self._autocomplete_repo
     
+    @property
+    def plan_repo(self):
+        """Lazy load Plan ES repository."""
+        if self._plan_repo is None:
+            from ..repo.es.es_plan_repository import ESPlanRepository
+            self._plan_repo = ESPlanRepository(self.es_client)
+        return self._plan_repo
+    
     def is_connected(self) -> bool:
         """Check if ES is connected."""
         try:
@@ -109,16 +118,22 @@ class ESInitializer:
             logger.info("[ES_INIT] Elasticsearch connected successfully")
             
             # Create/verify POI index
-            poi_created = self._ensure_poi_index()
+            self._ensure_poi_index()
             
             # Create/verify Autocomplete index
-            auto_created = self._ensure_autocomplete_index()
+            self._ensure_autocomplete_index()
             
-            # Sync POI data (always sync, will skip if already up-to-date)
+            # Create/verify Plan index
+            self._ensure_plan_index()
+            
+            # Sync POI data
             self.sync_pois()
             
             # Sync Autocomplete data
             self.sync_autocomplete()
+            
+            # Sync Plan data
+            self.sync_plans()
             
             # Validate mappings
             self._validate_mappings()
@@ -170,6 +185,27 @@ class ESInitializer:
                 
         except Exception as e:
             logger.error(f"[ES_INIT] Autocomplete index error: {e}")
+            return False
+    
+    def _ensure_plan_index(self) -> bool:
+        """Ensure Plan index exists with correct mapping."""
+        try:
+            index_name = self.plan_repo.INDEX_NAME
+            
+            if not self.es_client.indices.exists(index=index_name):
+                logger.info(f"[ES_INIT] Creating Plan index: {index_name}")
+                if self.plan_repo.create_index():
+                    logger.info(f"[ES_INIT] Plan index '{index_name}' created successfully")
+                    return True
+                else:
+                    logger.error(f"[ES_INIT] Failed to create Plan index")
+                    return False
+            else:
+                logger.info(f"[ES_INIT] Plan index '{index_name}' already exists")
+                return False
+                
+        except Exception as e:
+            logger.error(f"[ES_INIT] Plan index error: {e}")
             return False
     
     def sync_pois(self, batch_size: int = 100) -> Tuple[int, int]:
@@ -300,6 +336,63 @@ class ESInitializer:
             
         except Exception as e:
             logger.error(f"[ES_INIT] Autocomplete sync error: {e}")
+            return (0, 0)
+    
+    def sync_plans(self, batch_size: int = 100) -> Tuple[int, int]:
+        """
+        Sync all Plans from MongoDB to Elasticsearch.
+        
+        Args:
+            batch_size: Number of items to index per batch
+        Returns:
+            Tuple of (indexed_count, failed_count)
+        """
+        try:
+            plan_collection = self.mongodb_client.get_collection('plan')
+            if plan_collection is None:
+                logger.warning("[ES_INIT] Plans collection not available")
+                return (0, 0)
+            
+            total_plans = plan_collection.count_documents({'status': 'completed', 'is_deleted': {'$ne': True}})
+            logger.info(f"[ES_INIT] Starting Plan sync: {total_plans} completed plans in MongoDB")
+            
+            if total_plans == 0:
+                logger.info("[ES_INIT] No completed plans found in MongoDB to sync")
+                return (0, 0)
+            
+            try:
+                es_count = self.plan_repo.count()
+                if es_count >= total_plans:
+                    logger.info(f"[ES_INIT] Plan ES already synced ({es_count} items)")
+                    return (es_count, 0)
+            except Exception as e:
+                logger.warning(f"[ES_INIT] Could not get ES plan count: {e}")
+            
+            indexed_count = 0
+            failed_count = 0
+            
+            cursor = plan_collection.find({'status': 'completed', 'is_deleted': {'$ne': True}}).batch_size(batch_size)
+            
+            for plan in cursor:
+                try:
+                    doc = {
+                        'plan_id': plan.get('plan_id'),
+                        'user_id': plan.get('user_id'),
+                        'destination': plan.get('destination', ''),
+                        'title': plan.get('title', '')
+                    }
+                    if doc['plan_id'] and doc['user_id']:
+                        self.plan_repo.index_document(doc, doc['plan_id'])
+                        indexed_count += 1
+                except Exception as e:
+                    failed_count += 1
+                    logger.debug(f"[ES_INIT] Failed to index plan: {e}")
+            
+            logger.info(f"[ES_INIT] Plan sync completed: {indexed_count} indexed, {failed_count} failed")
+            return (indexed_count, failed_count)
+            
+        except Exception as e:
+            logger.error(f"[ES_INIT] Plan sync error: {e}")
             return (0, 0)
     
     def _validate_mappings(self):

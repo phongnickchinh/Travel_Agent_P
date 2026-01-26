@@ -38,6 +38,7 @@ from ..model.mongo.poi import POISearchRequest, CategoryEnum, POI
 from ..repo.mongo.plan_repository import PlanRepository
 from ..repo.mongo.poi_repository import POIRepository
 from ..repo.mongo.place_detail_repository import PlaceDetailRepository
+from ..repo.es.es_plan_repository import ESPlanRepository
 from ..providers.places.google_places_provider import GooglePlacesProvider
 from ..providers.type_mapping import map_user_interests_to_categories
 from ..ai.llm.lc_chain import TravelPlannerChain
@@ -142,6 +143,7 @@ class PlannerService:
     def __init__(
         self, 
         plan_repository: Optional[PlanRepository] = None,
+        es_plan_repository: Optional[ESPlanRepository] = None,
         poi_repository: Optional[POIRepository] = None,
         place_detail_repository: Optional[PlaceDetailRepository] = None,
         google_places_provider: Optional[GooglePlacesProvider] = None,
@@ -162,13 +164,13 @@ class PlannerService:
         self.place_detail_repo = place_detail_repository or PlaceDetailRepository()
         self.google_provider = google_places_provider or GooglePlacesProvider()
         self.cost_service = cost_usage_service
+        self.es_plan_repo = es_plan_repository or ESPlanRepository()
         
         logger.info("[INFO] PlannerService initialized with clean architecture (no service imports)")
     
     # ============================================
     # DESTINATION RESOLUTION
-    # ============================================
-    
+    # ============================================    
     # Types that require Geocoding API for precise coordinates
     GEOCODE_REQUIRED_TYPES = {'locality', 'political', 'geocode', 'administrative_area_level_1', 
                               'administrative_area_level_2', 'country', 'sublocality'}
@@ -1706,6 +1708,8 @@ class PlannerService:
             
             # Save to MongoDB
             created_plan = self.plan_repo.create(plan)
+            #cache to es
+            self.es_plan_repo.index_plan(created_plan)
             
             logger.info(
                 f"[INFO] Created plan {created_plan['plan_id']} for user {user_id}: "
@@ -2110,7 +2114,10 @@ class PlannerService:
         if not plan or plan.get('user_id') != user_id:
             return False
         
-        return self.plan_repo.delete(plan_id)
+        self.plan_repo.delete(plan_id)
+        self.es_plan_repo.delete_plan(plan_id)
+        
+        return True
     
     def restore_plan(self, plan_id: str, user_id: str) -> bool:
         """
@@ -2128,7 +2135,11 @@ class PlannerService:
         if not plan or plan.get('user_id') != user_id:
             return False
         
-        return self.plan_repo.restore_from_trash(plan_id)
+        success = self.plan_repo.restore_from_trash(plan_id)
+        plann = self.plan_repo.get_by_id(plan_id)
+        if success:
+            self.es_plan_repo.index_plan(plann)
+        return success
     
     def permanent_delete_plan(self, plan_id: str, user_id: str) -> bool:
         """
@@ -2150,7 +2161,8 @@ class PlannerService:
             logger.warning(f"[WARN] Attempt to permanently delete non-trashed plan {plan_id}")
             return False
         
-        return self.plan_repo.permanent_delete(plan_id)
+        success = self.plan_repo.permanent_delete(plan_id)
+        return success
     
     def get_trash_plans(self, user_id: str, page: int = 1, limit: int = 20) -> Dict[str, Any]:
         """
@@ -2328,8 +2340,11 @@ class PlannerService:
             update_data['origin'] = request.origin.model_dump() if hasattr(request.origin, 'model_dump') else request.origin
         
         if update_data:
-            return self.plan_repo.update(plan_id, update_data)
-        
+            result = self.plan_repo.update(plan_id, update_data)
+            if request.title:
+                self.es_plan_repo.delete_plan(plan_id)
+                self.es_plan_repo.index_plan(result)
+            return result
         return plan
 
     def patch_plan(
@@ -2479,6 +2494,10 @@ class PlannerService:
             # Enrich with POI locations for map display
             if updated_plan and updated_plan.get('itinerary'):
                 updated_plan = self._enrich_itinerary_with_poi_locations(updated_plan)
+                
+            if request.title is not None:
+                self.es_plan_repo.delete_plan(plan_id)
+                self.es_plan_repo.index_plan(updated_plan)
             
             return updated_plan
         

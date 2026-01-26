@@ -1,234 +1,69 @@
-"""
-Elasticsearch POI Repository
-Manages POI indexing and search operations in Elasticsearch
-"""
-
 import logging
-import json
-from pathlib import Path
+import time
 from typing import List, Dict, Optional, Any
+from pathlib import Path
+import json
+
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
-from elasticsearch.exceptions import NotFoundError, RequestError
 
-from ...core.clients.elasticsearch_client import ElasticsearchClient
-from ...repo.es.interfaces import ESPOIRepositoryInterface
+from .base_es_repository import BaseESRepository
+from .interfaces import ESPOIRepositoryInterface
 from config import Config
 
 logger = logging.getLogger(__name__)
 
 
-class ESPOIRepository(ESPOIRepositoryInterface):
-    """
-    Elasticsearch repository for POI search and indexing
-    
-    Features:
-    - Index management (create, delete, update mappings)
-    - Bulk indexing from MongoDB
-    - Autocomplete search with edge n-gram
-    - Geo-distance search
-    - Full-text search with filters
-    - Aggregations for analytics
-    
-    Usage:
-        repo = ESPOIRepository()
-        
-        # Create index
-        repo.create_index()
-        
-        # Index a POI
-        repo.index_poi(poi_data)
-        
-        # Search
-        results = repo.search(query="cafe", location={...}, radius=5000)
-    """
-    
+class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
+    INDEX_NAME = Config.ELASTICSEARCH_POI_INDEX
+    MAPPING_FILE = None
+
     def __init__(self, es_client: Optional[Elasticsearch] = None):
-        """
-        Initialize ES POI Repository
-        
-        Args:
-            es_client: Elasticsearch client (defaults to singleton)
-        """
-        self.es = es_client or ElasticsearchClient.get_instance()
-        
-        # Load index name from config
         self.INDEX_NAME = Config.ELASTICSEARCH_POI_INDEX
-        
-        # Load index mapping from JSON file
-        self.INDEX_MAPPING = self._load_index_mapping()
-        
-        logger.info(f"Initialized ESPOIRepository with index: {self.INDEX_NAME}")
-    
-    def _load_index_mapping(self) -> Dict:
-        """
-        Load index mapping configuration from JSON file
-        
-        Returns:
-            Dict: Index mapping configuration
-        """
+        super().__init__(es_client)
+
+    def _load_mapping(self) -> Dict:
         try:
-            # Get mapping file path from config (relative to project root)
             config_path = Config.ELASTICSEARCH_CONFIG_FILE_PATH
-            
-            # Resolve absolute path (assume config path is relative to server root)
             if not Path(config_path).is_absolute():
-                project_root = Path(__file__).parent.parent.parent.parent  # Go up to server/
+                project_root = Path(__file__).parent.parent.parent.parent
                 mapping_file = project_root / config_path
             else:
                 mapping_file = Path(config_path)
-            
             if not mapping_file.exists():
-                logger.error(f"Mapping file not found: {mapping_file}")
                 raise FileNotFoundError(f"ES mapping file not found: {mapping_file}")
-            
             with open(mapping_file, 'r', encoding='utf-8') as f:
-                mapping = json.load(f)
-            
-            logger.info(f"Loaded ES mapping from: {mapping_file}")
-            return mapping
-            
+                return json.load(f)
         except Exception as e:
             logger.error(f"Failed to load ES mapping: {e}")
             raise
-        logger.info(f"Initialized ESPOIRepository with index: {self.INDEX_NAME}")
-    
-    def create_index(self, delete_if_exists: bool = False) -> bool:
-        """
-        Create POI index with mapping
-        
-        Args:
-            delete_if_exists: Delete existing index before creating
-            
-        Returns:
-            True if created successfully
-        """
-        try:
-            # Check if index exists
-            if self.es.indices.exists(index=self.INDEX_NAME):
-                if delete_if_exists:
-                    logger.warning(f"Deleting existing index: {self.INDEX_NAME}")
-                    self.es.indices.delete(index=self.INDEX_NAME)
-                else:
-                    logger.info(f"Index {self.INDEX_NAME} already exists")
-                    return True
-            
-            # Create index
-            self.es.indices.create(index=self.INDEX_NAME, body=self.INDEX_MAPPING)
-            logger.info(f"[INFO] Created index: {self.INDEX_NAME}")
-            return True
-            
-        except RequestError as e:
-            logger.error(f"Failed to create index: {e}")
-            return False
-    
-    def delete_index(self) -> bool:
-        """
-        Delete POI index
-        
-        Returns:
-            True if deleted successfully
-        """
-        try:
-            self.es.indices.delete(index=self.INDEX_NAME)
-            logger.info(f"Deleted index: {self.INDEX_NAME}")
-            return True
-        except NotFoundError:
-            logger.warning(f"Index {self.INDEX_NAME} not found")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to delete index: {e}")
-            return False
-    
-    def count(self) -> int:
-        """
-        Get total document count in POI index.
-        
-        Returns:
-            Number of documents in the index
-        """
-        try:
-            result = self.es.count(index=self.INDEX_NAME)
-            return result.get('count', 0)
-        except NotFoundError:
-            return 0
-        except Exception as e:
-            logger.error(f"Failed to count POIs: {e}")
-            return 0
-    
+
     def index_poi(self, poi_data: Dict, poi_id: Optional[str] = None) -> bool:
-        """
-        Index a single POI document
-        
-        Args:
-            poi_data: POI dictionary (from MongoDB or provider)
-            poi_id: Optional document ID (defaults to poi_data['poi_id'])
-            
-        Returns:
-            True if indexed successfully
-        """
         try:
             doc_id = poi_id or poi_data.get('poi_id') or poi_data.get('_id')
-            
             if not doc_id:
-                logger.error("Cannot index POI without ID")
                 return False
             es_doc = self._transform_to_es_document(poi_data)
-            
-            # Index document
             self.es.index(index=self.INDEX_NAME, id=doc_id, document=es_doc)
-            
-            logger.debug(f"Indexed POI: {es_doc.get('name', 'Unknown')} (ID: {doc_id})")
             return True
-            
         except Exception as e:
             logger.error(f"Failed to index POI: {e}")
             return False
-    
+
     def bulk_index(self, pois: List[Dict]) -> tuple[int, int]:
-        """
-        Bulk index multiple POIs
-        
-        Args:
-            pois: List of POI dictionaries
-            
-        Returns:
-            Tuple of (success_count, failed_count)
-        """
         if not pois:
-            logger.warning("No POIs to index")
             return (0, 0)
-        
         try:
-            # Prepare bulk actions
             actions = []
             for poi in pois:
                 doc_id = poi.get('poi_id') or poi.get('_id')
-                
                 if not doc_id:
-                    logger.warning(f"Skipping POI without ID: {poi.get('name', 'Unknown')}")
                     continue
-                
                 es_doc = self._transform_to_es_document(poi)
-                
-                actions.append({
-                    '_index': self.INDEX_NAME,
-                    '_id': doc_id,
-                    '_source': es_doc
-                })
-            
-            # Execute bulk indexing
-            success, failed = bulk(
-                self.es,
-                actions,
-                stats_only=True,
-                raise_on_error=False
-            )
-            
-            logger.info(f"Bulk indexed: {success} success, {failed} failed (total: {len(pois)})")
-            
+                actions.append({'_index': self.INDEX_NAME, '_id': doc_id, '_source': es_doc})
+            success, failed = bulk(self.es, actions, stats_only=True, raise_on_error=False)
+            logger.info(f"Bulk indexed: {success} success, {failed} failed")
             return (success, failed)
-            
         except Exception as e:
             logger.error(f"Bulk indexing failed: {e}")
             return (0, len(pois))
@@ -415,69 +250,15 @@ class ESPOIRepository(ESPOIRepositoryInterface):
             
             results = [hit['_source'] for hit in response['hits']['hits']]
             
-            logger.debug(f"Autocomplete '{prefix}' returned {len(results)} suggestions")
-            
             return results
-            
         except Exception as e:
             logger.error(f"Autocomplete failed: {e}")
             return []
-    
-    def get_by_id(self, poi_id: str) -> Optional[Dict]:
-        """
-        Get POI by ID
-        
-        Args:
-            poi_id: POI identifier
-            
-        Returns:
-            POI dictionary or None if not found
-        """
-        try:
-            response = self.es.get(index=self.INDEX_NAME, id=poi_id)
-            return response['_source']
-        except NotFoundError:
-            logger.debug(f"POI not found: {poi_id}")
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get POI: {e}")
-            return None
-    
+
     def delete_poi(self, poi_id: str) -> bool:
-        """
-        Delete POI by ID
-        
-        Args:
-            poi_id: POI identifier
-            
-        Returns:
-            True if deleted successfully
-        """
-        try:
-            self.es.delete(index=self.INDEX_NAME, id=poi_id)
-            logger.info(f"Deleted POI: {poi_id}")
-            return True
-        except NotFoundError:
-            logger.warning(f"POI not found for deletion: {poi_id}")
-            return False
-        except Exception as e:
-            logger.error(f"Failed to delete POI: {e}")
-            return False
-    
+        return self.delete_by_id(poi_id)
+
     def _transform_to_es_document(self, poi_data: Dict) -> Dict:
-        """
-        Transform POI data to ES document format.
-        
-        Handles BOTH formats:
-        1. GooglePlacesProvider format (GeoJSON location, nested ratings/address)
-        2. Legacy format (flat location, flat rating)
-        
-        Args:
-            poi_data: POI dictionary from provider or MongoDB
-            
-        Returns:
-            ES-optimized document dictionary matching ES index mapping
-        """
         # === LOCATION: Handle both GeoJSON and flat formats ===
         location = poi_data.get('location', {})
         lat = 0.0

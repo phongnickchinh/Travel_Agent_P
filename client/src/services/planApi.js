@@ -450,6 +450,7 @@ class PlanAPI {
    * @param {Array<string>} activities
    */
   async updateDayActivities(planId, dayNumber, activities) {
+    // console.log('Updating day activities:', { planId, dayNumber, activities });
     return this.patchPlan(planId, {
       itinerary_updates: [{ day: dayNumber, activities }]
     });
@@ -466,6 +467,7 @@ class PlanAPI {
    * @param {Array<string>} featuredImages - Optional: List of featured image URLs corresponding to activities
    */
   async updateDayActivitiesWithTimes(planId, dayNumber, activities, estimatedTimes, poiIds = null, types = null, featuredImages = null) {
+    // console.log('Updating day activities with times:', { planId, dayNumber, activities, estimatedTimes, poiIds, types, featuredImages });
     const update = { day: dayNumber, activities };
     if (typeof estimatedTimes !== 'undefined') {
       update.estimated_times = estimatedTimes;

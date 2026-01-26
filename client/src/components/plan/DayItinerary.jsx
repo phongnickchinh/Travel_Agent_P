@@ -13,6 +13,7 @@ const DayItinerary = ({
   startIndex,
   isPublicView,
   onSave,
+  onSaveNotes,
   onAddActivityFromPOI,
   onViewDetail,
   location,
@@ -85,7 +86,7 @@ const DayItinerary = ({
   }, [day]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePersist = async (nextItems, options = { sendTimes: false }) => {
-    console.log('[DayItinerary] handlePersist called', options);
+    // console.log('[DayItinerary] handlePersist called', options);
 
     // Store previous state for rollback on error
     const prevItems = items;
@@ -109,17 +110,17 @@ const DayItinerary = ({
       // Extract featured_images to sync with reordered activities
       const nextFeaturedImages = nextItems.map(item => item.featured_image || null);
       await onSave(dayNumber, nextActivities, nextTimes, nextPoiIds, nextTypes, nextFeaturedImages);
-      console.log('[DayItinerary] Save successful');
+      // console.log('[DayItinerary] Save successful');
       // Success: keep the optimistic update
     } catch (error) {
       // Error: rollback to previous state
-      console.error('[DayItinerary] Save failed, rolling back:', error);
+      // console.error('[DayItinerary] Save failed, rolling back:', error);
       setItems(prevItems);
       // Optionally show error toast here
     } finally {
       setSaving(false);
       isPendingUpdate.current = false;
-      console.log('[DayItinerary] isPendingUpdate set to FALSE');
+      // console.log('[DayItinerary] isPendingUpdate set to FALSE');
     }
   }; 
 
@@ -239,7 +240,7 @@ const DayItinerary = ({
             // Owner view - editable
             <EditableNotes
                 value={day.notes || ''}
-                onSave={(newNotes) => handleSaveDayNotes(dayIndex + 1, newNotes)}
+                onSave={(newNotes) => onSaveNotes(dayNumber, newNotes)}
                 maxLength={500}
             />
             )}

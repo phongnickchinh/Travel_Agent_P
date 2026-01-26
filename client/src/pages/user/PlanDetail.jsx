@@ -1342,6 +1342,7 @@ export default function PlanDetail() {
                     startIndex={startIndex}
                     isPublicView={isPublicView}
                     onSave={handleSaveDayItinerary}
+                    onSaveNotes={handleSaveDayNotes}
                     onAddActivityFromPOI={handleAddActivityFromPOI}
                     onViewDetail={(poiId) => setPoiDetailModal({ isOpen: true, poiId })}
                     location={destinationLocation}

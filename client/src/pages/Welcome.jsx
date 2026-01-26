@@ -49,11 +49,11 @@ export default function Welcome() {
   const handleClose = () => navigate('/', { replace: true });
 
   // Firebase Storage background image URL
-  const backgroundImageUrl = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/view-world-monument-celebrate-world-heritage-day%20(1).jpg?alt=media&token=62a8714c-1a82-4cb9-aa46-7e9a8b0a153d';
+  const backgroundImageUrl = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/view-world-monument-celebrate-world-heritage-day%20(1).png?alt=media&token=2cce6ca5-57a7-47ec-b9d4-71e2edebb91c';
 
   const [bgLoaded, setBgLoaded] = useState(false);
 
-  const backgroundImageUrlDark = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/vietnam-2731636.jpg?alt=media&token=b683d99b-d55b-4ccf-b760-fac6e942a0e3';
+  const backgroundImageUrlDark = 'https://firebasestorage.googleapis.com/v0/b/travelagent-8df72.firebasestorage.app/o/vietnam-2731636.jpg?alt=media&token=33dbccf8-ff48-494a-a60a-e374f2c0859e';
 
   // Preload background images
   useEffect(() => {

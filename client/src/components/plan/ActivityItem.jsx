@@ -89,11 +89,12 @@ const ActivityItem = ({
   };
 
   const handleSave = () => {
+    console.log('Saving activity:', localActivity, 'with time:', localTime);
     onChange({ ...localActivity }, localTime);
     setIsEditing(false);
   };
 
-  const description = useMemo(() => localActivity.description || localActivity.activity || '', [localActivity]);
+  const description = useMemo(() => localActivity.activity || '', [localActivity]);
   const poiName = useMemo(() => localActivity.poi_name || localActivity.name || localActivity.poi?.name || 'Location', [localActivity]);
   const category = useMemo(() => localActivity.category || localActivity.poi?.category, [localActivity]);
 
@@ -157,7 +158,7 @@ const ActivityItem = ({
               <label className="block text-xs text-gray-500 dark:text-gray-400">Description</label>
               <textarea
                 value={description}
-                onChange={(e) => setLocalActivity((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => setLocalActivity((prev) => ({ ...prev, activity: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-primary"
                 rows={2}
                 disabled={disabled}

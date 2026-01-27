@@ -115,7 +115,7 @@ class PlacesController:
                     400
                 )
             
-            logger.info(f"[PUBLIC] Get POI: {poi_id}")
+            logger.debug("[PUBLIC] Get POI: %s", poi_id)
             
             # Get from cache only (include_fresh=False to avoid API calls)
             poi = self.places_service.get_by_id(poi_id, include_fresh=False)
@@ -274,7 +274,7 @@ class PlacesController:
                 kwargs["price_level"] = price_level
             
             # Call service
-            logger.info(f"[SEARCH] Places search: q='{query}', location={location}, radius={radius}km")
+            logger.debug("[SEARCH] Places search: q='%s', location=%s, radius=%skm", query, location, radius)
             
             result = self.places_service.search_and_cache(
                 query=query,

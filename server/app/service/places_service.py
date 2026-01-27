@@ -143,13 +143,13 @@ class PlacesService:
             ... )
             >>> print(f"Found {results['total']} POIs (source: {results['source']})")
         """
-        logger.info(f"[SEARCH] Search request: query='{query}', location={location}, radius={radius_km}km")
+        logger.debug("[SEARCH] Search request: query='%s', location=%s, radius=%skm", query, location, radius_km)
         cached_results = []
         if not force_refresh:
             cached_results = self._search_cache(query, location, radius_km, **kwargs)
             
             if len(cached_results) >= min_results:
-                logger.info(f"[INFO] Cache HIT: {len(cached_results)} POIs (saved API cost!)")
+                logger.debug("[CACHE] HIT: %d POIs (saved API cost!)", len(cached_results))
                 return {
                     "results": cached_results,
                     "total": len(cached_results),
@@ -159,7 +159,7 @@ class PlacesService:
                     "cost_saved": True
                 }
             else:
-                logger.info(f"[WARNING] Cache MISS: only {len(cached_results)} POIs (need {min_results})")
+                logger.debug("[CACHE] MISS: only %d POIs (need %d)", len(cached_results), min_results)
         provider_results = self._fetch_from_provider(query, location, radius_km, **kwargs)
         
         if not provider_results:
@@ -175,7 +175,7 @@ class PlacesService:
         new_pois = self._write_through_cache(provider_results)
         combined = self._merge_results(cached_results, new_pois)
         
-        logger.info(f"[INFO] Search completed: {len(combined)} total ({len(cached_results)} cached + {len(new_pois)} new)")
+        logger.debug("[SEARCH] Completed: %d total (%d cached + %d new)", len(combined), len(cached_results), len(new_pois))
         
         return {
             "results": combined,
@@ -201,11 +201,11 @@ class PlacesService:
             >>> poi = service.get_by_id("poi_mykhebeach")
             >>> print(poi['name'])
         """
-        logger.info(f"[SEARCH] Get POI: {poi_id}")
+        logger.debug("[SEARCH] Get POI: %s", poi_id)
         poi = self.poi_repo.get_by_id(poi_id)
 
         if poi:
-            logger.info(f"[INFO] Cache HIT: {poi_id}")
+            logger.debug("[CACHE] HIT: %s", poi_id)
             # If user requested fresh details or cached POI lacks detail fields, fetch provider details
             if include_fresh:
                 try:
@@ -218,7 +218,7 @@ class PlacesService:
 
         # Not in cache: if include_fresh is True, attempt to ask provider if provider id is derivable
         if include_fresh:
-            logger.info(f"[WARNING] Cache MISS: {poi_id}, trying provider...")
+            logger.debug("[CACHE] MISS: %s, trying provider...", poi_id)
             # Try to find provider name/id by deducing from POI id (if provider id not present, cannot fetch)
             # For now, we cannot deduce provider id from poi_id alone; return None
         
@@ -234,7 +234,7 @@ class PlacesService:
         2. If provider info exists and force_update is True (or cached details missing), call provider.get_details
         3. Transform provider data, update MongoDB and ES, and return the updated POI
         """
-        logger.info(f"[DETAILS] Get details for POI: {poi_id} (force_update={force_update})")
+        logger.debug("[DETAILS] Get details for POI: %s (force_update=%s)", poi_id, force_update)
         poi = self.poi_repo.get_by_id(poi_id)
         if not poi:
             logger.warning(f"[DETAILS] POI {poi_id} not found in cache")
@@ -246,7 +246,7 @@ class PlacesService:
 
         # If we don't know which provider or the provider id, we cannot fetch details
         if not provider_name or not provider_id:
-            logger.warning(f"[DETAILS] No provider info available for {poi_id}")
+            logger.debug("[DETAILS] No provider info available for %s", poi_id)
             return poi
 
         if not force_update and poi.get('raw_data') and poi.get('images'):

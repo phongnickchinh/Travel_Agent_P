@@ -378,7 +378,7 @@ class PlannerService:
             logger.warning("[WARN] No destination location available")
             return None
         
-        logger.info(f"[POI_FETCH] Searching POIs near {destination_name}: {location}")
+        logger.debug("[POI_FETCH] Searching POIs near %s: %s", destination_name, location)
         
         # Calculate dynamic search radius based on destination types
         destination_types = plan.get('destination_types', [])
@@ -400,7 +400,7 @@ class PlannerService:
                 full_random=is_one_day
             )
             all_pois.extend(mongo_pois)
-            logger.info(f"[MongoDB] Found {len(mongo_pois)} cached POIs (radius={mongodb_radius_km}km, full_random={is_one_day})")
+            logger.debug("[MongoDB] Found %d cached POIs (radius=%skm, full_random=%s)", len(mongo_pois), mongodb_radius_km, is_one_day)
         except MongoDBError as e:
             logger.warning(f"[MongoDB] POI search failed (MongoDBError): {e}")
         except Exception as e:
@@ -409,7 +409,7 @@ class PlannerService:
         # Step 2: If not enough, fetch from Google (with dynamic radius)
         if len(all_pois) < target_poi_count:
             needed = target_poi_count - len(all_pois)
-            logger.info(f"[Google] Need {needed} more POIs, calling Google API (radius={google_radius_km}km)...")
+            logger.debug("[Google] Need %d more POIs, calling Google API (radius=%skm)...", needed, google_radius_km)
             
             try:
                 google_pois = self._search_pois_google(
@@ -428,7 +428,7 @@ class PlannerService:
                         failed_count += 1
                 
                 all_pois.extend(google_pois)
-                logger.info(f"[Google] Fetched {len(google_pois)} POIs, cached: {cached_count}, failed: {failed_count}")
+                logger.debug("[Google] Fetched %d POIs, cached: %d, failed: %d", len(google_pois), cached_count, failed_count)
             except GooglePlacesAPIError as e:
                 logger.warning(f"[Google] POI search failed (GooglePlacesAPIError): {e}")
             except Exception as e:
@@ -442,7 +442,7 @@ class PlannerService:
         
         # --- STEP 3: Fetch Accommodation POIs (hotels, resorts, hostels) ---
         accommodation_pois = self._fetch_accommodations_for_plan(location, preferences, num_days)
-        logger.info(f"[ACCOMMODATION] Found {len(accommodation_pois)} accommodation options")
+        logger.debug("[ACCOMMODATION] Found %d accommodation options", len(accommodation_pois))
         
         # Build POI cache for post-processing (featured_image, viewport)
         selected_pois = all_pois[:target_poi_count]
@@ -457,7 +457,7 @@ class PlannerService:
         # Format for LLM prompt (tourist POIs + accommodations)
         poi_context = self._format_pois_for_prompt(selected_pois, max_pois=max(30,num_days*10), num_days=num_days)
         accommodation_context = self._format_accommodations_for_prompt(accommodation_pois)
-        logger.info(f"[POI_FETCH] Formatted {len(selected_pois)} POIs + {len(accommodation_pois)} accommodations for prompt")
+        logger.debug("[POI_FETCH] Formatted %d POIs + %d accommodations for prompt", len(selected_pois), len(accommodation_pois))
         
         return (poi_context, accommodation_context, poi_cache)
     
@@ -994,13 +994,13 @@ class PlannerService:
             
             operation = result.get('_operation', 'unknown')
             if operation == 'inserted':
-                logger.info(f"[CACHE] ✓ Inserted new POI: {poi_id} - {poi_data.get('name')}")
+                logger.debug("[CACHE] Inserted new POI: %s", poi_id)
                 return True
             elif operation == 'updated':
-                logger.info(f"[CACHE] ↻ Updated stale POI: {poi_id} - {poi_data.get('name')}")
+                logger.debug("[CACHE] Updated stale POI: %s", poi_id)
                 return True
             elif operation == 'skipped':
-                logger.debug(f"[CACHE] ○ POI fresh, skipped: {poi_id}")
+                logger.debug("[CACHE] POI fresh, skipped: %s", poi_id)
                 return True
             else:
                 logger.warning(f"[CACHE] Unknown operation: {operation}")
@@ -1896,7 +1896,7 @@ class PlannerService:
         #check time
         start_time = time.time()
         plan = self.plan_repo.get_by_id(plan_id)
-        logger.info(f"[GET_PLAN] Retrieved plan {plan_id} in {time.time() - start_time:.4f}s")
+        logger.debug("[GET_PLAN] Retrieved plan %s in %.4fs", plan_id, time.time() - start_time)
         
         if plan and user_id and plan.get('user_id') != user_id:
             return None
@@ -1906,7 +1906,7 @@ class PlannerService:
         if plan and plan.get('itinerary'):
             plan = self._enrich_itinerary_with_poi_locations(plan)
             
-            logger.info(f"[ENRICH] Enriched itinerary for plan {plan_id} in {time.time() - start_time:.4f}s")
+            logger.debug("[ENRICH] Enriched itinerary for plan %s in %.4fs", plan_id, time.time() - start_time)
         
         return plan
     

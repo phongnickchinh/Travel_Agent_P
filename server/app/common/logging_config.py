@@ -3,33 +3,44 @@ Logging Configuration for Flask App
 ====================================
 
 Configure logging to both console and file with rotation.
+Uses QueueHandler for non-blocking async logging to improve performance.
 """
+import atexit
 import logging
 import os
 import sys
-from logging.handlers import RotatingFileHandler
+import queue
+from logging.handlers import RotatingFileHandler, QueueHandler, QueueListener
 from pathlib import Path
+
+# Global queue listener for cleanup
+_queue_listener = None
 
 
 def setup_logging(app):
     """
-    Setup logging for Flask application.
+    Setup logging for Flask application with async file writes.
     
-    Logs will be written to:
-    - Console (stdout) - for development
-    - File (logs/app.log) - for persistence
+    Features:
+    - QueueHandler for non-blocking logging (avoids I/O blocking)
+    - RotatingFileHandler for file persistence with rotation
+    - Console handler for development
     
     File rotation:
     - Max size: 10MB per file
     - Backup count: 5 files
     """
+    global _queue_listener
+    
     # Create logs directory if not exists
     log_dir = Path("logs")
     log_dir.mkdir(exist_ok=True)
     
     # Set log level based on environment
-    log_level = logging.DEBUG if app.debug else logging.DEBUG
-    log_level_console = logging.WARNING
+    # PRODUCTION: INFO level (avoid DEBUG performance overhead)
+    # DEVELOPMENT: DEBUG level for detailed tracing
+    log_level = logging.DEBUG if app.debug else logging.INFO
+    log_level_console = logging.INFO if app.debug else logging.WARNING
     
     # Create formatters
     detailed_formatter = logging.Formatter(
@@ -58,6 +69,22 @@ def setup_logging(app):
     console_handler.setLevel(log_level_console)
     console_handler.setFormatter(simple_formatter)
     
+    # Create a queue for async logging (non-blocking I/O)
+    log_queue = queue.Queue(-1)  # Unlimited size
+    queue_handler = QueueHandler(log_queue)
+    
+    # QueueListener handles actual file/console writes in background thread
+    _queue_listener = QueueListener(
+        log_queue, 
+        file_handler, 
+        console_handler,
+        respect_handler_level=True
+    )
+    _queue_listener.start()
+    
+    # Register cleanup on exit
+    atexit.register(_queue_listener.stop)
+    
     # Configure root logger (for ALL modules including Flask app)
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
@@ -65,9 +92,8 @@ def setup_logging(app):
     # Remove existing handlers to avoid duplicates
     root_logger.handlers.clear()
     
-    # Add handlers to root logger only (avoid duplication)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
+    # Add ONLY queue handler to root logger (writes go to background thread)
+    root_logger.addHandler(queue_handler)
     
     # Configure Flask app logger (but don't add handlers - use root logger's)
     app.logger.setLevel(log_level)
@@ -75,8 +101,8 @@ def setup_logging(app):
     
     # Log startup message
     app.logger.info("=" * 60)
-    app.logger.info(f"Flask app started - Logging to logs/app.log")
-    app.logger.info(f"Log level: {logging.getLevelName(log_level)}")
+    app.logger.info("Flask app started - Async logging to logs/app.log")
+    app.logger.info("Log level: %s", logging.getLevelName(log_level))
     app.logger.info("=" * 60)
     
     return app

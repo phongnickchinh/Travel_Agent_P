@@ -45,21 +45,16 @@ class PlanRepository(PlanRepositoryInterface):
         self._ensure_collection()
     
     def _ensure_collection(self):
-        """Ensure plan collection exists and create indexes."""
+        """Ensure plan collection exists.
+        
+        Note: Indexes are created centrally by mongodb_client.py on startup.
+        Do NOT create indexes here to avoid naming conflicts.
+        """
         db = self.client.get_database()
         if db is not None:
             collection_name = "plan"
             self.collection = db[collection_name]
-            
-            # Create indexes
-            try:
-                self.collection.create_index("plan_id", unique=True)
-                self.collection.create_index("user_id")
-                self.collection.create_index([("user_id", DESCENDING), ("created_at", DESCENDING)])
-                self.collection.create_index("status")
-                logger.info(f"[INFO] Plan collection ready with indexes: {collection_name}")
-            except Exception as e:
-                logger.warning(f"[WARN] Failed to create indexes: {e}")
+            logger.debug("Plan collection ready: %s", collection_name)
         else:
             logger.error("[ERROR] Failed to get database for Plan repository")
     
@@ -97,7 +92,7 @@ class PlanRepository(PlanRepositoryInterface):
             result = self.collection.insert_one(plan_dict)
             plan_dict['_id'] = str(result.inserted_id)
             
-            logger.info(f"[INFO] Created plan: {plan_dict['plan_id']} for user: {plan_dict['user_id']}")
+            logger.debug("[CREATE] Plan: %s for user: %s", plan_dict['plan_id'], plan_dict['user_id'])
             return plan_dict
             
         except Exception as e:

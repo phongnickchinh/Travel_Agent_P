@@ -47,7 +47,7 @@ class BaseESRepository(ABC):
         
         self.es = es_client or ElasticsearchClient.get_instance()
         self.mapping = self._load_mapping()
-        logger.info(f"Initialized {self.__class__.__name__} with index: {self.INDEX_NAME}")
+        logger.debug("Initialized %s with index: %s", self.__class__.__name__, self.INDEX_NAME)
     
     def _load_mapping(self) -> Dict:
         """

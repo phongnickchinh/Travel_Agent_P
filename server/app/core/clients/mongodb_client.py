@@ -231,12 +231,39 @@ class MongoDBClient:
         
         return db[collection_name]
     
+    def _safe_create_index(self, collection, keys, **kwargs) -> bool:
+        """
+        Safely create index, handling conflicts with existing indexes.
+        
+        If an index already exists on the same field(s) with a different name,
+        this will skip creation instead of raising an error.
+        
+        Args:
+            collection: MongoDB collection
+            keys: Index keys (field name or list of tuples)
+            **kwargs: Index options (name, unique, etc.)
+            
+        Returns:
+            True if created, False if skipped/failed
+        """
+        try:
+            collection.create_index(keys, **kwargs)
+            return True
+        except Exception as e:
+            # IndexOptionsConflict (code 85) means index exists with different name
+            if "IndexOptionsConflict" in str(e) or "already exists" in str(e):
+                logger.debug("Index already exists (different name), skipping: %s", kwargs.get('name', keys))
+                return False
+            # Re-raise other errors
+            raise
+    
     def create_indexes(self):
         """
         Create indexes for all collections.
         
         Should be called during application initialization.
         Indexes improve query performance significantly.
+        Uses safe creation to handle pre-existing indexes with different names.
         
         Collections:
         - poi: dedupe_key (unique), location (2dsphere), categories, text search
@@ -253,10 +280,11 @@ class MongoDBClient:
             
             # POI Collection Indexes
             poi_collection = db["poi"]
-            poi_collection.create_index("dedupe_key", unique=True, name="idx_dedupe_key")
-            poi_collection.create_index([("location", "2dsphere")], name="idx_location_2dsphere")
-            poi_collection.create_index("categories", name="idx_categories")
-            poi_collection.create_index(
+            self._safe_create_index(poi_collection, "dedupe_key", unique=True, name="idx_dedupe_key")
+            self._safe_create_index(poi_collection, [("location", "2dsphere")], name="idx_location_2dsphere")
+            self._safe_create_index(poi_collection, "categories", name="idx_categories")
+            self._safe_create_index(
+                poi_collection,
                 [
                     ("name", "text"),
                     ("name_unaccented", "text"),
@@ -265,28 +293,38 @@ class MongoDBClient:
                 name="idx_text_search",
                 default_language="english"
             )
-            poi_collection.create_index([("metadata.popularity_score", -1)], name="idx_popularity")
-            poi_collection.create_index([("ratings.average", -1)], name="idx_ratings")
-            poi_collection.create_index("poi_id", unique=True, name="idx_poi_id")
-            logger.info("[MONGODB] Created indexes for poi collection: dedupe_key, location, categories, text search, popularity, ratings, poi_id")
+            self._safe_create_index(poi_collection, [("metadata.popularity_score", -1)], name="idx_popularity")
+            self._safe_create_index(poi_collection, [("ratings.average", -1)], name="idx_ratings")
+            self._safe_create_index(poi_collection, "poi_id", unique=True, name="idx_poi_id")
+            logger.info("[MONGODB] Indexes verified for poi collection")
             
             # Plan Collection Indexes
             plan_collection = db["plan"]
-            plan_collection.create_index("plan_id", unique=True, name=f"idx_plan_plan_id")
-            plan_collection.create_index("user_id", name=f"idx_plan_user_id")
-            plan_collection.create_index([("user_id", 1), ("created_at", -1)], name=f"idx_plan_user_created")
-            plan_collection.create_index("status", name=f"idx_plan_status")
-            plan_collection.create_index("destination", name=f"idx_plan_destination")
-            logger.info(f"[MONGODB] Created indexes for plan collection: plan_id, user_id, created_at, status, destination")
+            self._safe_create_index(plan_collection, "plan_id", unique=True, name="idx_plan_plan_id")
+            self._safe_create_index(plan_collection, "user_id", name="idx_plan_user_id")
+            self._safe_create_index(plan_collection, [("user_id", 1), ("created_at", -1)], name="idx_plan_user_created")
+            self._safe_create_index(plan_collection, "status", name="idx_plan_status")
+            self._safe_create_index(plan_collection, "destination", name="idx_plan_destination")
+            logger.info("[MONGODB] Indexes verified for plan collection")
             
             # Autocomplete Collection Indexes
             autocomplete_collection = db["autocomplete_cache"]
-            autocomplete_collection.create_index("place_id", unique=True, name="idx_autocomplete_place_id")
-            autocomplete_collection.create_index("main_text", name="idx_autocomplete_main_text")
-            autocomplete_collection.create_index("main_text_unaccented", name="idx_autocomplete_main_text_unaccented")
-            logger.info("[MONGODB] Created indexes for autocomplete_cache collection: place_id, main_text_unaccented, main_text")
+            self._safe_create_index(autocomplete_collection, "place_id", unique=True, name="idx_autocomplete_place_id")
+            self._safe_create_index(autocomplete_collection, "main_text", name="idx_autocomplete_main_text")
+            self._safe_create_index(autocomplete_collection, "main_text_unaccented", name="idx_autocomplete_main_text_unaccented")
+            self._safe_create_index(autocomplete_collection, [("click_count", -1)], name="idx_autocomplete_click_count")
+            self._safe_create_index(autocomplete_collection, "status", name="idx_autocomplete_status")
+            self._safe_create_index(autocomplete_collection, "types", name="idx_autocomplete_types")
+            logger.info("[MONGODB] Indexes verified for autocomplete_cache collection")
             
-            logger.info("[MONGODB] All indexes created successfully!")
+            # Place Details Collection Indexes
+            place_details_collection = db["place_details"]
+            self._safe_create_index(place_details_collection, "place_id", unique=True, name="idx_place_details_place_id")
+            self._safe_create_index(place_details_collection, [("access_count", -1)], name="idx_place_details_access_count")
+            self._safe_create_index(place_details_collection, "types", name="idx_place_details_types")
+            logger.info("[MONGODB] Indexes verified for place_details collection")
+            
+            logger.info("[MONGODB] All indexes verified successfully!")
         
         
         

@@ -164,7 +164,7 @@ class SearchService:
             }
         """
         start_time = time.time()
-        logger.info(f"[SEARCH] query='{query}', lat={latitude}, lng={longitude}, radius={radius_km}km, types={types}, interests={interests}")
+        logger.debug("[SEARCH] query='%s', lat=%s, lng=%s, radius=%skm, types=%s, interests=%s", query, latitude, longitude, radius_km, types, interests)
         
         # Convert interests to appropriate types for each backend
         # ES/MongoDB use CategoryEnum values, Google API uses Google Place Types
@@ -176,12 +176,12 @@ class SearchService:
             categories = map_user_interests_to_categories(interests)
             if categories:
                 es_mongo_types = [cat.value for cat in categories]  # CategoryEnum.BEACH -> "BEACH"
-                logger.info(f"[SEARCH] Mapped interests {interests} -> ES/Mongo categories {es_mongo_types}")
+                logger.debug("[SEARCH] Mapped interests %s -> ES/Mongo categories %s", interests, es_mongo_types)
             
             # Convert for Google API (Google Place Types)
             google_types = map_user_interests_to_google_types(interests)
             if google_types:
-                logger.info(f"[SEARCH] Mapped interests {interests} -> Google types {google_types}")
+                logger.debug("[SEARCH] Mapped interests %s -> Google types %s", interests, google_types)
         
         results = []
         source = "unknown"
@@ -209,7 +209,7 @@ class SearchService:
                 results = es_result.get('results', [])
                 total = es_result.get('total', 0)
                 source = "elasticsearch"
-                logger.info(f"[SEARCH] ES: {len(results)} results in {es_result.get('took_ms', 0)}ms")
+                logger.debug("[SEARCH] ES: %d results in %dms", len(results), es_result.get('took_ms', 0))
                 
             except Exception as e:
                 logger.error(f"[SEARCH] ES failed: {e}, trying MongoDB fallback")
@@ -231,7 +231,7 @@ class SearchService:
             results = mongo_result.get('results', [])
             total = mongo_result.get('total', 0)
             source = "mongodb"
-            logger.info(f"[SEARCH] MongoDB fallback: {len(results)} results")
+            logger.debug("[SEARCH] MongoDB fallback: %d results", len(results))
         
         # Step 3: If results < limit AND location provided, call Google Places API
         if len(results) < limit and latitude is not None and longitude is not None:
@@ -261,7 +261,7 @@ class SearchService:
                         total += len(new_pois)
                         source = "hybrid" if source != "google_api" else "google_api"
                         
-                        logger.info(f"[SEARCH] Google API: {len(new_pois)} new POIs, cached: {cached_count}")
+                        logger.debug("[SEARCH] Google API: %d new POIs, cached: %d", len(new_pois), cached_count)
                 
                 except Exception as e:
                     logger.error(f"[SEARCH] Google API fallback failed: {e}")
@@ -342,7 +342,7 @@ class SearchService:
                     frontend_poi['_original_poi'] = poi
                     transformed_pois.append(frontend_poi)
             
-            logger.info(f"[GOOGLE] Nearby search: {len(transformed_pois)} POIs found")
+            logger.debug("[GOOGLE] Nearby search: %d POIs found", len(transformed_pois))
             return transformed_pois
             
         except Exception as e:
@@ -384,7 +384,7 @@ class SearchService:
             except Exception as e:
                 logger.error(f"[CACHE] Failed to cache POI {poi.get('poi_id')}: {e}")
         
-        logger.info(f"[CACHE] Cached {cached_count}/{len(pois)} POIs to MongoDB + ES")
+        logger.debug("[CACHE] Cached %d/%d POIs to MongoDB + ES", cached_count, len(pois))
         return cached_count
     
     def _cache_poi_to_mongodb(self, poi: Dict[str, Any]) -> bool:

@@ -57,65 +57,17 @@ class AutocompleteRepository(AutocompleteRepositoryInterface):
         self._ensure_collection()
     
     def _ensure_collection(self):
-        """Ensure autocomplete_cache collection exists with indexes."""
+        """Ensure autocomplete_cache collection exists.
+        
+        Note: Indexes are created centrally by mongodb_client.py on startup.
+        Do NOT create indexes here to avoid naming conflicts.
+        """
         db = self.client.get_database()
         if db is not None:
             self.collection = db[self.COLLECTION_NAME]
-            self._ensure_indexes()
-            logger.info(f"[INFO] Autocomplete cache collection ready: {self.COLLECTION_NAME}")
+            logger.debug("Autocomplete cache collection ready: %s", self.COLLECTION_NAME)
         else:
             logger.error("[ERROR] Failed to get database for Autocomplete repository")
-    
-    def _ensure_indexes(self):
-        """Create indexes if not exist."""
-        if self.collection is None:
-            return
-        
-        try:
-            existing_indexes = [idx["name"] for idx in self.collection.list_indexes()]
-            
-            # Unique index on place_id
-            if "place_id_unique" not in existing_indexes:
-                self.collection.create_index(
-                    "place_id",
-                    unique=True,
-                    name="place_id_unique"
-                )
-                logger.info("[INFO] Created unique index on place_id")
-            
-            # Text index for search fallback
-            if "main_text_unaccented_text" not in existing_indexes:
-                self.collection.create_index(
-                    [("main_text_unaccented", TEXT)],
-                    name="main_text_unaccented_text"
-                )
-                logger.info("[INFO] Created text index on main_text_unaccented")
-            
-            # Click count for popularity sorting
-            if "click_count_desc" not in existing_indexes:
-                self.collection.create_index(
-                    [("click_count", DESCENDING)],
-                    name="click_count_desc"
-                )
-                logger.info("[INFO] Created index on click_count")
-            
-            # Status for filtering
-            if "status_1" not in existing_indexes:
-                self.collection.create_index("status", name="status_1")
-                logger.info("[INFO] Created index on status")
-            
-            # Types for filtering by place type
-            if "types_1" not in existing_indexes:
-                self.collection.create_index("types", name="types_1")
-                logger.info("[INFO] Created index on types")
-            
-            # Terms for filtering by location hierarchy
-            if "terms_1" not in existing_indexes:
-                self.collection.create_index("terms", name="terms_1")
-                logger.info("[INFO] Created index on terms")
-                
-        except Exception as e:
-            logger.warning(f"[WARN] Failed to create indexes: {e}")
     
     def create(self, item: Dict[str, Any]) -> Dict[str, Any]:
         """

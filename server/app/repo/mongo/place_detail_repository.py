@@ -52,50 +52,17 @@ class PlaceDetailRepository(PlaceDetailRepositoryInterface):
         self._ensure_collection()
     
     def _ensure_collection(self):
-        """Ensure place_details collection exists with indexes."""
+        """Ensure place_details collection exists.
+        
+        Note: Indexes are created centrally by mongodb_client.py on startup.
+        Do NOT create indexes here to avoid naming conflicts.
+        """
         db = self.client.get_database()
         if db is not None:
             self.collection = db[self.COLLECTION_NAME]
-            self._ensure_indexes()
-            logger.info(f"[INFO] PlaceDetail collection ready: {self.COLLECTION_NAME}")
+            logger.debug("PlaceDetail collection ready: %s", self.COLLECTION_NAME)
         else:
             logger.error("[ERROR] Failed to get database for PlaceDetail repository")
-    
-    def _ensure_indexes(self):
-        """Create indexes if not exist."""
-        if self.collection is None:
-            return
-        
-        try:
-            existing_indexes = [idx["name"] for idx in self.collection.list_indexes()]
-            
-            # Unique index on place_id
-            if "place_id_unique" not in existing_indexes:
-                self.collection.create_index(
-                    "place_id",
-                    unique=True,
-                    name="place_id_unique"
-                )
-                logger.info("[INFO] Created unique index on place_id")
-            
-            # Access count for popularity
-            if "access_count_desc" not in existing_indexes:
-                self.collection.create_index(
-                    [("access_count", DESCENDING)],
-                    name="access_count_desc"
-                )
-                logger.info("[INFO] Created index on access_count")
-            
-            # Types for filtering
-            if "types_index" not in existing_indexes:
-                self.collection.create_index(
-                    "types",
-                    name="types_index"
-                )
-                logger.info("[INFO] Created index on types")
-                
-        except Exception as e:
-            logger.warning(f"[WARNING] Failed to create indexes: {e}")
     
     def get_by_place_id(self, place_id: str) -> Optional[Dict[str, Any]]:
         """

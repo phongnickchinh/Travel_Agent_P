@@ -56,7 +56,7 @@ class POIRepository(POIRepositoryInterface):
         if db is not None:
             collection_name = "poi"
             self.collection = db[collection_name]
-            logger.info(f"[INFO] POI collection ready: {collection_name}")
+            logger.debug("[INIT] POI collection ready: %s", collection_name)
         else:
             logger.error("[ERROR] Failed to get database for POI repository")
     
@@ -110,7 +110,7 @@ class POIRepository(POIRepositoryInterface):
             # Insert into MongoDB
             result = self.collection.insert_one(poi_dict)
             
-            logger.info(f"[INFO] Created POI: {poi_dict['poi_id']}")
+            logger.debug("[CREATE] POI: %s", poi_dict['poi_id'])
             created_poi = self.collection.find_one({"_id": result.inserted_id})
             return created_poi
         

@@ -13,6 +13,11 @@ on:
       - 'server/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
+    inputs:
+      no_cache:
+        description: 'Force rebuild without cache (use when dependencies change unexpectedly)'
+        type: boolean
+        default: false
 
 env:
   DEPLOY_PATH: '/home/travel_project'
@@ -90,13 +95,21 @@ jobs:
             fi
           fi
           
-          echo "🧹 Cleaning Docker cache..."
+          echo "🧹 Stopping containers..."
           docker compose down 2>/dev/null || true
-          docker builder prune -af 2>/dev/null || true
-          docker system prune -f 2>/dev/null || true
+          # NOTE: Removed 'docker builder prune -af' to preserve build cache for faster deploys
+          # Only clean up dangling images (not build cache)
+          docker image prune -f 2>/dev/null || true
           
           echo "🚀 Building and deploying..."
-          docker compose build --no-cache
+          # Use cache for faster builds (only rebuild changed layers)
+          # Add --no-cache if manually triggered with force rebuild option
+          BUILD_ARGS=""
+          if [ "${{ github.event.inputs.no_cache }}" == "true" ]; then
+            echo "⚠️ Force rebuild enabled - ignoring cache"
+            BUILD_ARGS="--no-cache"
+          fi
+          docker compose build $BUILD_ARGS
           docker compose up -d --force-recreate
           
           echo "⏳ Waiting for services to become healthy (max 5 minutes)..."

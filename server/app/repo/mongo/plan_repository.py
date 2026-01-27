@@ -132,7 +132,8 @@ class PlanRepository(PlanRepositoryInterface):
         skip: int = 0, 
         limit: int = 20,
         status: Optional[PlanStatusEnum] = None,
-        include_deleted: bool = False
+        include_deleted: bool = False,
+        projection: Optional[Dict[str, int]] = None
     ) -> List[Dict[str, Any]]:
         """
         Get user's plans with pagination.
@@ -143,6 +144,8 @@ class PlanRepository(PlanRepositoryInterface):
             limit: Max results per page
             status: Filter by status (optional)
             include_deleted: Include soft-deleted plans (default: False)
+            projection: MongoDB projection to limit fields (optional).
+                        If None, uses default projection excluding heavy fields.
             
         Returns:
             List of plan documents (newest first)
@@ -157,17 +160,27 @@ class PlanRepository(PlanRepositoryInterface):
             if status:
                 query["status"] = status.value
             
+            # Default projection excludes heavy fields for listing performance
+            if projection is None:
+                projection = {
+                    "itinerary": 0,
+                    "llm_response_raw": 0,
+                    "error_message": 0,
+                    "user_preferences": 0,
+                }
+            
             plans = list(
-                self.collection.find(query)
+                self.collection.find(query, projection)
                 .sort("created_at", DESCENDING)
                 .skip(skip)
                 .limit(limit)
             )
             
             for plan in plans:
-                plan['_id'] = str(plan['_id'])
+                if '_id' in plan:
+                    plan['_id'] = str(plan['_id'])
             
-            logger.info(f"[INFO] Found {len(plans)} plans for user {user_id}")
+            logger.debug(f"[DEBUG] Found {len(plans)} plans for user {user_id}")
             return plans
             
         except Exception as e:

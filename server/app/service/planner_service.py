@@ -1893,14 +1893,20 @@ class PlannerService:
         Returns:
             Plan dict if found (and owned by user if user_id provided)
         """
+        #check time
+        start_time = time.time()
         plan = self.plan_repo.get_by_id(plan_id)
+        logger.info(f"[GET_PLAN] Retrieved plan {plan_id} in {time.time() - start_time:.4f}s")
         
         if plan and user_id and plan.get('user_id') != user_id:
             return None
         
         # Enrich itinerary with POI locations
+        start_time = time.time()
         if plan and plan.get('itinerary'):
             plan = self._enrich_itinerary_with_poi_locations(plan)
+            
+            logger.info(f"[ENRICH] Enriched itinerary for plan {plan_id} in {time.time() - start_time:.4f}s")
         
         return plan
     
@@ -1930,9 +1936,9 @@ class PlannerService:
         if not all_poi_ids:
             return plan
         
-        # Fetch all POIs in one query
+        # Fetch all POIs in one query (optimized with projection)
         try:
-            poi_map = self.poi_repo.get_by_ids(list(all_poi_ids))
+            poi_map = self.poi_repo.get_by_ids_for_enrich(list(all_poi_ids))
             logger.debug(f"[ENRICH] Fetched {len(poi_map)}/{len(all_poi_ids)} POIs for plan {plan.get('plan_id')}")
       
             # DEBUG: Log each POI's location to identify duplicate location issue
@@ -2053,10 +2059,12 @@ class PlannerService:
         Returns:
             {plans: [...], total: int, page: int, limit: int, total_pages: int}
         """
+        start_time = time.time()
         skip = (page - 1) * limit
+        # get_by_user now uses default projection excluding heavy fields
         plans = self.plan_repo.get_by_user(user_id, skip, limit, status)
         total = self.plan_repo.count_by_user(user_id, status)
-        
+        logger.info(f"[LIST_PLANS] Retrieved {len(plans)} plans for user {user_id} in {time.time() - start_time:.4f}s")
         return {
             'plans': plans,
             'total': total,

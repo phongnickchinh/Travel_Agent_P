@@ -207,13 +207,7 @@ class PlacesService:
         if poi:
             logger.info(f"[INFO] Cache HIT: {poi_id}")
             # If user requested fresh details or cached POI lacks detail fields, fetch provider details
-            needs_detail = (
-                include_fresh or
-                not poi.get('raw_data') or
-                not poi.get('images') or
-                not poi.get('description', {}).get('long')
-            )
-            if needs_detail:
+            if include_fresh:
                 try:
                     detailed = self.get_details(poi_id, force_update=True)
                     if detailed:

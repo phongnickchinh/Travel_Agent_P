@@ -169,12 +169,14 @@ class POIRepository(POIRepositoryInterface):
             logger.warning(f"[WARNING] Fuzzy duplicate check failed: {e}")
             return None
     
-    def get_by_id(self, poi_id: str) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, poi_id: str, projection: Optional[Dict[str, int]] = None, track_view: bool = False) -> Optional[Dict[str, Any]]:
         """
         Get POI by ID.
         
         Args:
             poi_id: POI identifier
+            projection: MongoDB projection to limit fields (optional)
+            track_view: If True, increment view_count (default: False for performance)
             
         Returns:
             POI document if found, None otherwise
@@ -188,10 +190,10 @@ class POIRepository(POIRepositoryInterface):
             return None
         
         try:
-            poi = self.collection.find_one({"poi_id": poi_id})
+            poi = self.collection.find_one({"poi_id": poi_id}, projection)
             
-            if poi:
-                # Increment view count
+            if poi and track_view:
+                # Only increment view count if explicitly requested
                 self.collection.update_one(
                     {"poi_id": poi_id},
                     {"$inc": {"metadata.view_count": 1}}
@@ -255,12 +257,14 @@ class POIRepository(POIRepositoryInterface):
             logger.error(f"[ERROR] Failed to get POI by dedupe_key {dedupe_key}: {e}")
             return None
     
-    def get_by_ids(self, poi_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+    def get_by_ids(self, poi_ids: List[str], projection: Optional[Dict[str, int]] = None) -> Dict[str, Dict[str, Any]]:
         """
         Get multiple POIs by their IDs.
         
         Args:
             poi_ids: List of POI identifiers
+            projection: Optional MongoDB projection to limit fields returned.
+                        Use {"field": 1} to include, {"field": 0} to exclude.
             
         Returns:
             Dict mapping poi_id to POI document
@@ -269,12 +273,15 @@ class POIRepository(POIRepositoryInterface):
             pois = poi_repo.get_by_ids(["poi_abc", "poi_xyz"])
             for poi_id, poi in pois.items():
                 print(f"{poi_id}: {poi['name']}")
+            
+            # With projection for better performance:
+            pois = poi_repo.get_by_ids(ids, projection={"name": 1, "location": 1})
         """
         if self.collection is None or not poi_ids:
             return {}
         
         try:
-            cursor = self.collection.find({"poi_id": {"$in": poi_ids}})
+            cursor = self.collection.find({"poi_id": {"$in": poi_ids}}, projection)
             result = {}
             for poi in cursor:
                 result[poi['poi_id']] = poi
@@ -285,6 +292,40 @@ class POIRepository(POIRepositoryInterface):
         except Exception as e:
             logger.error(f"[ERROR] Failed to get POIs by IDs: {e}")
             return {}
+    
+    def get_by_ids_for_enrich(self, poi_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """
+        Get multiple POIs by IDs with minimal fields for itinerary enrichment.
+        
+        This is an optimized version that only fetches fields needed for
+        map display and activity cards, excluding heavy fields like:
+        - embeddings (384-dim vector)
+        - full photos array
+        - reviews
+        - sources
+        
+        Args:
+            poi_ids: List of POI identifiers
+            
+        Returns:
+            Dict mapping poi_id to POI document (minimal fields)
+        """
+        # Only fetch fields needed for enrichment
+        projection = {
+            "poi_id": 1,
+            "name": 1,
+            "name_en": 1,
+            "location": 1,
+            "address.formatted": 1,
+            "address.full": 1,
+            "category": 1,
+            "categories": 1,
+            "ratings.average": 1,
+            "thumbnail_url": 1,
+            "photos": {"$slice": 1},  # Only first photo for thumbnail fallback
+            "_id": 0  # Exclude MongoDB _id
+        }
+        return self.get_by_ids(poi_ids, projection)
 
     def update(self, poi_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

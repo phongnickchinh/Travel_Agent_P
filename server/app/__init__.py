@@ -18,7 +18,10 @@ from datetime import datetime
 from config import Config
 from .common.errors import handle_exception
 
-
+from .core.clients.redis_client import RedisClient
+from .common.logging_config import setup_logging
+from .core.clients.mongodb_client import get_mongodb_client
+from .core.es_initializer import initialize_elasticsearch
 # Custom JSON Provider to handle MongoDB ObjectId and datetime (Flask 3.x)
 class MongoJSONProvider(DefaultJSONProvider):
     def default(self, obj):
@@ -46,12 +49,7 @@ def create_app(config_class=Config):
     # NEED FIX: logout endpoint is not working, access token not being add to blacklist property. Big issue. Do not delete this message unless you fixed it..
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
-    # Setup logging (console + file)
-    from .common.logging_config import setup_logging
     setup_logging(app)
-    
-    # Set custom JSON provider to handle MongoDB ObjectId (Flask 3.x)
     app.json = MongoJSONProvider(app)
     
     CORS(app, resources={r"/*": {
@@ -63,7 +61,6 @@ def create_app(config_class=Config):
     }})
     
     # Initialize Redis connection
-    from .core.clients.redis_client import RedisClient
     init_logger = logging.getLogger(__name__)
     try:
         RedisClient.get_instance()
@@ -73,7 +70,7 @@ def create_app(config_class=Config):
         init_logger.warning("[INIT] Application will continue in degraded mode (without Redis features)")
     
     # Initialize MongoDB connection and create indexes
-    from .core.clients.mongodb_client import get_mongodb_client
+    
     try:
         mongodb_client = get_mongodb_client()
         if mongodb_client.is_healthy():
@@ -87,8 +84,8 @@ def create_app(config_class=Config):
         init_logger.warning(f"[INIT] MongoDB initialization failed: {str(e)}")
         init_logger.warning("[INIT] POI and Itinerary features will not be available")
     
+
     # Initialize Elasticsearch and sync data from MongoDB
-    from .core.es_initializer import initialize_elasticsearch
     try:
         es_success = initialize_elasticsearch()
         if es_success:
@@ -98,16 +95,12 @@ def create_app(config_class=Config):
     except Exception as es_error:
         init_logger.warning(f"[INIT] Elasticsearch initialization failed: {str(es_error)}")
     
-    from .utils.blacklist_cleaner import cleanup_expired_tokens
+
     db.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
     
-    # Configure Celery with proper timeout and connection settings for long-running tasks (e.g., LLM generation)
-    # NOTE: These settings (socket_timeout, socket_connect_timeout) are for Celery result backend communication
-    # They are INDEPENDENT from Redis cache TTL (CACHE_DEFAULT_TTL) and do NOT affect cache expiration
-    
-    # Broker transport options for TLS (rediss://) support
+    # Configure Celery
     broker_transport_opts = {
         'retry_on_timeout': True,
         'socket_connect_timeout': Config.CELERY_SOCKET_CONNECT_TIMEOUT,
@@ -134,17 +127,13 @@ def create_app(config_class=Config):
         # Task result configuration
         result_expires=Config.CELERY_RESULT_EXPIRES,
         task_track_started=True,
-        task_acks_late=True,  # Task ack after execution, not before
-        # Broker transport options (for TLS support)
+        task_acks_late=True,
         broker_transport_options=broker_transport_opts,
-        # Redis result backend connection settings (handle long-running tasks like LLM generation)
         result_backend_transport_options=result_backend_transport_opts,
-        # Broker connection resilience
-        broker_pool_limit=0,  # Unlimited connection pool
+        broker_pool_limit=0,
         broker_connection_retry=True,
         broker_connection_retry_on_startup=True,
-        broker_connection_max_retries=None,  # Infinite retries
-        # Worker settings
+        broker_connection_max_retries=None,
         worker_prefetch_multiplier=Config.CELERY_PREFETCH_MULTIPLIER,
         worker_max_tasks_per_child=Config.CELERY_MAX_TASKS_PER_CHILD,
     )
@@ -159,11 +148,8 @@ def create_app(config_class=Config):
         except Exception as e:
             init_logger.error(f"Database migration failed: {str(e)}")
             init_logger.warning("Server will continue startup - please check migrations manually if needed")
-            # Continue startup even if migration fails
     
-    from .model.base_model import BaseModel
-    
-    # Import and initialize DI after models are imported
+
     from .core.di import init_di
     init_di()
     

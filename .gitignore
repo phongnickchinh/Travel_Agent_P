@@ -1,0 +1,10 @@
+docs/
+logs/
+API*.md
+.github/*.md
+client/*.md
+# .gitignore
+
+*.pdf
+*.json
+!server/app/repo/es/mappings/*.json

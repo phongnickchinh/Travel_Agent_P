@@ -163,10 +163,19 @@ class PlanRepository(PlanRepositoryInterface):
             # Default projection excludes heavy fields for listing performance
             if projection is None:
                 projection = {
-                    "itinerary": 0,
-                    "llm_response_raw": 0,
-                    "error_message": 0,
-                    "user_preferences": 0,
+                    "_id": 1,
+                    "plan_id": 1,
+                    "title": 1,
+                    "destination": 1,
+                    "num_days": 1,
+                    "status": 1,
+                    "start_date": 1,
+                    "end_date": 1,
+                    "created_at": 1,
+                    "deleted_at": 1,
+                    "is_deleted": 1,
+                    "thumbnail_url": 1,
+                    # Exclude heavy fields: itinerary, llm_response_raw, etc.
                 }
             
             plans = list(
@@ -475,7 +484,7 @@ class PlanRepository(PlanRepositoryInterface):
                 "created_at": 1,
                 "deleted_at": 1,
                 "is_deleted": 1,
-                "featured_images": 1,
+                "thumbnail_url": 1,
                 # Exclude heavy fields: itinerary, llm_response_raw, etc.
             }
             

@@ -189,6 +189,34 @@ class POIRepository(POIRepositoryInterface):
         if self.collection is None:
             return None
         
+        if projection is None:
+            projection = {
+                "poi_id": 1,
+                "name": 1,
+                "location": 1,
+                "address": 1,
+                "categories": 1,
+                "description": 1,
+                "ratings": 1,
+                "pricing": 1,
+                "opening_hours": 1,
+                "contact": 1,
+                "images": 1,
+                "amenities": 1,
+                # Google data - exclude raw_google_response (very large, duplicate)
+                "google_data.google_place_id": 1,
+                "google_data.google_maps_uri": 1,
+                "google_data.google_types": 1,
+                "google_data.primary_type": 1,
+                "google_data.primary_type_display_name": 1,
+                "google_data.viewport": 1,
+                "google_data.address_components": 1,
+                "google_data.reviews": 1,
+                "google_data.service_options": 1,
+                "google_data.good_for_children": 1,
+                "_id": 0  # Exclude MongoDB _id
+            }
+        
         try:
             poi = self.collection.find_one({"poi_id": poi_id}, projection)
             

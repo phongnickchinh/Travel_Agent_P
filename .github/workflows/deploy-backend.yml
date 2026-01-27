@@ -96,12 +96,39 @@ jobs:
           docker system prune -f 2>/dev/null || true
           
           echo "🚀 Building and deploying..."
-            docker compose build --no-cache
-            docker compose up -d --force-recreate
-          sleep 30
+          docker compose build --no-cache
+          docker compose up -d --force-recreate
+          
+          echo "⏳ Waiting for services to become healthy (max 5 minutes)..."
+          TIMEOUT=300
+          ELAPSED=0
+          INTERVAL=10
+          
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            # Check if flask-app is healthy
+            if docker compose ps flask-app | grep -q "(healthy)"; then
+              echo "✅ Flask container is healthy after ${ELAPSED}s"
+              break
+            fi
+            
+            FLASK_STATUS=$(docker compose ps flask-app | tail -n 1 || echo "unknown")
+            echo "⏱️  Waiting... (${ELAPSED}s/${TIMEOUT}s) - Status: ${FLASK_STATUS}"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "⚠️  Health check timeout reached after ${TIMEOUT}s"
+            echo "📊 Current status:"
+            docker compose ps
+            echo "📋 Flask logs:"
+            docker compose logs --tail=50 flask-app
+            exit 1
+          fi
+          
           docker image prune -f
           
-          echo "📊 Status:"
+          echo "📊 Final status:"
           docker compose ps
           
           echo "✅ Deployment complete!"

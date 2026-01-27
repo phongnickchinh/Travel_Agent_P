@@ -96,54 +96,56 @@ class ESInitializer:
         except Exception:
             return False
     
-    def initialize(self) -> bool:
+    def initialize(self, skip_sync: bool = True) -> bool:
         """
-        Full Elasticsearch initialization.
+        Elasticsearch initialization.
         
         1. Check ES connection
-        2. Create indexes (POI + Autocomplete)
-        3. Sync POI data from MongoDB (always, check count first)
-        4. Sync Autocomplete data from MongoDB (always, check count first)
-        5. Validate mappings
+        2. Create indexes (POI + Autocomplete + Plan)
+        3. Skip sync by default (Celery worker handles sync on startup)
+        
+        Args:
+            skip_sync: If True (default), only create indexes - Celery handles sync
+                      If False, also run sync (for manual/testing purposes)
         
         Returns:
             True if initialization successful
         """
         try:
-            # Check connection
+            # Check connection with timeout
             if not self.is_connected():
                 logger.warning("[ES_INIT] Elasticsearch connection failed")
                 return False
             
             logger.info("[ES_INIT] Elasticsearch connected successfully")
             
-            # Create/verify POI index
+            # Create/verify indexes (fast, do synchronously)
             self._ensure_poi_index()
-            
-            # Create/verify Autocomplete index
             self._ensure_autocomplete_index()
-            
-            # Create/verify Plan index
             self._ensure_plan_index()
             
-            # Sync POI data
-            self.sync_pois()
-            
-            # Sync Autocomplete data
-            self.sync_autocomplete()
-            
-            # Sync Plan data
-            self.sync_plans()
-            
-            # Validate mappings
-            self._validate_mappings()
+            if skip_sync:
+                logger.info("[ES_INIT] Indexes verified. Sync will be handled by Celery worker.")
+            else:
+                logger.info("[ES_INIT] Running sync...")
+                self._run_sync()
             
             return True
             
         except Exception as e:
-            logger.error(f"[ES_INIT] Initialization failed: {e}")
-            logger.exception("ES initialization error")
+            logger.error("[ES_INIT] Initialization failed: %s", e)
             return False
+    
+    def _run_sync(self):
+        """Run all sync operations synchronously."""
+        try:
+            self.sync_pois()
+            self.sync_autocomplete()
+            self.sync_plans()
+            self._validate_mappings()
+            logger.info("[ES_INIT] All sync operations completed")
+        except Exception as e:
+            logger.error("[ES_INIT] Sync failed: %s", e)
     
     def _ensure_poi_index(self) -> bool:
         """Ensure POI index exists with correct mapping."""

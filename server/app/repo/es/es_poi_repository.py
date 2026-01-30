@@ -68,6 +68,24 @@ class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
             logger.error(f"Bulk indexing failed: {e}")
             return (0, len(pois))
     
+    # Fields to return in search results (reduce data transfer)
+    # NOTE: ES stores 'photos' array, NOT 'thumbnail_url'. 
+    # _transform_from_es_document converts photos[0] → photo_reference
+    SEARCH_SOURCE_FIELDS = [
+        "poi_id", "name", "types", "primary_type",
+        "location", "address", "rating", "total_reviews",
+        "price_level", "description", "photos"  # photos[0] → photo_reference
+    ]
+    
+    # Minimal fields for nearby/list views (frontend: PlanDetail.jsx handleSearchNearby)
+    # Frontend expects: poi_id, name, location, address, rating, total_reviews, 
+    #                   types, primary_type, photo_reference (from photos[0])
+    NEARBY_SOURCE_FIELDS = [
+        "poi_id", "name", "types", "primary_type",
+        "location", "address", "rating", "total_reviews",
+        "price_level", "photos"  # photos[0] → photo_reference in transform
+    ]
+
     def search(
         self,
         query: str,
@@ -78,7 +96,8 @@ class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
         price_levels: Optional[List[str]] = None,
         sort_by: str = "relevance",
         limit: int = 20,
-        offset: int = 0
+        offset: int = 0,
+        minimal_fields: bool = False
     ) -> Dict[str, Any]:
         """
         Search POIs with filters
@@ -93,6 +112,7 @@ class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
             sort_by: Sort order - "relevance", "distance", "rating"
             limit: Number of results to return
             offset: Pagination offset
+            minimal_fields: If True, return only essential fields (faster for lists)
             
         Returns:
             Dict with results, total, took_ms
@@ -178,6 +198,9 @@ class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
                     })
                 sort.append("_score")
             
+            # Select source fields based on use case
+            source_fields = self.NEARBY_SOURCE_FIELDS if minimal_fields else self.SEARCH_SOURCE_FIELDS
+            
             # Execute search with track_total_hits for accurate count
             response = self.es.search(
                 index=self.INDEX_NAME,
@@ -185,7 +208,8 @@ class ESPOIRepository(BaseESRepository, ESPOIRepositoryInterface):
                 sort=sort,
                 size=limit,
                 from_=offset,
-                track_total_hits=True
+                track_total_hits=True,
+                _source=source_fields
             )
             
             took_ms = int((time.time() - start_time) * 1000)

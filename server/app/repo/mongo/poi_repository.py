@@ -17,7 +17,7 @@ from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 from pymongo import GEOSPHERE, TEXT, DESCENDING
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ...core.clients.mongodb_client import get_mongodb_client
 from ...model.mongo.poi import POI, POISearchRequest, CategoryEnum, PriceLevelEnum
@@ -525,6 +525,9 @@ class POIRepository(POIRepositoryInterface):
             # Min rating filter
             if search_request.min_rating:
                 match_stage["ratings.average"] = {"$gte": search_request.min_rating}
+                
+                
+            match_stage["metadata.updated_at"] = {"$gte": datetime.utcnow() - timedelta(days=15)}
             
             # Add match stage if filters exist
             if match_stage:
@@ -554,10 +557,10 @@ class POIRepository(POIRepositoryInterface):
                 # Only sort by search_score if $text was used
                 sort_stage["search_score"] = -1
                 sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
-            elif search_request.lat and search_request.lng:
-                # Geo search: sort by distance
-                sort_stage["distance_km"] = 1
-                sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
+            # elif search_request.lat and search_request.lng:
+            #     # Geo search: sort by distance
+            #     sort_stage["distance_km"] = 1
+            #     sort_stage["poi_id"] = 1  # Tie-breaker for deterministic order
             else:
                 # Default: sort by popularity and rating
                 sort_stage["metadata.popularity_score"] = -1
@@ -667,10 +670,14 @@ class POIRepository(POIRepositoryInterface):
                         "distance_km": {"$divide": ["$distance_m", 1000]}
                     }
                 },
+
                 {"$limit": limit}
             ]
             
-            results = list(self.collection.aggregate(pipeline))
+            match_stage = {}
+            match_stage["metadata.updated_at"] = {"$gte": datetime.utcnow() - timedelta(days=15)}
+            
+            results = list(self.collection.aggregate(pipeline + [{"$match": match_stage}]))
             
             logger.info(f"[INFO] Found {len(results)} nearby POI")
             

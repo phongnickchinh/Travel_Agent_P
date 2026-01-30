@@ -558,8 +558,9 @@ export default function PlanDetail() {
           category: poi.types?.[0] || poi.primary_type || 'attraction',
           types: poi.types || [],
           markerColor: getMarkerColor(poi.types?.[0] || 'attraction'),
-          imageUrl: poi.photo_url || null,
-          distance_km: poi.distance_km
+          // Backend returns photo_reference (from ES photos[0]), photos array as fallback
+          imageUrl: poi.photo_reference || poi.photos?.[0] || null,
+          distance_km: poi._distance_km || poi.distance_km
         }));
         setNearbyPOIs(pois);
       }

@@ -497,7 +497,8 @@ class PlannerService:
                 lng=location.get('longitude'),
                 radius=radius_km,
                 categories=mapped_categories,
-                limit=pool_size
+                limit=pool_size,
+                min_rating=4.2
             )
             
             result = self.poi_repo.search(search_request)

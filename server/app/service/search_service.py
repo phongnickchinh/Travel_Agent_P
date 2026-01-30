@@ -34,6 +34,7 @@ Updated: January 2025 - Added hybrid architecture with Google API fallback
 
 import logging
 import time
+import hashlib
 from typing import List, Dict, Optional, Any, TYPE_CHECKING
 
 from ..repo.es.interfaces import ESPOIRepositoryInterface, ESPlanRepositoryInterface
@@ -41,10 +42,14 @@ from ..repo.mongo.interfaces import POIRepositoryInterface, PlanRepositoryInterf
 from ..repo.mongo.plan_repository import PlanRepositoryInterface
 from ..model.mongo.poi import POISearchRequest
 from ..core.clients.elasticsearch_client import ElasticsearchClient
+from ..core.cache.cache_helper import CacheHelper
 from ..providers.type_mapping import (
     map_user_interests_to_google_types,
     map_user_interests_to_categories
 )
+
+# Cache TTL for nearby queries (5 minutes - location-based, changes rarely)
+NEARBY_CACHE_TTL = 300
 
 if TYPE_CHECKING:
     from ..providers.places.google_places_provider import GooglePlacesProvider
@@ -123,6 +128,46 @@ class SearchService:
         else:
             logger.warning("[SearchService] Google Places API fallback disabled")
     
+    def _build_nearby_cache_key(
+        self,
+        latitude: float,
+        longitude: float,
+        radius_km: float,
+        types: Optional[List[str]] = None,
+        interests: Optional[List[str]] = None,
+        min_rating: Optional[float] = None,
+        limit: int = 20
+    ) -> str:
+        """
+        Build cache key for nearby queries.
+        
+        Uses geohash-like rounding (3 decimal places ~111m precision) to allow
+        cache hits for nearby locations.
+        """
+        # Round coordinates to 3 decimal places (~111m precision)
+        lat_rounded = round(latitude, 3)
+        lng_rounded = round(longitude, 3)
+        
+        # Build key components
+        key_parts = [
+            f"nearby:{lat_rounded}:{lng_rounded}",
+            f"r:{radius_km}",
+            f"l:{limit}"
+        ]
+        
+        if types:
+            types_hash = hashlib.md5(",".join(sorted(types)).encode()).hexdigest()[:8]
+            key_parts.append(f"t:{types_hash}")
+        
+        if interests:
+            interests_hash = hashlib.md5(",".join(sorted(interests)).encode()).hexdigest()[:8]
+            key_parts.append(f"i:{interests_hash}")
+        
+        if min_rating:
+            key_parts.append(f"mr:{min_rating}")
+        
+        return ":".join(key_parts)
+    
     def search_poi(
         self,
         query: str,
@@ -135,7 +180,9 @@ class SearchService:
         price_levels: Optional[List[str]] = None,
         sort_by: str = "relevance",
         limit: int = 20,
-        offset: int = 0
+        offset: int = 0,
+        skip_external_api: bool = False,
+        minimal_fields: bool = False
     ) -> Dict[str, Any]:
         """
         Hybrid search: ES → MongoDB → Google API fallback.
@@ -152,6 +199,8 @@ class SearchService:
             sort_by: Sort order - "relevance", "distance", "rating", "popularity"
             limit: Max results (default: 20)
             offset: Pagination offset (default: 0)
+            skip_external_api: If True, skip Google API fallback (use local data only) - faster for nearby
+            minimal_fields: If True, return only essential fields (faster for list views)
         
         Returns:
             {
@@ -203,7 +252,8 @@ class SearchService:
                     price_levels=price_levels,
                     sort_by=sort_by,
                     limit=limit,
-                    offset=offset
+                    offset=offset,
+                    minimal_fields=minimal_fields  # Reduce data transfer for list views
                 )
                 
                 results = es_result.get('results', [])
@@ -233,8 +283,9 @@ class SearchService:
             source = "mongodb"
             logger.debug("[SEARCH] MongoDB fallback: %d results", len(results))
         
-        # Step 3: If results < limit AND location provided, call Google Places API
-        if len(results) < limit and latitude is not None and longitude is not None:
+        # Step 3: If results < limit AND location provided AND not skipped, call Google Places API
+        # skip_external_api=True for nearby queries (fast, local data only)
+        if not skip_external_api and len(results) < limit and latitude is not None and longitude is not None:
             if self.google_provider:
                 try:
                     google_results = self._search_google(
@@ -719,10 +770,16 @@ class SearchService:
         types: Optional[List[str]] = None,
         interests: Optional[List[str]] = None,
         min_rating: Optional[float] = None,
-        limit: int = 20
+        limit: int = 20,
+        use_cache: bool = True
     ) -> Dict[str, Any]:
         """
         Get POIs near a location (no text query).
+        
+        OPTIMIZED for speed:
+        - Redis cache (5min TTL) for repeated queries
+        - Skip Google API fallback (local data only)
+        - Geo-only ES query (no text matching)
         
         Use case: "What's nearby?" feature
         
@@ -734,13 +791,15 @@ class SearchService:
             interests: User interest IDs (e.g., 'beach', 'culture', 'food') - converted to Google types
             min_rating: Minimum rating
             limit: Max results (default: 20)
+            use_cache: If True, use Redis cache (default: True)
         
         Returns:
             {
                 "results": [POI dicts with _distance_km],
                 "total": int,
                 "center": {"latitude": float, "longitude": float},
-                "radius_km": float
+                "radius_km": float,
+                "cached": bool
             }
         
         Example:
@@ -751,29 +810,64 @@ class SearchService:
             ...     interests=["beach", "food"]  # Converted to Google types internally
             ... )
         """
-        logger.info(f"[NEARBY] Get nearby: lat={latitude}, lng={longitude}, radius={radius_km}km, interests={interests}")
+        start_time = time.time()
         
-        # Use search with empty query (geo-only)
-        # Pass interests directly - search() handles conversion for each backend
+        # Check cache first
+        cache_key = None
+        if use_cache:
+            cache_key = self._build_nearby_cache_key(
+                latitude=latitude,
+                longitude=longitude,
+                radius_km=radius_km,
+                types=types,
+                interests=interests,
+                min_rating=min_rating,
+                limit=limit
+            )
+            
+            cached_result = CacheHelper.get(cache_key)
+            if cached_result:
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.debug(f"[NEARBY] Cache HIT for {cache_key}, took {elapsed_ms}ms")
+                cached_result['cached'] = True
+                cached_result['took_ms'] = elapsed_ms
+                return cached_result
+        
+        logger.debug(f"[NEARBY] Cache MISS, querying... lat={latitude}, lng={longitude}, radius={radius_km}km")
+        
+        # Use search with empty query (geo-only) + skip Google API for speed
         results = self.search_poi(
             query="",
             latitude=latitude,
             longitude=longitude,
             radius_km=radius_km,
             types=types,
-            interests=interests,  # Pass interests directly, search() converts per backend
+            interests=interests,
             min_rating=min_rating,
             sort_by="distance",
-            limit=limit
+            limit=limit,
+            skip_external_api=True,  # Skip Google API for faster response
+            minimal_fields=True      # Only essential fields for list view
         )
         
-        return {
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        
+        response = {
             "results": results.get('results', []),
             "total": results.get('total', 0),
             "center": {"latitude": latitude, "longitude": longitude},
             "radius_km": radius_km,
-            "source": results.get('source', 'unknown')
+            "source": results.get('source', 'unknown'),
+            "cached": False,
+            "took_ms": elapsed_ms
         }
+        
+        # Cache the result
+        if use_cache and cache_key and response.get('results'):
+            CacheHelper.set(cache_key, response, ttl=NEARBY_CACHE_TTL)
+            logger.debug(f"[NEARBY] Cached result for {cache_key}, TTL={NEARBY_CACHE_TTL}s")
+        
+        return response
 
     def search_user_plan(
         self,

@@ -16,7 +16,7 @@ from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 from pymongo import DESCENDING
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ...core.clients.mongodb_client import get_mongodb_client
 from ...model.mongo.place_detail import PlaceDetail
@@ -78,14 +78,15 @@ class PlaceDetailRepository(PlaceDetailRepositoryInterface):
             return None
         
         try:
-            doc = self.collection.find_one({"place_id": place_id})
+            #lấy place có thời gian update dưới 15 ngày
+            doc = self.collection.find_one({"place_id": place_id, "updated_at": {"$gte": datetime.utcnow() - timedelta(days=15)}})
             if doc:
                 # Increment access count
                 self.collection.update_one(
                     {"place_id": place_id},
                     {
                         "$inc": {"access_count": 1},
-                        "$set": {"updated_at": datetime.utcnow()}
+                        # "$set": {"updated_at": datetime.utcnow()}
                     }
                 )
                 # Remove MongoDB _id

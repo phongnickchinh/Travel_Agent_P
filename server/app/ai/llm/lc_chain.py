@@ -208,6 +208,13 @@ class TravelPlannerChain:
         - check_in_time: "14:00" or "15:00" (arrival days) | check_out_time: "11:00" or "12:00" (departure days).
         - Match accommodation price to user budget.
 
+        6. NO DUPLICATE POIs (CRITICAL)
+        - NEVER reuse the same POI across different days - each poi_id must appear only ONCE in the entire itinerary.
+        - After generating the plan, RECHECK all poi_ids to ensure no duplicates exist.
+        - If a day consists entirely of duplicate POIs from previous days, REMOVE that day entirely.
+        - The plan MAY end earlier than the requested {num_days} days if there is insufficient unique POI data.
+        - Quality over quantity: It is better to have fewer high-quality unique days than to repeat POIs.
+
         ========================
         OUTPUT FORMAT (STRICT)
         ========================

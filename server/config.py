@@ -103,7 +103,7 @@ class Config:
     RATE_LIMIT_RESET_PASSWORD = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD", 10))
     RATE_LIMIT_RESET_PASSWORD_WINDOW = int(os.environ.get("RATE_LIMIT_RESET_PASSWORD_WINDOW", 3600))
     # Plan creation rate limit (default: 12 plans per hour)
-    RATE_LIMIT_PLAN_CREATION = int(os.environ.get("RATE_LIMIT_PLAN_CREATION", 12))
+    RATE_LIMIT_PLAN_CREATION = int(os.environ.get("RATE_LIMIT_PLAN_CREATION", 60))
     RATE_LIMIT_PLAN_CREATION_WINDOW = int(os.environ.get("RATE_LIMIT_PLAN_CREATION_WINDOW", 3600))
     
     # Search API rate limit (default: 60 requests per minute)
